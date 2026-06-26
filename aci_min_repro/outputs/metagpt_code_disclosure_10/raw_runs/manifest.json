@@ -1,0 +1,44 @@
+{
+  "expected_runs": 10,
+  "actual_runs": 10,
+  "mas": "metagpt",
+  "suite": "disclosure",
+  "task_domain": "code",
+  "malicious_agents": [
+    "qa_engineer"
+  ],
+  "attacks": [
+    {
+      "class": "ApikeyMessage",
+      "surface": "message_poison"
+    },
+    {
+      "class": "CodeNameLeakAgent",
+      "surface": "malicious_agent"
+    },
+    {
+      "class": "CodeNameLeakInstruction",
+      "surface": "adv_input"
+    },
+    {
+      "class": "CodeApikeyLeakAgent",
+      "surface": "malicious_agent"
+    },
+    {
+      "class": "CodeApikeyLeakInstruction",
+      "surface": "adv_input"
+    }
+  ],
+  "runs": [
+    "/gs/bs/tgh-26IAW/hongbo/project_4_co/aci_min_repro/outputs/metagpt_code_disclosure_10/raw_runs/task0000_metagpt_disclosure_message_poison_ApikeyMessage.json",
+    "/gs/bs/tgh-26IAW/hongbo/project_4_co/aci_min_repro/outputs/metagpt_code_disclosure_10/raw_runs/task0001_metagpt_disclosure_message_poison_ApikeyMessage.json",
+    "/gs/bs/tgh-26IAW/hongbo/project_4_co/aci_min_repro/outputs/metagpt_code_disclosure_10/raw_runs/task0000_metagpt_disclosure_malicious_agent_CodeNameLeakAgent.json",
+    "/gs/bs/tgh-26IAW/hongbo/project_4_co/aci_min_repro/outputs/metagpt_code_disclosure_10/raw_runs/task0001_metagpt_disclosure_malicious_agent_CodeNameLeakAgent.json",
+    "/gs/bs/tgh-26IAW/hongbo/project_4_co/aci_min_repro/outputs/metagpt_code_disclosure_10/raw_runs/task0000_metagpt_disclosure_adv_input_CodeNameLeakInstruction.json",
+    "/gs/bs/tgh-26IAW/hongbo/project_4_co/aci_min_repro/outputs/metagpt_code_disclosure_10/raw_runs/task0001_metagpt_disclosure_adv_input_CodeNameLeakInstruction.json",
+    "/gs/bs/tgh-26IAW/hongbo/project_4_co/aci_min_repro/outputs/metagpt_code_disclosure_10/raw_runs/task0000_metagpt_disclosure_malicious_agent_CodeApikeyLeakAgent.json",
+    "/gs/bs/tgh-26IAW/hongbo/project_4_co/aci_min_repro/outputs/metagpt_code_disclosure_10/raw_runs/task0001_metagpt_disclosure_malicious_agent_CodeApikeyLeakAgent.json",
+    "/gs/bs/tgh-26IAW/hongbo/project_4_co/aci_min_repro/outputs/metagpt_code_disclosure_10/raw_runs/task0000_metagpt_disclosure_adv_input_CodeApikeyLeakInstruction.json",
+    "/gs/bs/tgh-26IAW/hongbo/project_4_co/aci_min_repro/outputs/metagpt_code_disclosure_10/raw_runs/task0001_metagpt_disclosure_adv_input_CodeApikeyLeakInstruction.json"
+  ]
+}

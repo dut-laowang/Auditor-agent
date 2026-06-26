@@ -1,0 +1,20 @@
+__pycache__/
+*.pyc
+.pytest_cache/
+.venv/
+venv/
+env/
+.env
+
+# Local API configs may contain real tokens.
+aci_min_repro/model_config.local.yaml
+aci_min_repro/judge_config.local.yaml
+
+# Generated logs from future local runs.
+logs/
+
+# OS/editor files.
+.DS_Store
+Thumbs.db
+.vscode/
+.idea/
