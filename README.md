@@ -100,33 +100,6 @@ bash run_all_mas_code_disclosure_10.sh
 aci_min_repro/outputs/
 ```
 
-## 日志格式
-
-每条 raw trajectory 是一个 JSON，主要字段：
-
-```text
-meta_data: MAS / suite / attack_class / attack_surface
-turns: sender / receiver / message / tool
-result: attack_success / utility_success / token_usage
-```
-
-其中 `attack_success` 来自 ACIArena 原始 attack 类的 `verify()`，wrapper 只负责保存每条轨迹。
-
-## 转成 graph-prefix
-
-```bash
-python to_audit_prefix.py \
-  --input-dir outputs/metagpt_code_disclosure_10/raw_runs \
-  --output-jsonl outputs/metagpt_code_disclosure_10/audit_prefix_samples.jsonl
-```
-
-当前转换是原型版，后续还需要补充更细的安全标注：
-
-```text
-unsafe_event / unsafe_edge / risk_type / intervention_point
-source_trust / privilege_boundary / receiver_tools
-```
-
 ## 当前观察
 
 ```text
