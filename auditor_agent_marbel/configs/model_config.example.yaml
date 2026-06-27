@@ -1,0 +1,9 @@
+default_llm:
+  provider: openai
+  model: gpt-4o-mini
+judge_llm:
+  provider: openai
+  model: gpt-4o-mini
+env:
+  OPENAI_API_KEY: set_on_server
+

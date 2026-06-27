@@ -12,6 +12,7 @@ aci_min_repro/judge_config.local.yaml
 
 # Generated logs from future local runs.
 logs/
+auditor_agent_marbel/outputs/
 
 # OS/editor files.
 .DS_Store

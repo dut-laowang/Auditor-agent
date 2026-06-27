@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "auditor-agent-marbel"
+version = "0.1.0"
+description = "Graph-aware ACI-inspired attack runner for official MARBLE tasks."
+requires-python = ">=3.10"
+dependencies = [
+  "PyYAML>=6.0",
+]
+
+[tool.setuptools.packages.find]
+where = ["src"]
+

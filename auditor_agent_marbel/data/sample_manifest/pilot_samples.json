@@ -1,0 +1,7 @@
+{
+  "research": [1, 2, 3],
+  "coding": [1, 2, 3],
+  "database": [1, 2, 3],
+  "notes": "Pilot uses three official MARBLE samples per scenario. Scale to 100 only after hooks and judges are validated."
+}
+
