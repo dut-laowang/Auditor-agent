@@ -1,9 +1,7 @@
-default_llm:
+api:
   provider: openai
-  model: gpt-4o-mini
-judge_llm:
-  provider: openai
-  model: gpt-4o-mini
-env:
-  OPENAI_API_KEY: set_on_server
-
+  api_key_env: OPENAI_API_KEY
+  base_url: https://yunai.chat/v1
+  model_name: gpt-4o-mini
+  temperature: 0.0
+  max_tokens: 1024

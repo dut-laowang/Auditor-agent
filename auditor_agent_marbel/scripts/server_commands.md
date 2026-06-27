@@ -25,7 +25,23 @@ cd /gs/bs/tgh-26IAW/hongbo/project_4_coauthor/MARBLE
 pip install -e .
 ```
 
-## 3. Dry Run
+## 3. API Config
+
+For an OpenAI-compatible yun endpoint:
+
+```bash
+export OPENAI_API_KEY="sk-xxx"
+export OPENAI_API_BASE="https://yunai.chat/v1"
+export OPENAI_BASE_URL="https://yunai.chat/v1"
+```
+
+Model and base URL defaults are also recorded in:
+
+```bash
+/gs/bs/tgh-26IAW/hongbo/project_4_coauthor/Auditor-agent/auditor_agent_marbel/configs/pilot_run.yaml
+```
+
+## 4. Dry Run
 
 ```bash
 cd /gs/bs/tgh-26IAW/hongbo/project_4_coauthor/Auditor-agent/auditor_agent_marbel
@@ -37,7 +53,7 @@ python -m auditor_agent_marbel.runner.run_attack \
   --dry-run
 ```
 
-## 4. Clean Baselines
+## 5. Clean Baselines
 
 ```bash
 python -m auditor_agent_marbel.runner.run_attack \
@@ -47,7 +63,7 @@ python -m auditor_agent_marbel.runner.run_attack \
   --clean-only
 ```
 
-## 5. Attacked Runs
+## 6. Attacked Runs
 
 ```bash
 python -m auditor_agent_marbel.runner.run_attack \

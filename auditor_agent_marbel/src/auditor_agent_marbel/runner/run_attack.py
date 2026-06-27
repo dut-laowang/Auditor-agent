@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 import traceback
 from pathlib import Path
@@ -30,6 +31,18 @@ def load_attack_specs(path: Optional[Path]) -> List[AttackSpec]:
     return [AttackSpec.from_dict(row) for row in read_jsonl(path)]
 
 
+def configure_llm_environment(run_config: Dict[str, Any]) -> None:
+    api_config = run_config.get("api", {})
+    base_url = api_config.get("base_url")
+    if base_url:
+        os.environ.setdefault("OPENAI_API_BASE", str(base_url))
+        os.environ.setdefault("OPENAI_BASE_URL", str(base_url))
+    api_key = api_config.get("api_key")
+    api_key_env = api_config.get("api_key_env", "OPENAI_API_KEY")
+    if api_key and api_key_env:
+        os.environ.setdefault(str(api_key_env), str(api_key))
+
+
 def prepare_config(
     sample: Dict[str, Any],
     scenario: str,
@@ -38,7 +51,8 @@ def prepare_config(
     attack: Optional[AttackSpec],
 ) -> Dict[str, Any]:
     config = apply_topology(sample, topology)
-    config["llm"] = config.get("llm") or run_config.get("default_llm", "gpt-4o-mini")
+    default_llm = run_config.get("default_llm") or run_config.get("api", {}).get("model_name", "gpt-4o-mini")
+    config["llm"] = config.get("llm") or default_llm
     overrides = run_config.get("environment_overrides", {}).get(scenario, {})
     environment = dict(config.get("environment", {}))
     environment.update(overrides)
@@ -163,6 +177,7 @@ def main() -> None:
         raise FileNotFoundError(f"MARBLE root does not exist: {marble_root}")
 
     run_config = load_run_config(args.run_config)
+    configure_llm_environment(run_config)
     attack_specs = [] if args.clean_only else load_attack_specs(args.attack_spec)
     targets = build_targets(marble_root, run_config, attack_specs, clean_only=args.clean_only)
 

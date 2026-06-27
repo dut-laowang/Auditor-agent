@@ -73,6 +73,20 @@ pip install -e .
 cd ../Auditor-agent/auditor_agent_marbel
 ```
 
+Configure your OpenAI-compatible endpoint:
+
+```bash
+export OPENAI_API_KEY="sk-xxx"
+export OPENAI_API_BASE="https://yunai.chat/v1"
+export OPENAI_BASE_URL="https://yunai.chat/v1"
+```
+
+The default pilot config already uses `gpt-4o-mini` and `https://yunai.chat/v1`:
+
+```text
+configs/pilot_run.yaml
+```
+
 Dry-run the pilot without calling LLMs:
 
 ```bash
