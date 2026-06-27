@@ -117,8 +117,8 @@ def run_one(
     if attack:
         base_config = apply_static_config_attack(base_config, attack, placement, context)
 
-    config_path = output_dir / "configs" / f"{target.run_id}.yaml"
-    trajectory_path = output_dir / "trajectories" / f"{target.run_id}.jsonl"
+    config_path = (output_dir / "configs" / f"{target.run_id}.yaml").resolve()
+    trajectory_path = (output_dir / "trajectories" / f"{target.run_id}.jsonl").resolve()
     write_generated_config(base_config, config_path)
 
     run_meta = {
@@ -145,11 +145,18 @@ def run_one(
         from marble.configs.config import Config
         from marble.engine.engine import Engine
 
-        with installed_runtime_hooks(attack, placement, context, logger) as hooks:
-            config = Config.load(str(config_path))
-            engine = Engine(config)
-            hooks.install_memory_attack(engine)
-            engine.start()
+        old_cwd = Path.cwd()
+        marble_runtime_cwd = marble_root / "marble"
+        try:
+            (marble_runtime_cwd / "logs").mkdir(parents=True, exist_ok=True)
+            os.chdir(marble_runtime_cwd)
+            with installed_runtime_hooks(attack, placement, context, logger) as hooks:
+                config = Config.load(str(config_path))
+                engine = Engine(config)
+                hooks.install_memory_attack(engine)
+                engine.start()
+        finally:
+            os.chdir(old_cwd)
         logger.close("completed")
         status = "completed"
         error = None
@@ -181,7 +188,9 @@ def main() -> None:
     attack_specs = [] if args.clean_only else load_attack_specs(args.attack_spec)
     targets = build_targets(marble_root, run_config, attack_specs, clean_only=args.clean_only)
 
+    args.output_dir = args.output_dir.resolve()
     args.output_dir.mkdir(parents=True, exist_ok=True)
+    Path("logs").mkdir(parents=True, exist_ok=True)
     write_json(
         args.output_dir / "run_plan.json",
         {

@@ -118,6 +118,36 @@ python -m auditor_agent_marbel.runner.run_attack \
   --output-dir outputs/pilot_attacked
 ```
 
+## Windows Local Quick Start
+
+Install this module and official MARBLE into the same conda environment, then set the OpenAI-compatible endpoint in PowerShell:
+
+```powershell
+[Environment]::SetEnvironmentVariable("OPENAI_API_KEY", "sk-xxx", "User")
+[Environment]::SetEnvironmentVariable("OPENAI_API_BASE", "https://yunai.chat/v1", "User")
+[Environment]::SetEnvironmentVariable("OPENAI_BASE_URL", "https://yunai.chat/v1", "User")
+```
+
+For the current PowerShell session, reload the saved values without printing the key:
+
+```powershell
+$env:OPENAI_API_KEY=[Environment]::GetEnvironmentVariable("OPENAI_API_KEY","User")
+$env:OPENAI_API_BASE=[Environment]::GetEnvironmentVariable("OPENAI_API_BASE","User")
+$env:OPENAI_BASE_URL=[Environment]::GetEnvironmentVariable("OPENAI_BASE_URL","User")
+```
+
+Run a local CPU-friendly clean check:
+
+```powershell
+python -m auditor_agent_marbel.runner.run_attack `
+  --marble-root D:\FIRST_COPILOT\.codex_tmp_marble `
+  --run-config configs\local_cpu_run.yaml `
+  --output-dir outputs\local_clean `
+  --clean-only
+```
+
+`configs/local_cpu_run.yaml` intentionally includes only Research and Coding. Database uses MARBLE's database environment and is better run on Linux with Docker available.
+
 ## Outputs
 
 Each run creates:

@@ -1,0 +1,32 @@
+run_name: local_cpu_research_coding
+api:
+  provider: openai
+  model_name: gpt-4o-mini
+  base_url: https://yunai.chat/v1
+  api_key_env: OPENAI_API_KEY
+  temperature: 0.0
+  max_tokens: 1024
+default_llm: gpt-4o-mini
+judge_llm: gpt-4o-mini
+samples_per_scenario: 3
+scenarios:
+  research:
+    dataset: multiagentbench/research/research_main.jsonl
+    sample_ids: [1, 2, 3]
+    topologies: [graph, star, tree]
+  coding:
+    dataset: multiagentbench/coding/coding_main.jsonl
+    sample_ids: [1, 2, 3]
+    topologies: [graph, star, tree]
+environment_overrides:
+  research:
+    type: Research
+    max_iterations: 3
+  coding:
+    type: Coding
+    max_iterations: 3
+    workspace_dir: workspace
+output:
+  save_generated_configs: true
+  save_trajectory: true
+
