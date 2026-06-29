@@ -70,10 +70,10 @@ Judge and summarize:
 ```bash
 python scripts/judge_attack_success.py \
   --merged-dir ../benchmark384_multiscenario_runs/<RUN_ID>/final/merged \
-  --output-dir ../benchmark384_multiscenario_runs/<RUN_ID>/final/judge_output_strict
+  --output-dir ../benchmark384_multiscenario_runs/<RUN_ID>/final/_judge_tmp
 
 python scripts/analyze_and_export_sft.py \
-  --judge-dir ../benchmark384_multiscenario_runs/<RUN_ID>/final/judge_output_strict \
+  --judge-dir ../benchmark384_multiscenario_runs/<RUN_ID>/final/_judge_tmp \
   --output-dir ../benchmark384_multiscenario_runs/<RUN_ID>/final/analysis_output_strict
 ```
 

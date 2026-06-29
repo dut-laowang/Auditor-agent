@@ -17,7 +17,6 @@ Werewolf is not included in this stable runner because the local MARBLE checkout
 ```text
 output/benchmark384_latest/
   merged/
-  judge_output_strict/
   analysis_output_strict/
 ```
 
