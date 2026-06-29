@@ -1,1 +1,0 @@
-from .metagpt_mas import MetaGPT

@@ -1,173 +1,55 @@
 # Auditor Agent MARBLE
 
-Graph-aware attack runner for MARBLE / MultiAgentBench. This module keeps MARBLE as the upstream benchmark and adds an ACI-inspired attack layer for collecting attacked multi-agent trajectories.
+Graph-aware ACI-style attack runner for MARBLE / MultiAgentBench.
 
-Upstream references:
+## Benchmark 384
 
-- MARBLE: https://github.com/ulab-uiuc/MARBLE
-- MultiAgentBench paper: https://arxiv.org/abs/2503.01935
-- ACIArena paper: https://arxiv.org/abs/2604.07775
+The current benchmark uses:
 
-## What This Does
+- 4 scenarios: Research, Coding, Minecraft, Bargaining
+- 2 MARBLE samples per scenario
+- 3 graph topologies: `graph`, `star`, `tree`
+- 15 attacks per scenario/topology/sample: 5 surfaces x 3 objectives
+- 24 clean runs + 360 attacked runs
 
-The runner uses official MARBLE JSONL samples as clean tasks, then injects attacks at MAS-specific surfaces:
+Werewolf is not included in this stable runner because the local MARBLE checkout does not provide a matching `multiagentbench/werewolf_main.jsonl` adapter.
 
-1. `input`: task / user input modification.
-2. `profile`: target agent profile replacement or append.
-3. `message`: source-to-target communication edge poisoning.
-4. `memory`: target agent memory poisoning.
-5. `tool`: action/tool description or result poisoning.
-
-Each attack has one objective:
-
-- `disclosure`
-- `disruption`
-- `hijacking`
-
-The first pilot scope is intentionally small:
-
-- Research: 3 samples
-- Coding: 3 samples
-- Database: 3 samples
-- Topologies: `graph`, `star`, `tree`
-
-This is enough to validate the graph-aware attack design before scaling to all 100 samples per scenario.
-
-## Directory
+## Important Files
 
 ```text
-auditor_agent_marbel/
-  configs/
-  data/
-    attack_specs/
-    sample_manifest/
-  scripts/
-  src/auditor_agent_marbel/
+configs/benchmark_384_multiscenario.yaml
+data/attack_specs/benchmark384_multiscenario_attack_specs.jsonl
+scripts/build_benchmark384_attack_specs.py
+scripts/run_benchmark384_pooled.py
+scripts/judge_attack_success.py
+scripts/analyze_and_export_sft.py
+src/auditor_agent_marbel/
 ```
 
-## Server Quick Start
-
-The intended server project root is:
-
-```bash
-/gs/bs/tgh-26IAW/hongbo/project_4_coauthor
-```
-
-Clone both repos side by side:
-
-```bash
-cd /gs/bs/tgh-26IAW/hongbo/project_4_coauthor
-git clone https://github.com/dut-laowang/Auditor-agent.git
-git clone https://github.com/ulab-uiuc/MARBLE.git
-cd Auditor-agent/auditor_agent_marbel
-```
-
-Create environment:
-
-```bash
-conda create -n auditor-marble python=3.10 -y
-conda activate auditor-marble
-pip install -e .
-cd ../../MARBLE
-pip install -e .
-cd ../Auditor-agent/auditor_agent_marbel
-```
-
-Configure your OpenAI-compatible endpoint:
-
-```bash
-export OPENAI_API_KEY="sk-xxx"
-export OPENAI_API_BASE="https://yunai.chat/v1"
-export OPENAI_BASE_URL="https://yunai.chat/v1"
-```
-
-The default pilot config already uses `gpt-4o-mini` and `https://yunai.chat/v1`:
-
-```text
-configs/pilot_run.yaml
-```
-
-Dry-run the pilot without calling LLMs:
-
-```bash
-python -m auditor_agent_marbel.runner.run_attack \
-  --marble-root /gs/bs/tgh-26IAW/hongbo/project_4_coauthor/MARBLE \
-  --run-config configs/pilot_run.yaml \
-  --attack-spec data/attack_specs/pilot_attack_specs.jsonl \
-  --output-dir outputs/pilot_dry_run \
-  --dry-run
-```
-
-Run clean baselines:
-
-```bash
-python -m auditor_agent_marbel.runner.run_attack \
-  --marble-root /gs/bs/tgh-26IAW/hongbo/project_4_coauthor/MARBLE \
-  --run-config configs/pilot_run.yaml \
-  --output-dir outputs/pilot_clean \
-  --clean-only
-```
-
-Run attacked pilot:
-
-```bash
-python -m auditor_agent_marbel.runner.run_attack \
-  --marble-root /gs/bs/tgh-26IAW/hongbo/project_4_coauthor/MARBLE \
-  --run-config configs/pilot_run.yaml \
-  --attack-spec data/attack_specs/pilot_attack_specs.jsonl \
-  --output-dir outputs/pilot_attacked
-```
-
-## Windows Local Quick Start
-
-Install this module and official MARBLE into the same conda environment, then set the OpenAI-compatible endpoint in PowerShell:
-
-```powershell
-[Environment]::SetEnvironmentVariable("OPENAI_API_KEY", "sk-xxx", "User")
-[Environment]::SetEnvironmentVariable("OPENAI_API_BASE", "https://yunai.chat/v1", "User")
-[Environment]::SetEnvironmentVariable("OPENAI_BASE_URL", "https://yunai.chat/v1", "User")
-```
-
-For the current PowerShell session, reload the saved values without printing the key:
+## Run
 
 ```powershell
 $env:OPENAI_API_KEY=[Environment]::GetEnvironmentVariable("OPENAI_API_KEY","User")
 $env:OPENAI_API_BASE=[Environment]::GetEnvironmentVariable("OPENAI_API_BASE","User")
 $env:OPENAI_BASE_URL=[Environment]::GetEnvironmentVariable("OPENAI_BASE_URL","User")
+
+D:\FIRST_COPILOT\.miniforge\Scripts\conda.exe run -n auditor-marble python scripts\run_benchmark384_pooled.py `
+  --marble-root D:\FIRST_COPILOT\.codex_tmp_marble `
+  --run-config configs\benchmark_384_multiscenario.yaml `
+  --attack-spec data\attack_specs\benchmark384_multiscenario_attack_specs.jsonl `
+  --output-root ..\benchmark384_multiscenario_runs
 ```
 
-Run a local CPU-friendly clean check:
+## Judge
 
 ```powershell
-python -m auditor_agent_marbel.runner.run_attack `
-  --marble-root D:\FIRST_COPILOT\.codex_tmp_marble `
-  --run-config configs\local_cpu_run.yaml `
-  --output-dir outputs\local_clean `
-  --clean-only
+D:\FIRST_COPILOT\.miniforge\Scripts\conda.exe run -n auditor-marble python scripts\judge_attack_success.py `
+  --merged-dir ..\output\benchmark384_latest\merged `
+  --output-dir ..\output\benchmark384_latest\judge_output_strict
+
+D:\FIRST_COPILOT\.miniforge\Scripts\conda.exe run -n auditor-marble python scripts\analyze_and_export_sft.py `
+  --judge-dir ..\output\benchmark384_latest\judge_output_strict `
+  --output-dir ..\output\benchmark384_latest\analysis_output_strict
 ```
 
-`configs/local_cpu_run.yaml` intentionally includes only Research and Coding. Database uses MARBLE's database environment and is better run on Linux with Docker available.
-
-## Outputs
-
-Each run creates:
-
-```text
-outputs/<run_name>/
-  run_manifest.jsonl
-  configs/
-  trajectories/
-```
-
-`trajectory.jsonl` records attack placement, selected sample, injected content, messages, memory writes, tool calls, and run status.
-
-## Design Notes
-
-This code does not fork MARBLE internals. It imports official MARBLE modules from `--marble-root` and installs runtime hooks around:
-
-- `BaseAgent.act`
-- `BaseAgent.send_message`
-- `BaseAgent.receive_message`
-- `BaseEnvironment.apply_action`
-
-That keeps benchmark tasks and execution semantics aligned with the original MARBLE code while allowing graph-aware attack instrumentation.
+The strict judge counts markers only in generated agent/tool outputs, not in attack metadata, prepared configs, prompts, or injected message text.

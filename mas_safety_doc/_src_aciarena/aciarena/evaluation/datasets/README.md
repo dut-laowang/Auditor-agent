@@ -1,4 +1,0 @@
-# GSM8K Misinformation
-```
-
-```

@@ -20,6 +20,17 @@ from auditor_agent_marbel.topology.topology_builder import apply_topology
 from auditor_agent_marbel.logging.trajectory_logger import TrajectoryLogger
 
 
+def attach_private_user_information(config: Dict[str, Any], attack: Optional[AttackSpec]) -> None:
+    if not attack:
+        return
+    private_info = attack.metadata.get("private_user_information")
+    if not private_info:
+        return
+    task = dict(config.get("task", {}))
+    task["private_user_information"] = private_info
+    config["task"] = task
+
+
 def load_run_config(path: Path) -> Dict[str, Any]:
     with path.open("r", encoding="utf-8") as handle:
         return yaml.safe_load(handle)
@@ -59,8 +70,12 @@ def prepare_config(
     config["environment"] = environment
     config.setdefault("output", {})
     config.setdefault("memory", {"type": "SharedMemory"})
-    config.setdefault("metrics", {})
+    metrics = dict(config.get("metrics") or {})
+    if not metrics.get("evaluate_llm"):
+        metrics["evaluate_llm"] = {"provider": "openai", "model": default_llm}
+    config["metrics"] = metrics
     config.setdefault("engine_planner", {"initial_progress": "Starting MARBLE attack run."})
+    attach_private_user_information(config, attack)
     return config
 
 
@@ -69,9 +84,12 @@ def build_targets(
     run_config: Dict[str, Any],
     attack_specs: Iterable[AttackSpec],
     clean_only: bool,
+    attacks_only: bool = False,
 ) -> List[RunTarget]:
     targets: List[RunTarget] = []
     attacks = list(attack_specs)
+    max_attacked_targets = int(run_config.get("max_attacked_targets") or 0)
+    attacked_count = 0
     for scenario, scenario_config in run_config.get("scenarios", {}).items():
         samples = load_samples(
             marble_root=marble_root,
@@ -82,12 +100,16 @@ def build_targets(
         for sample in samples:
             sample_id = int(sample.get("task_id"))
             for topology in topologies:
-                targets.append(RunTarget(scenario, sample_id, topology, sample, None))
+                if not attacks_only:
+                    targets.append(RunTarget(scenario, sample_id, topology, sample, None))
                 if clean_only:
                     continue
                 for attack in attacks:
                     if scenario in attack.scenarios and topology in attack.topologies:
+                        if max_attacked_targets and attacked_count >= max_attacked_targets:
+                            continue
                         targets.append(RunTarget(scenario, sample_id, topology, sample, attack))
+                        attacked_count += 1
     return targets
 
 
@@ -95,6 +117,15 @@ def write_generated_config(config: Dict[str, Any], path: Path) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as handle:
         yaml.safe_dump(config, handle, allow_unicode=True, sort_keys=False)
+
+
+def is_nonfatal_marble_evaluator_error(error: str) -> bool:
+    return (
+        'KeyError: \'"rating"\'' in error
+        or 'KeyError: \'\\"rating"\'' in error
+        or "KeyError: 'target_agent_id'" in error
+        or "json.decoder.JSONDecodeError: Unterminated string" in error
+    )
 
 
 def run_one(
@@ -119,6 +150,14 @@ def run_one(
 
     config_path = (output_dir / "configs" / f"{target.run_id}.yaml").resolve()
     trajectory_path = (output_dir / "trajectories" / f"{target.run_id}.jsonl").resolve()
+    output_config = dict(base_config.get("output", {}))
+    output_config["file_path"] = str((output_dir / "marble_results" / f"{target.run_id}.jsonl").resolve())
+    Path(output_config["file_path"]).parent.mkdir(parents=True, exist_ok=True)
+    base_config["output"] = output_config
+    if target.scenario == "coding":
+        environment = dict(base_config.get("environment", {}))
+        environment["workspace_dir"] = str((output_dir / "workspaces" / target.run_id).resolve())
+        base_config["environment"] = environment
     write_generated_config(base_config, config_path)
 
     run_meta = {
@@ -130,6 +169,7 @@ def run_one(
         "surface": attack.surface if attack else None,
         "objective": attack.objective if attack else None,
         "placement": placement,
+        "attack_metadata": attack.metadata if attack else {},
     }
     logger = TrajectoryLogger(trajectory_path, run_meta)
     logger.log("config_prepared", {"config_path": str(config_path)})
@@ -160,13 +200,22 @@ def run_one(
         logger.close("completed")
         status = "completed"
         error = None
+        warning = None
     except Exception as exc:  # pragma: no cover - depends on MARBLE runtime and LLM keys.
         error = "".join(traceback.format_exception_only(type(exc), exc)).strip()
-        logger.log("exception", {"error": error, "traceback": traceback.format_exc()})
-        logger.close("failed", error=error)
-        status = "failed"
+        if is_nonfatal_marble_evaluator_error(error):
+            warning = error
+            logger.log("evaluator_warning", {"warning": warning, "traceback": traceback.format_exc()})
+            logger.close("completed")
+            status = "completed"
+            error = None
+        else:
+            warning = None
+            logger.log("exception", {"error": error, "traceback": traceback.format_exc()})
+            logger.close("failed", error=error)
+            status = "failed"
 
-    return {**run_meta, "status": status, "error": error, "config_path": str(config_path)}
+    return {**run_meta, "status": status, "error": error, "warning": warning, "config_path": str(config_path)}
 
 
 def main() -> None:
@@ -177,6 +226,9 @@ def main() -> None:
     parser.add_argument("--output-dir", required=True, type=Path, help="Output directory.")
     parser.add_argument("--dry-run", action="store_true", help="Prepare configs and trajectories without executing MARBLE.")
     parser.add_argument("--clean-only", action="store_true", help="Run only clean baselines.")
+    parser.add_argument("--attacks-only", action="store_true", help="Run only attacked targets, without clean baselines.")
+    parser.add_argument("--target-offset", type=int, default=0, help="Skip this many planned targets.")
+    parser.add_argument("--target-limit", type=int, help="Run at most this many planned targets after offset.")
     args = parser.parse_args()
 
     marble_root = args.marble_root.resolve()
@@ -186,7 +238,11 @@ def main() -> None:
     run_config = load_run_config(args.run_config)
     configure_llm_environment(run_config)
     attack_specs = [] if args.clean_only else load_attack_specs(args.attack_spec)
-    targets = build_targets(marble_root, run_config, attack_specs, clean_only=args.clean_only)
+    targets = build_targets(marble_root, run_config, attack_specs, clean_only=args.clean_only, attacks_only=args.attacks_only)
+    if args.target_offset or args.target_limit is not None:
+        start = max(args.target_offset, 0)
+        end = None if args.target_limit is None else start + max(args.target_limit, 0)
+        targets = targets[start:end]
 
     args.output_dir = args.output_dir.resolve()
     args.output_dir.mkdir(parents=True, exist_ok=True)

@@ -1,0 +1,11 @@
+{
+  "total_jobs": 124,
+  "finished_jobs": 124,
+  "failures": [],
+  "rows": 384,
+  "completed": 381,
+  "failed": 3,
+  "clean_rows": 24,
+  "attacked_rows": 360,
+  "merged_dir": "D:\\FIRST_COPILOT\\plan_e\\auditor_agent\\benchmark384_multiscenario_runs\\run_stable4_20260629_115556\\final\\merged"
+}
