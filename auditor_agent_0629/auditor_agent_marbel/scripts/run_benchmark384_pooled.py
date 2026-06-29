@@ -129,18 +129,32 @@ def count_status(intermediate: Path) -> dict[str, int]:
     return counts
 
 
+def count_attacked_targets(scenario: str, scenario_config: dict[str, Any], attack_specs: list[dict[str, Any]]) -> int:
+    sample_count = len(scenario_config.get("sample_ids", []))
+    total = 0
+    for topology in scenario_config.get("topologies", ["graph"]):
+        matching_attacks = [
+            attack
+            for attack in attack_specs
+            if scenario in attack.get("scenarios", []) and topology in attack.get("topologies", [])
+        ]
+        total += sample_count * len(matching_attacks)
+    return total
+
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Run 384-sample multiscenario ACI-on-MARBLE benchmark with scenario pools.")
+    parser = argparse.ArgumentParser(description="Run multiscenario ACI-on-MARBLE benchmark with scenario pools.")
     parser.add_argument("--marble-root", required=True, type=Path)
     parser.add_argument("--run-config", required=True, type=Path)
     parser.add_argument("--attack-spec", required=True, type=Path)
-    parser.add_argument("--work-dir", required=True, type=Path)
+    parser.add_argument("--work-dir", "--output-root", required=True, type=Path, dest="work_dir")
     parser.add_argument("--python", default=sys.executable)
     parser.add_argument("--shard-size", type=int, default=3)
     parser.add_argument("--progress-interval", type=int, default=20)
     args = parser.parse_args()
 
     base_config = load_yaml(args.run_config)
+    attack_specs = read_jsonl(args.attack_spec)
     intermediate = args.work_dir / "intermediate"
     final_dir = args.work_dir / "final"
     configs_dir = intermediate / "scenario_configs"
@@ -165,7 +179,7 @@ def main() -> None:
                 "cmd": command_for(args.python, args.marble_root, scenario_config_path, args.attack_spec, clean_out, None, None, True),
             }
         )
-        attacked_total = 2 * 3 * 15
+        attacked_total = count_attacked_targets(scenario, base_config["scenarios"][scenario], attack_specs)
         for offset in range(0, attacked_total, args.shard_size):
             limit = min(args.shard_size, attacked_total - offset)
             shard_name = f"{scenario}_attack_{offset:03d}_{offset + limit:03d}"

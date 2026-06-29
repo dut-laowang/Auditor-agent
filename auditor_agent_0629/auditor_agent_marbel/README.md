@@ -1,6 +1,6 @@
 # Auditor Agent MARBLE
 
-Runner, attack specs, and analysis scripts for the 384-run ACI-on-MARBLE benchmark.
+Runner, attack specs, and analysis scripts for ACI-on-MARBLE benchmarks.
 
 Important files:
 
@@ -28,3 +28,10 @@ python scripts/run_benchmark384_pooled.py \
   --attack-spec data/attack_specs/benchmark384_multiscenario_attack_specs.jsonl \
   --output-root ../benchmark384_multiscenario_runs
 ```
+
+To change the experiment scope:
+
+- edit `configs/benchmark_384_multiscenario.yaml` for scenarios, sample ids, and topologies
+- edit or copy `data/attack_specs/benchmark384_multiscenario_attack_specs.jsonl` for attack surfaces, objectives, placements, and payloads
+
+The pooled runner computes the run count from those two files, so it can run smaller or larger subsets than the published 384-run benchmark.
