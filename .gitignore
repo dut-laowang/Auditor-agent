@@ -6,16 +6,11 @@ venv/
 env/
 .env
 
-# Local API configs may contain real tokens.
-aci_min_repro/model_config.local.yaml
-aci_min_repro/judge_config.local.yaml
+# Local reruns and intermediate shards.
+auditor_agent_0629/benchmark384_multiscenario_runs/
+auditor_agent_0629/auditor_agent_marbel/outputs/
+auditor_agent_0629/auditor_agent_marbel/logs/
 
-# Generated logs from future local runs.
-logs/
-auditor_agent_marbel/outputs/
-benchmark384_multiscenario_runs/
-
-# OS/editor files.
 .DS_Store
 Thumbs.db
 .vscode/
