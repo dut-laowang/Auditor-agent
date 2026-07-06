@@ -73,7 +73,7 @@ def main():
     test_file = os.path.join(args.data_dir, "test.jsonl")
     ds = load_dataset("json", data_files={"train": train_file, "test": test_file})
 
-    leak_pattern = re.compile(r"ACI_[A-Z0-9_]+|END_NEGOTIATION|success_marker|marker_check|\\[Injected instruction\\]")
+    leak_pattern = re.compile(r"ACI_[A-Z0-9_]+|END_NEGOTIATION|success_marker|marker_check|\[Injected instruction\]")
     for split in ("train", "test"):
         for idx, row in enumerate(ds[split]):
             if leak_pattern.search(json.dumps(row, ensure_ascii=False)):
