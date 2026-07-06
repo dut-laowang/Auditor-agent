@@ -1,16 +1,18 @@
 # Server Run Commands
 
-Assume this package is unpacked under:
+Clone the repo and use the package under `SFT/`:
 
 ```bash
-/gs/bs/tgh-26IAW/hongbo/project_4_coauthor/auditor_agent_sft_v2_package
+cd /gs/bs/tgh-26IAW/hongbo/project_4_coauthor
+git clone https://github.com/dut-laowang/Auditor-agent.git
 ```
 
 Set paths:
 
 ```bash
 BASE=/gs/bs/tgh-26IAW/hongbo/project_4_coauthor
-PKG=$BASE/auditor_agent_sft_v2_package
+REPO=$BASE/Auditor-agent
+PKG=$REPO/SFT/auditor_agent_sft_v2_package
 DATA=$PKG/sft_dataset_graph_grounded_v2
 MODEL_OUT=$BASE/sft_models/qwen3-8b-mas-auditor-lora-v2
 HF_CACHE=$BASE/sft_models/hf_cache
