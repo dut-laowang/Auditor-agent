@@ -40,6 +40,7 @@ V6/V7 consistency:
 - user `attack` fields: 0
 - user `graph.attack_location`: 0
 - user `surface/objective` keys: 0
+- synthetic suspicious-exposure hints: 0
 - visible leak hits: 0
 - assistant has `inferred_attack`: 7362 / 7362
 - bad evidence references: 0

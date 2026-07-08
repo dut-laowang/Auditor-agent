@@ -61,6 +61,7 @@ Latest local validation:
 - user `attack` field count: 0
 - user `graph.attack_location` count: 0
 - user `surface/objective` key count: 0
+- synthetic suspicious-exposure event count: 0
 - visible leak hits: 0
 - bad evidence references: 0
 
@@ -70,7 +71,6 @@ V7 keeps V6 evidence granularity but removes explicit attack metadata from user 
 
 Observed event types include:
 
-- `suspicious_exposure`
 - `agent_act`
 - `message_send`
 - `tool_call`

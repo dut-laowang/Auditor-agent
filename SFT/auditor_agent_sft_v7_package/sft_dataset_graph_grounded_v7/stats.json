@@ -254,19 +254,18 @@
     },
     "audit_trace": {
       "avg_steps": 4.974,
-      "avg_evidence_refs": 4.253,
+      "avg_evidence_refs": 3.279,
       "min_steps": 4,
-      "min_evidence_refs": 2
+      "min_evidence_refs": 1
     },
     "evidence": {
-      "avg_observed_events": 4.691,
+      "avg_observed_events": 3.717,
       "min_observed_events": 1,
       "by_event_type": {
         "agent_act": 2861,
         "final_outcome": 7355,
         "message_send": 3305,
         "run_summary": 12412,
-        "suspicious_exposure": 7170,
         "task_context": 7,
         "tool_call": 612,
         "tool_result": 813
@@ -447,19 +446,18 @@
     },
     "audit_trace": {
       "avg_steps": 4.975,
-      "avg_evidence_refs": 4.249,
+      "avg_evidence_refs": 3.273,
       "min_steps": 4,
-      "min_evidence_refs": 2
+      "min_evidence_refs": 1
     },
     "evidence": {
-      "avg_observed_events": 4.689,
+      "avg_observed_events": 3.714,
       "min_observed_events": 1,
       "by_event_type": {
         "agent_act": 2267,
         "final_outcome": 5871,
         "message_send": 2644,
         "run_summary": 9906,
-        "suspicious_exposure": 5731,
         "task_context": 4,
         "tool_call": 493,
         "tool_result": 633
@@ -638,19 +636,18 @@
     },
     "audit_trace": {
       "avg_steps": 4.968,
-      "avg_evidence_refs": 4.272,
+      "avg_evidence_refs": 3.304,
       "min_steps": 4,
-      "min_evidence_refs": 2
+      "min_evidence_refs": 1
     },
     "evidence": {
-      "avg_observed_events": 4.698,
+      "avg_observed_events": 3.73,
       "min_observed_events": 1,
       "by_event_type": {
         "agent_act": 594,
         "final_outcome": 1484,
         "message_send": 661,
         "run_summary": 2506,
-        "suspicious_exposure": 1439,
         "task_context": 3,
         "tool_call": 119,
         "tool_result": 180
