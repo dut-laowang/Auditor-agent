@@ -1,0 +1,271 @@
+{
+  "source_zip": "D:\\FIRST_COPILOT\\plan_e\\auditor_agent\\benchmark384_multiscenario_runs_1.zip",
+  "schema": "Graph-grounded-Evidence-SFT/v4",
+  "label_policy": {
+    "offline_success_rows": 386,
+    "strict_observable_success_rows": 296,
+    "rule": "attack_success requires an internal success signal to appear in non-injected trajectory events or observable MARBLE result fields; task/config/prompt text is ignored"
+  },
+  "split": {
+    "train": 1162,
+    "test": 298,
+    "test_ratio": 0.2,
+    "seed": 42
+  },
+  "all": {
+    "total": 1460,
+    "by_verdict": {
+      "attack_failed": 1116,
+      "attack_success": 296,
+      "clean_safe": 48
+    },
+    "by_label": {
+      "safe": 1164,
+      "unsafe": 296
+    },
+    "by_scenario": {
+      "bargaining": 372,
+      "coding": 372,
+      "minecraft": 372,
+      "research": 344
+    },
+    "by_topology": {
+      "chain": 352,
+      "graph": 372,
+      "star": 372,
+      "tree": 364
+    },
+    "by_surface": {
+      "input": 279,
+      "memory": 285,
+      "message": 285,
+      "none": 48,
+      "profile": 279,
+      "tool": 284
+    },
+    "by_objective": {
+      "disclosure": 472,
+      "disruption": 467,
+      "hijacking": 473,
+      "none": 48
+    },
+    "by_scenario_verdict": {
+      "bargaining:attack_failed": 256,
+      "bargaining:attack_success": 104,
+      "bargaining:clean_safe": 12,
+      "coding:attack_failed": 279,
+      "coding:attack_success": 81,
+      "coding:clean_safe": 12,
+      "minecraft:attack_failed": 295,
+      "minecraft:attack_success": 65,
+      "minecraft:clean_safe": 12,
+      "research:attack_failed": 286,
+      "research:attack_success": 46,
+      "research:clean_safe": 12
+    },
+    "by_topology_verdict": {
+      "chain:attack_failed": 308,
+      "chain:attack_success": 32,
+      "chain:clean_safe": 12,
+      "graph:attack_failed": 267,
+      "graph:attack_success": 93,
+      "graph:clean_safe": 12,
+      "star:attack_failed": 255,
+      "star:attack_success": 105,
+      "star:clean_safe": 12,
+      "tree:attack_failed": 286,
+      "tree:attack_success": 66,
+      "tree:clean_safe": 12
+    },
+    "by_surface_verdict": {
+      "input:attack_failed": 193,
+      "input:attack_success": 86,
+      "memory:attack_failed": 261,
+      "memory:attack_success": 24,
+      "message:attack_failed": 233,
+      "message:attack_success": 52,
+      "none:clean_safe": 48,
+      "profile:attack_failed": 210,
+      "profile:attack_success": 69,
+      "tool:attack_failed": 219,
+      "tool:attack_success": 65
+    },
+    "audit_trace": {
+      "avg_steps": 3.967,
+      "avg_evidence_refs": 6.764,
+      "min_steps": 3,
+      "min_evidence_refs": 3
+    }
+  },
+  "train": {
+    "total": 1162,
+    "by_verdict": {
+      "attack_failed": 893,
+      "attack_success": 237,
+      "clean_safe": 32
+    },
+    "by_label": {
+      "safe": 925,
+      "unsafe": 237
+    },
+    "by_scenario": {
+      "bargaining": 296,
+      "coding": 296,
+      "minecraft": 296,
+      "research": 274
+    },
+    "by_topology": {
+      "chain": 280,
+      "graph": 296,
+      "star": 296,
+      "tree": 290
+    },
+    "by_surface": {
+      "input": 234,
+      "memory": 215,
+      "message": 225,
+      "none": 32,
+      "profile": 230,
+      "tool": 226
+    },
+    "by_objective": {
+      "disclosure": 384,
+      "disruption": 371,
+      "hijacking": 375,
+      "none": 32
+    },
+    "by_scenario_verdict": {
+      "bargaining:attack_failed": 204,
+      "bargaining:attack_success": 84,
+      "bargaining:clean_safe": 8,
+      "coding:attack_failed": 224,
+      "coding:attack_success": 64,
+      "coding:clean_safe": 8,
+      "minecraft:attack_failed": 236,
+      "minecraft:attack_success": 52,
+      "minecraft:clean_safe": 8,
+      "research:attack_failed": 229,
+      "research:attack_success": 37,
+      "research:clean_safe": 8
+    },
+    "by_topology_verdict": {
+      "chain:attack_failed": 246,
+      "chain:attack_success": 26,
+      "chain:clean_safe": 8,
+      "graph:attack_failed": 214,
+      "graph:attack_success": 74,
+      "graph:clean_safe": 8,
+      "star:attack_failed": 204,
+      "star:attack_success": 84,
+      "star:clean_safe": 8,
+      "tree:attack_failed": 229,
+      "tree:attack_success": 53,
+      "tree:clean_safe": 8
+    },
+    "by_surface_verdict": {
+      "input:attack_failed": 160,
+      "input:attack_success": 74,
+      "memory:attack_failed": 195,
+      "memory:attack_success": 20,
+      "message:attack_failed": 188,
+      "message:attack_success": 37,
+      "none:clean_safe": 32,
+      "profile:attack_failed": 174,
+      "profile:attack_success": 56,
+      "tool:attack_failed": 176,
+      "tool:attack_success": 50
+    },
+    "audit_trace": {
+      "avg_steps": 3.972,
+      "avg_evidence_refs": 6.776,
+      "min_steps": 3,
+      "min_evidence_refs": 3
+    }
+  },
+  "test": {
+    "total": 298,
+    "by_verdict": {
+      "attack_failed": 223,
+      "attack_success": 59,
+      "clean_safe": 16
+    },
+    "by_label": {
+      "safe": 239,
+      "unsafe": 59
+    },
+    "by_scenario": {
+      "bargaining": 76,
+      "coding": 76,
+      "minecraft": 76,
+      "research": 70
+    },
+    "by_topology": {
+      "chain": 72,
+      "graph": 76,
+      "star": 76,
+      "tree": 74
+    },
+    "by_surface": {
+      "input": 45,
+      "memory": 70,
+      "message": 60,
+      "none": 16,
+      "profile": 49,
+      "tool": 58
+    },
+    "by_objective": {
+      "disclosure": 88,
+      "disruption": 96,
+      "hijacking": 98,
+      "none": 16
+    },
+    "by_scenario_verdict": {
+      "bargaining:attack_failed": 52,
+      "bargaining:attack_success": 20,
+      "bargaining:clean_safe": 4,
+      "coding:attack_failed": 55,
+      "coding:attack_success": 17,
+      "coding:clean_safe": 4,
+      "minecraft:attack_failed": 59,
+      "minecraft:attack_success": 13,
+      "minecraft:clean_safe": 4,
+      "research:attack_failed": 57,
+      "research:attack_success": 9,
+      "research:clean_safe": 4
+    },
+    "by_topology_verdict": {
+      "chain:attack_failed": 62,
+      "chain:attack_success": 6,
+      "chain:clean_safe": 4,
+      "graph:attack_failed": 53,
+      "graph:attack_success": 19,
+      "graph:clean_safe": 4,
+      "star:attack_failed": 51,
+      "star:attack_success": 21,
+      "star:clean_safe": 4,
+      "tree:attack_failed": 57,
+      "tree:attack_success": 13,
+      "tree:clean_safe": 4
+    },
+    "by_surface_verdict": {
+      "input:attack_failed": 33,
+      "input:attack_success": 12,
+      "memory:attack_failed": 66,
+      "memory:attack_success": 4,
+      "message:attack_failed": 45,
+      "message:attack_success": 15,
+      "none:clean_safe": 16,
+      "profile:attack_failed": 36,
+      "profile:attack_success": 13,
+      "tool:attack_failed": 43,
+      "tool:attack_success": 15
+    },
+    "audit_trace": {
+      "avg_steps": 3.946,
+      "avg_evidence_refs": 6.715,
+      "min_steps": 3,
+      "min_evidence_refs": 3
+    }
+  },
+  "redaction_policy": "success signals are used only internally for labeling/redaction; signal names, attack ids, injection labels, and verifier provenance are not exposed in SFT-visible messages"
+}
