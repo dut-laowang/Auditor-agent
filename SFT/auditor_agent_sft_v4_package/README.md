@@ -32,10 +32,10 @@ Current generated dataset:
 
 - total: 1460
 - train/test: 1162 / 298
-- labels: safe 1164, unsafe 296
-- verdicts: clean_safe 48, attack_failed 1116, attack_success 296
+- labels: safe 1074, unsafe 386
+- verdicts: clean_safe 48, attack_failed 1026, attack_success 386
 
-The original offline success index contains 386 successes. v4 uses the stricter observable-label policy from v3 and keeps 296 successes: a success signal must appear in non-injected trajectory events or observable MARBLE result fields. Task/config/prompt text and injected blocks are ignored.
+v4-main uses the original marker-based offline judge label from `analysis_latest/success_runs.jsonl`. This keeps labels aligned with v2 while changing only the SFT output format to decision-first audit trace.
 
 Visible SFT messages do not contain uppercase success markers, `success_marker(s)`, `attack_metadata`, `attack_id`, `[Injected ...]` labels, `END_NEGOTIATION`, `offline verifier`, or `attack-success index`.
 

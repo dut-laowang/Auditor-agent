@@ -7,13 +7,13 @@ Generated from `benchmark384_multiscenario_runs_1.zip`.
 - total: 1460
 - train: 1162
 - test: 298
-- safe: 1164
-- unsafe: 296
+- safe: 1074
+- unsafe: 386
 - clean_safe: 48
-- attack_failed: 1116
-- attack_success: 296
+- attack_failed: 1026
+- attack_success: 386
 
-The upstream offline success index has 386 successes. v4 keeps 296 strict observable successes after removing cases where the signal appears only in task/config/prompt text or injected blocks.
+v4-main uses the original marker-based offline judge label from `analysis_latest/success_runs.jsonl`, keeping labels aligned with v2. Success markers and attack metadata are not exposed in SFT-visible messages.
 
 ## Leak Policy
 
@@ -37,6 +37,7 @@ Latest local validation:
 - visible leak hits: 0
 - schema: `Graph-grounded-Evidence-SFT/v4`
 - assistant structure: `decision` first, `audit` second
+- original offline success rows used as labels: 386
 - audit-trace bad evidence references: 0
 - audit-trace evidence-ref validity: 100%
 

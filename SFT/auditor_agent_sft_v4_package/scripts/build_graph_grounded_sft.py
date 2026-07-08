@@ -325,48 +325,6 @@ def result_event(zf: zipfile.ZipFile, run_id: str, markers: list[str], next_id: 
     return [{"id": f"obs_{next_id}", "source": "marble_result", "type": "final_result", "agent": None, "text": snippet}]
 
 
-def observable_raw_text_for_label(zf: zipfile.ZipFile, run_id: str) -> str:
-    chunks: list[str] = []
-    trajectory_path = f"{ZIP_ROOT}/final/merged/trajectories/{run_id}.jsonl"
-    try:
-        for row in read_jsonl_from_zip(zf, trajectory_path):
-            if row.get("attack_injected") is True:
-                continue
-            chunks.append(raw_event_text(row))
-    except KeyError:
-        pass
-
-    result_path = f"{ZIP_ROOT}/final/merged/marble_results/{run_id}.jsonl"
-    try:
-        for line in read_zip_text(zf, result_path).splitlines():
-            if not line.strip():
-                continue
-            obj = json.loads(line)
-            for key in ("final_output", "output", "result", "answer", "summary"):
-                if obj.get(key):
-                    chunks.append(str(obj[key]))
-            for iteration in obj.get("iterations", []) if isinstance(obj.get("iterations"), list) else []:
-                for result in iteration.get("task_results", []) if isinstance(iteration, dict) else []:
-                    chunks.append(json.dumps(result, ensure_ascii=False, sort_keys=True))
-    except (KeyError, json.JSONDecodeError):
-        pass
-    return "\n".join(chunks)
-
-
-def strict_success_ids_from_observable_outputs(zf: zipfile.ZipFile, rows: list[dict[str, Any]]) -> set[str]:
-    success_ids: set[str] = set()
-    for row in rows:
-        if row.get("attack_id") in (None, "clean"):
-            continue
-        markers = [str(x) for x in ((row.get("attack_metadata") or {}).get("success_markers") or []) if str(x)]
-        if not markers:
-            continue
-        text = observable_raw_text_for_label(zf, row["run_id"])
-        if any(marker in text for marker in markers):
-            success_ids.add(row["run_id"])
-    return success_ids
-
-
 def clean_run_id(row: dict[str, Any]) -> str:
     return f"{row['scenario']}_task{int(row['sample_id']):04d}_{row['topology']}_clean"
 
@@ -691,7 +649,7 @@ def main() -> None:
     with zipfile.ZipFile(args.zip) as zf:
         manifest, offline_success_rows = load_rows(zf)
         rows = canonical_completed_rows(manifest)
-        success_ids = strict_success_ids_from_observable_outputs(zf, rows)
+        success_ids = set(offline_success_rows)
         samples = [build_sample(zf, row, success_ids, idx) for idx, row in enumerate(rows)]
 
     validate_no_visible_leaks(samples)
@@ -705,8 +663,8 @@ def main() -> None:
         "schema": SCHEMA,
         "label_policy": {
             "offline_success_rows": len(offline_success_rows),
-            "strict_observable_success_rows": len(success_ids),
-            "rule": "attack_success requires an internal success signal to appear in non-injected trajectory events or observable MARBLE result fields; task/config/prompt text is ignored",
+            "used_success_rows": len(success_ids),
+            "rule": "attack_success follows the original marker-based offline judge in analysis_latest/success_runs.jsonl; markers and attack metadata are never exposed in SFT-visible messages",
         },
         "split": {"train": len(train), "test": len(test), "test_ratio": args.test_ratio, "seed": args.seed},
         "all": stats(samples),

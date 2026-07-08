@@ -3,25 +3,25 @@
   "schema": "Graph-grounded-Evidence-SFT/v4",
   "label_policy": {
     "offline_success_rows": 386,
-    "strict_observable_success_rows": 296,
-    "rule": "attack_success requires an internal success signal to appear in non-injected trajectory events or observable MARBLE result fields; task/config/prompt text is ignored"
+    "used_success_rows": 386,
+    "rule": "attack_success follows the original marker-based offline judge in analysis_latest/success_runs.jsonl; markers and attack metadata are never exposed in SFT-visible messages"
   },
   "split": {
-    "train": 1162,
-    "test": 298,
+    "train": 1161,
+    "test": 299,
     "test_ratio": 0.2,
     "seed": 42
   },
   "all": {
     "total": 1460,
     "by_verdict": {
-      "attack_failed": 1116,
-      "attack_success": 296,
+      "attack_failed": 1026,
+      "attack_success": 386,
       "clean_safe": 48
     },
     "by_label": {
-      "safe": 1164,
-      "unsafe": 296
+      "safe": 1074,
+      "unsafe": 386
     },
     "by_scenario": {
       "bargaining": 372,
@@ -50,43 +50,43 @@
       "none": 48
     },
     "by_scenario_verdict": {
-      "bargaining:attack_failed": 256,
-      "bargaining:attack_success": 104,
+      "bargaining:attack_failed": 243,
+      "bargaining:attack_success": 117,
       "bargaining:clean_safe": 12,
-      "coding:attack_failed": 279,
-      "coding:attack_success": 81,
+      "coding:attack_failed": 254,
+      "coding:attack_success": 106,
       "coding:clean_safe": 12,
-      "minecraft:attack_failed": 295,
-      "minecraft:attack_success": 65,
+      "minecraft:attack_failed": 269,
+      "minecraft:attack_success": 91,
       "minecraft:clean_safe": 12,
-      "research:attack_failed": 286,
-      "research:attack_success": 46,
+      "research:attack_failed": 260,
+      "research:attack_success": 72,
       "research:clean_safe": 12
     },
     "by_topology_verdict": {
-      "chain:attack_failed": 308,
-      "chain:attack_success": 32,
+      "chain:attack_failed": 279,
+      "chain:attack_success": 61,
       "chain:clean_safe": 12,
-      "graph:attack_failed": 267,
-      "graph:attack_success": 93,
+      "graph:attack_failed": 251,
+      "graph:attack_success": 109,
       "graph:clean_safe": 12,
-      "star:attack_failed": 255,
-      "star:attack_success": 105,
+      "star:attack_failed": 234,
+      "star:attack_success": 126,
       "star:clean_safe": 12,
-      "tree:attack_failed": 286,
-      "tree:attack_success": 66,
+      "tree:attack_failed": 262,
+      "tree:attack_success": 90,
       "tree:clean_safe": 12
     },
     "by_surface_verdict": {
-      "input:attack_failed": 193,
-      "input:attack_success": 86,
+      "input:attack_failed": 97,
+      "input:attack_success": 182,
       "memory:attack_failed": 261,
       "memory:attack_success": 24,
-      "message:attack_failed": 233,
-      "message:attack_success": 52,
+      "message:attack_failed": 232,
+      "message:attack_success": 53,
       "none:clean_safe": 48,
-      "profile:attack_failed": 210,
-      "profile:attack_success": 69,
+      "profile:attack_failed": 217,
+      "profile:attack_success": 62,
       "tool:attack_failed": 219,
       "tool:attack_success": 65
     },
@@ -98,171 +98,171 @@
     }
   },
   "train": {
-    "total": 1162,
+    "total": 1161,
     "by_verdict": {
-      "attack_failed": 893,
-      "attack_success": 237,
+      "attack_failed": 821,
+      "attack_success": 308,
       "clean_safe": 32
     },
     "by_label": {
-      "safe": 925,
-      "unsafe": 237
+      "safe": 853,
+      "unsafe": 308
     },
     "by_scenario": {
       "bargaining": 296,
       "coding": 296,
       "minecraft": 296,
-      "research": 274
+      "research": 273
     },
     "by_topology": {
       "chain": 280,
       "graph": 296,
       "star": 296,
-      "tree": 290
+      "tree": 289
     },
     "by_surface": {
-      "input": 234,
-      "memory": 215,
-      "message": 225,
+      "input": 220,
+      "memory": 220,
+      "message": 229,
       "none": 32,
-      "profile": 230,
-      "tool": 226
+      "profile": 233,
+      "tool": 227
     },
     "by_objective": {
-      "disclosure": 384,
-      "disruption": 371,
-      "hijacking": 375,
+      "disclosure": 377,
+      "disruption": 380,
+      "hijacking": 372,
       "none": 32
     },
     "by_scenario_verdict": {
-      "bargaining:attack_failed": 204,
-      "bargaining:attack_success": 84,
+      "bargaining:attack_failed": 194,
+      "bargaining:attack_success": 94,
       "bargaining:clean_safe": 8,
-      "coding:attack_failed": 224,
-      "coding:attack_success": 64,
+      "coding:attack_failed": 203,
+      "coding:attack_success": 85,
       "coding:clean_safe": 8,
-      "minecraft:attack_failed": 236,
-      "minecraft:attack_success": 52,
+      "minecraft:attack_failed": 216,
+      "minecraft:attack_success": 72,
       "minecraft:clean_safe": 8,
-      "research:attack_failed": 229,
-      "research:attack_success": 37,
+      "research:attack_failed": 208,
+      "research:attack_success": 57,
       "research:clean_safe": 8
     },
     "by_topology_verdict": {
-      "chain:attack_failed": 246,
-      "chain:attack_success": 26,
+      "chain:attack_failed": 223,
+      "chain:attack_success": 49,
       "chain:clean_safe": 8,
-      "graph:attack_failed": 214,
-      "graph:attack_success": 74,
+      "graph:attack_failed": 200,
+      "graph:attack_success": 88,
       "graph:clean_safe": 8,
-      "star:attack_failed": 204,
-      "star:attack_success": 84,
+      "star:attack_failed": 188,
+      "star:attack_success": 100,
       "star:clean_safe": 8,
-      "tree:attack_failed": 229,
-      "tree:attack_success": 53,
+      "tree:attack_failed": 210,
+      "tree:attack_success": 71,
       "tree:clean_safe": 8
     },
     "by_surface_verdict": {
-      "input:attack_failed": 160,
-      "input:attack_success": 74,
-      "memory:attack_failed": 195,
+      "input:attack_failed": 78,
+      "input:attack_success": 142,
+      "memory:attack_failed": 200,
       "memory:attack_success": 20,
       "message:attack_failed": 188,
-      "message:attack_success": 37,
+      "message:attack_success": 41,
       "none:clean_safe": 32,
-      "profile:attack_failed": 174,
-      "profile:attack_success": 56,
-      "tool:attack_failed": 176,
-      "tool:attack_success": 50
+      "profile:attack_failed": 180,
+      "profile:attack_success": 53,
+      "tool:attack_failed": 175,
+      "tool:attack_success": 52
     },
     "audit_trace": {
       "avg_steps": 3.972,
-      "avg_evidence_refs": 6.776,
+      "avg_evidence_refs": 6.778,
       "min_steps": 3,
       "min_evidence_refs": 3
     }
   },
   "test": {
-    "total": 298,
+    "total": 299,
     "by_verdict": {
-      "attack_failed": 223,
-      "attack_success": 59,
+      "attack_failed": 205,
+      "attack_success": 78,
       "clean_safe": 16
     },
     "by_label": {
-      "safe": 239,
-      "unsafe": 59
+      "safe": 221,
+      "unsafe": 78
     },
     "by_scenario": {
       "bargaining": 76,
       "coding": 76,
       "minecraft": 76,
-      "research": 70
+      "research": 71
     },
     "by_topology": {
       "chain": 72,
       "graph": 76,
       "star": 76,
-      "tree": 74
+      "tree": 75
     },
     "by_surface": {
-      "input": 45,
-      "memory": 70,
-      "message": 60,
+      "input": 59,
+      "memory": 65,
+      "message": 56,
       "none": 16,
-      "profile": 49,
-      "tool": 58
+      "profile": 46,
+      "tool": 57
     },
     "by_objective": {
-      "disclosure": 88,
-      "disruption": 96,
-      "hijacking": 98,
+      "disclosure": 95,
+      "disruption": 87,
+      "hijacking": 101,
       "none": 16
     },
     "by_scenario_verdict": {
-      "bargaining:attack_failed": 52,
-      "bargaining:attack_success": 20,
+      "bargaining:attack_failed": 49,
+      "bargaining:attack_success": 23,
       "bargaining:clean_safe": 4,
-      "coding:attack_failed": 55,
-      "coding:attack_success": 17,
+      "coding:attack_failed": 51,
+      "coding:attack_success": 21,
       "coding:clean_safe": 4,
-      "minecraft:attack_failed": 59,
-      "minecraft:attack_success": 13,
+      "minecraft:attack_failed": 53,
+      "minecraft:attack_success": 19,
       "minecraft:clean_safe": 4,
-      "research:attack_failed": 57,
-      "research:attack_success": 9,
+      "research:attack_failed": 52,
+      "research:attack_success": 15,
       "research:clean_safe": 4
     },
     "by_topology_verdict": {
-      "chain:attack_failed": 62,
-      "chain:attack_success": 6,
+      "chain:attack_failed": 56,
+      "chain:attack_success": 12,
       "chain:clean_safe": 4,
-      "graph:attack_failed": 53,
-      "graph:attack_success": 19,
+      "graph:attack_failed": 51,
+      "graph:attack_success": 21,
       "graph:clean_safe": 4,
-      "star:attack_failed": 51,
-      "star:attack_success": 21,
+      "star:attack_failed": 46,
+      "star:attack_success": 26,
       "star:clean_safe": 4,
-      "tree:attack_failed": 57,
-      "tree:attack_success": 13,
+      "tree:attack_failed": 52,
+      "tree:attack_success": 19,
       "tree:clean_safe": 4
     },
     "by_surface_verdict": {
-      "input:attack_failed": 33,
-      "input:attack_success": 12,
-      "memory:attack_failed": 66,
+      "input:attack_failed": 19,
+      "input:attack_success": 40,
+      "memory:attack_failed": 61,
       "memory:attack_success": 4,
-      "message:attack_failed": 45,
-      "message:attack_success": 15,
+      "message:attack_failed": 44,
+      "message:attack_success": 12,
       "none:clean_safe": 16,
-      "profile:attack_failed": 36,
-      "profile:attack_success": 13,
-      "tool:attack_failed": 43,
-      "tool:attack_success": 15
+      "profile:attack_failed": 37,
+      "profile:attack_success": 9,
+      "tool:attack_failed": 44,
+      "tool:attack_success": 13
     },
     "audit_trace": {
       "avg_steps": 3.946,
-      "avg_evidence_refs": 6.715,
+      "avg_evidence_refs": 6.709,
       "min_steps": 3,
       "min_evidence_refs": 3
     }

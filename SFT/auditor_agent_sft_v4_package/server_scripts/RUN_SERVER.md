@@ -12,7 +12,7 @@ REPO=$BASE/Auditor-agent
 PKG=$REPO/SFT/auditor_agent_sft_v4_package
 DATA=$PKG/sft_dataset_graph_grounded_v4
 V2_ADAPTER=$BASE/sft_models/qwen3-8b-mas-auditor-lora-v2
-V4_OUT=$BASE/sft_models/qwen3-8b-mas-auditor-lora-v4-base
+V4_OUT=$BASE/sft_models/qwen3-8b-mas-auditor-lora-v4-main
 
 HF_CACHE=$BASE/sft_models/hf_cache
 export HF_HOME=$HF_CACHE
@@ -50,7 +50,7 @@ CUDA_VISIBLE_DEVICES=0 python $PKG/server_scripts/eval_qwen3_fullschema.py \
   --model Qwen/Qwen3-8B \
   --adapter $V4_OUT \
   --test-file $DATA/test.jsonl \
-  --output-dir $BASE/qwen3_8b_sft_v4_base_eval_tok512 \
+  --output-dir $BASE/qwen3_8b_sft_v4_main_eval_tok512 \
   --max-new-tokens 512
 ```
 
@@ -62,7 +62,7 @@ CUDA_VISIBLE_DEVICES=0 python $PKG/server_scripts/eval_qwen3_fullschema.py \
   --model Qwen/Qwen3-8B \
   --adapter $V2_ADAPTER \
   --test-file $DATA/test.jsonl \
-  --output-dir $BASE/qwen3_8b_sft_v2_on_v4test_eval_tok512 \
+  --output-dir $BASE/qwen3_8b_sft_v2_on_v4main_test_eval_tok512 \
   --max-new-tokens 512
 ```
 
@@ -70,9 +70,9 @@ Compare v2 vs v4:
 
 ```bash
 python $PKG/server_scripts/compare_eval_metrics.py \
-  --before $BASE/qwen3_8b_sft_v2_on_v4test_eval_tok512/metrics.json \
-  --after $BASE/qwen3_8b_sft_v4_base_eval_tok512/metrics.json \
-  --output $BASE/qwen3_8b_sft_v4_base_eval_tok512/compare_v2_on_v4test.json
+  --before $BASE/qwen3_8b_sft_v2_on_v4main_test_eval_tok512/metrics.json \
+  --after $BASE/qwen3_8b_sft_v4_main_eval_tok512/metrics.json \
+  --output $BASE/qwen3_8b_sft_v4_main_eval_tok512/compare_v2_on_v4main_test.json
 ```
 
 `metrics.json` reports classification metrics and `audit_trace_quality`.
