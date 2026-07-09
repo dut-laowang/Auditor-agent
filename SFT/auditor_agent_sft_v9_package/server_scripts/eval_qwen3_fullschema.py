@@ -77,7 +77,11 @@ def collect_input_refs(row):
         user = json.loads(row["messages"][1]["content"])
     except Exception:
         return refs
-    for event in user.get("evidence", {}).get("observed_events", []):
+    evidence = user.get("evidence", {})
+    for event in evidence.get("observed_events", []):
+        if event.get("id"):
+            refs.add(event["id"])
+    for event in evidence.get("event_index", []):
         if event.get("id"):
             refs.add(event["id"])
     for event in user.get("reference", {}).get("clean_observed_events", []):
