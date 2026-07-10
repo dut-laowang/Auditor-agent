@@ -40,7 +40,8 @@ CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0} python "$PKG/server_scripts/trai
 python "$PKG/server_scripts/make_subset_by_ids.py" \
   --all-file "$HQ_DATA/all.jsonl" \
   --ids-file "$BALANCED50/balanced_common_run_ids.txt" \
-  --output-file "$BALANCED50/v12_hq_final_balanced_common.jsonl"
+  --output-file "$BALANCED50/v12_hq_final_balanced_common.jsonl" \
+  --allow-missing
 
 CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0} python "$PKG/server_scripts/eval_qwen3_fullschema.py" \
   --mode sft \
