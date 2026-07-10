@@ -1,0 +1,139 @@
+{
+  "schema": "Graph-grounded-Candidate-SFT/v11",
+  "source": "converted_from_v10",
+  "label_policy": "same as v10 marker-based labels; markers and attack metadata are not exposed in user-visible SFT input",
+  "files": {
+    "all": {
+      "total": 7362,
+      "by_verdict": {
+        "attack_failed": 3473,
+        "attack_success": 3697,
+        "clean_safe": 192
+      },
+      "by_surface": {
+        "dual": 569,
+        "input": 1291,
+        "memory": 1293,
+        "message": 1340,
+        "none": 192,
+        "profile": 1337,
+        "tool": 1340
+      },
+      "by_scope": {
+        "edge": 1340,
+        "global": 1291,
+        "mixed": 569,
+        "node": 2630,
+        "none": 192,
+        "tool": 1340
+      }
+    },
+    "train": {
+      "total": 5875,
+      "by_verdict": {
+        "attack_failed": 2773,
+        "attack_success": 2958,
+        "clean_safe": 144
+      },
+      "by_surface": {
+        "dual": 454,
+        "input": 1044,
+        "memory": 1037,
+        "message": 1065,
+        "none": 144,
+        "profile": 1064,
+        "tool": 1067
+      },
+      "by_scope": {
+        "edge": 1065,
+        "global": 1044,
+        "mixed": 454,
+        "node": 2101,
+        "none": 144,
+        "tool": 1067
+      }
+    },
+    "test": {
+      "total": 1487,
+      "by_verdict": {
+        "attack_failed": 700,
+        "attack_success": 739,
+        "clean_safe": 48
+      },
+      "by_surface": {
+        "dual": 115,
+        "input": 247,
+        "memory": 256,
+        "message": 275,
+        "none": 48,
+        "profile": 273,
+        "tool": 273
+      },
+      "by_scope": {
+        "edge": 275,
+        "global": 247,
+        "mixed": 115,
+        "node": 529,
+        "none": 48,
+        "tool": 273
+      }
+    }
+  },
+  "leak_check": {
+    "all": {},
+    "train": {},
+    "test": {}
+  },
+  "candidate_stats": {
+    "all": {
+      "avg_candidates": 13.435,
+      "min_candidates": 9,
+      "max_candidates": 87,
+      "by_type": {
+        "edge": 33152,
+        "global": 7362,
+        "node": 29199,
+        "tool": 29199
+      }
+    },
+    "train": {
+      "avg_candidates": 13.426,
+      "min_candidates": 9,
+      "max_candidates": 87,
+      "by_type": {
+        "edge": 26425,
+        "global": 5875,
+        "node": 23288,
+        "tool": 23288
+      }
+    },
+    "test": {
+      "avg_candidates": 13.474,
+      "min_candidates": 9,
+      "max_candidates": 87,
+      "by_type": {
+        "edge": 6727,
+        "global": 1487,
+        "node": 5911,
+        "tool": 5911
+      }
+    }
+  },
+  "localization_coverage": {
+    "all": {
+      "needs_component_target": 6601,
+      "has_component_target": 6601,
+      "rate": 1.0
+    },
+    "train": {
+      "needs_component_target": 5277,
+      "has_component_target": 5277,
+      "rate": 1.0
+    },
+    "test": {
+      "needs_component_target": 1324,
+      "has_component_target": 1324,
+      "rate": 1.0
+    }
+  }
+}
