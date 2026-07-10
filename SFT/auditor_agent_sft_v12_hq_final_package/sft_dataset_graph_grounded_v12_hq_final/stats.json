@@ -1,0 +1,142 @@
+{
+  "schema": "Graph-grounded-Candidate-SFT/v12-hq-final",
+  "policy": "Preserve V12 run-level labels and split; filter only sparse rows; downgrade low-evidence component localization instead of forcing noisy component labels.",
+  "source": {
+    "all": 7362,
+    "train": 5875,
+    "test": 1487
+  },
+  "files": {
+    "all": {
+      "total": 7198,
+      "by_verdict": {
+        "attack_success": 3608,
+        "attack_failed": 3398,
+        "clean_safe": 192
+      },
+      "by_surface": {
+        "input": 1251,
+        "memory": 1266,
+        "message": 1316,
+        "profile": 1307,
+        "tool": 1300,
+        "none": 192,
+        "dual": 566
+      },
+      "by_confidence": {
+        "high": 2283,
+        "low": 3452,
+        "medium": 1463
+      },
+      "by_quality_reason": {
+        "global_input": 1251,
+        "component_without_refs": 3303,
+        "component_has_single_ref": 1046,
+        "component_has_multiple_refs": 840,
+        "none": 192,
+        "mixed_with_refs": 417,
+        "mixed_low_refs": 149
+      }
+    },
+    "train": {
+      "total": 5741,
+      "by_verdict": {
+        "attack_success": 2885,
+        "attack_failed": 2712,
+        "clean_safe": 144
+      },
+      "by_surface": {
+        "message": 1043,
+        "input": 1011,
+        "dual": 451,
+        "memory": 1016,
+        "tool": 1036,
+        "profile": 1040,
+        "none": 144
+      },
+      "by_confidence": {
+        "medium": 1156,
+        "high": 1833,
+        "low": 2752
+      },
+      "by_quality_reason": {
+        "component_has_single_ref": 830,
+        "global_input": 1011,
+        "mixed_with_refs": 326,
+        "component_without_refs": 2627,
+        "component_has_multiple_refs": 678,
+        "mixed_low_refs": 125,
+        "none": 144
+      }
+    },
+    "test": {
+      "total": 1457,
+      "by_verdict": {
+        "attack_failed": 686,
+        "attack_success": 723,
+        "clean_safe": 48
+      },
+      "by_surface": {
+        "profile": 267,
+        "input": 240,
+        "memory": 250,
+        "tool": 264,
+        "dual": 115,
+        "none": 48,
+        "message": 273
+      },
+      "by_confidence": {
+        "low": 700,
+        "high": 450,
+        "medium": 307
+      },
+      "by_quality_reason": {
+        "component_without_refs": 676,
+        "global_input": 240,
+        "component_has_single_ref": 216,
+        "mixed_with_refs": 91,
+        "component_has_multiple_refs": 162,
+        "none": 48,
+        "mixed_low_refs": 24
+      }
+    }
+  },
+  "conversion_report": {
+    "source_rows": 7362,
+    "kept_rows": 7198,
+    "dropped_rows": 164,
+    "drop_reasons": {
+      "sparse_run_evidence": 164
+    },
+    "confidence": {
+      "high": 2283,
+      "low": 3452,
+      "medium": 1463
+    },
+    "quality_reason": {
+      "global_input": 1251,
+      "component_without_refs": 3303,
+      "component_has_single_ref": 1046,
+      "component_has_multiple_refs": 840,
+      "none": 192,
+      "mixed_with_refs": 417,
+      "mixed_low_refs": 149
+    },
+    "by_verdict": {
+      "attack_success": 3608,
+      "attack_failed": 3398,
+      "clean_safe": 192
+    },
+    "by_surface": {
+      "input": 1251,
+      "memory": 1266,
+      "message": 1316,
+      "profile": 1307,
+      "tool": 1300,
+      "none": 192,
+      "dual": 566
+    },
+    "invalid_trace_refs": 0,
+    "leak_hits": {}
+  }
+}
