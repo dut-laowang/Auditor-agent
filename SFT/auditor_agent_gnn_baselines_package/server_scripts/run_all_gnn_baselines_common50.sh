@@ -31,14 +31,34 @@ if [ ! -d "$BLIND/.git" ]; then
 fi
 
 python - <<'PY'
-import importlib.util, subprocess, sys
-missing = []
-for pkg in ["sentence_transformers", "torch_geometric", "torch_scatter", "torch_sparse"]:
-    if importlib.util.find_spec(pkg) is None:
-        missing.append(pkg)
+import importlib.util
+import re
+import subprocess
+import sys
+
+if importlib.util.find_spec("sentence_transformers") is None:
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "sentence-transformers"])
+
+missing = [
+    pkg for pkg in ["torch_geometric", "torch_scatter", "torch_sparse"]
+    if importlib.util.find_spec(pkg) is None
+]
 if missing:
-    print("Installing missing packages:", missing)
-    subprocess.check_call([sys.executable, "-m", "pip", "install", "sentence-transformers", "torch-geometric", "torch-scatter", "torch-sparse"])
+    import torch
+
+    torch_base = re.match(r"^(\d+\.\d+\.\d+)", torch.__version__).group(1)
+    cuda = torch.version.cuda
+    cuda_tag = "cpu" if cuda is None else "cu" + cuda.replace(".", "")
+    wheel_url = f"https://data.pyg.org/whl/torch-{torch_base}+{cuda_tag}.html"
+
+    print("Installing missing PyG packages:", missing)
+    print("Using PyG wheel index:", wheel_url)
+    subprocess.check_call([
+        sys.executable, "-m", "pip", "install",
+        "pyg_lib", "torch_scatter", "torch_sparse",
+        "-f", wheel_url,
+    ])
+    subprocess.check_call([sys.executable, "-m", "pip", "install", "torch-geometric"])
 PY
 
 rm -rf "$GRAPH_DATA" "$OUT/gsafeguard" "$OUT/blindguard"
