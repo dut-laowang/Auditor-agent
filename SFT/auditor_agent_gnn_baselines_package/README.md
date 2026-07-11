@@ -1,76 +1,69 @@
-# GNN Baselines on MARBLE Auditor Data
+# V12 SFT Auditor vs GNN Baselines
 
-This package compares V8/V12 SFT auditors with adapted GNN baselines on the same MARBLE balanced test set.
+这个文件夹用于复现当前主线对比实验：`V12-SFT auditor` vs `G-Safeguard` / `BlindGuard`。
 
-The goal is **not** to force all metrics to match. G-Safeguard and BlindGuard are agent/anomaly detectors, while our SFT auditor outputs a full JSON audit verdict. Therefore unsupported metrics are reported as `N/A`.
+## 版本说明
 
-## Baselines
+- 主线 SFT 版本：`../auditor_agent_sft_v12_package`
+- GNN 对比代码：`server_scripts/`
+- 最新 common50 结果：`results/common50_latest/`
+- 已归档探索版：`../_archive_experimental_variants/`
 
-- `V8-SFT`
-- `V12-SFT`
-- `G-Safeguard-style GAT`
-- `BlindGuard-style TAM anomaly detector`
+`V12` 是轻量 graph-grounded SFT auditor，不是 GNN。它输出完整 audit JSON，包括 `verdict`、`surface/objective`、`localization` 和 evidence trace。
 
-For BlindGuard/TAM, the training log reports `tam_objective` rather than a standard positive loss. TAM maximizes graph affinity by minimizing a negative objective in the official implementation, so negative objective values are expected and are not treated as a normal BCE/CE loss.
+## 对比范围
 
-## Strict Scope
+公平比较：
 
-Comparable:
+- run-level safe/unsafe
+- safe F1 / unsafe F1
+- agent-level localization projection
 
-- binary safe/unsafe accuracy
-- safe F1
-- unsafe F1
-- run AUROC when scores exist
-- agent-level localization F1 / top-k hit
+不强行比较，写 `N/A`：
 
-Not directly comparable for GNN:
-
-- surface F1
-- objective F1
-- edge/tool/global localization
-- JSON audit quality
-- evidence trace quality
-
-These are written as `N/A` for GNN rows.
+- GNN 的 surface/objective
+- GNN 的 edge/tool/global localization
+- GNN 的 JSON audit quality
 
 ## Agent Label Policies
 
-The one-shot script reports two GNN adaptations:
+脚本会同时跑两套：
 
-- `strict_agent`: only `N::agentX` is converted into an agent label.
-- `agent_or_tool_owner`: `N::agentX` and `T::agentX` are converted into agent labels.
+- `strict_agent`: 只把 `N::agentX` 算 agent label
+- `agent_or_tool_owner`: 把 `N::agentX` 和 `T::agentX` 算 agent label
 
-In both policies, `E::agentA->agentB` and `G::run` are **not** converted into agent labels. Edge/global localization is reported as `N/A` for GNN rows because these baselines natively rank agents, not edges/tools/global components.
+两套都不会把 `E::agentA->agentB` 或 `G::run` 硬算成 agent。
 
-## Minimal Modification Policy
-
-The official GNN repos are not edited. The one-shot script clones:
-
-```text
-https://github.com/wslong20/G-safeguard.git
-https://github.com/MR9812/BlindGuard.git
-```
-
-Our code only adapts MARBLE/V12 SFT rows into the agent graph format expected by those methods and calls official model classes from their `TA/` directories.
-
-## One-shot Run
+## 一键复现
 
 ```bash
 cd /gs/bs/tgh-26IAW/hongbo/project_4_coauthor/Auditor-agent
 git pull
 cd /gs/bs/tgh-26IAW/hongbo/project_4_coauthor
+
+rm -rf gnn_vs_sft_common50 marble_agent_graph_common50
+
 CUDA_VISIBLE_DEVICES=0 bash Auditor-agent/SFT/auditor_agent_gnn_baselines_package/server_scripts/run_all_gnn_baselines_common50.sh
 ```
 
-Outputs:
+## 输出位置
 
 ```text
-$BASE/gnn_vs_sft_common50/strict_agent/gsafeguard/metrics.json
-$BASE/gnn_vs_sft_common50/strict_agent/blindguard/metrics.json
-$BASE/gnn_vs_sft_common50/strict_agent/comparison_table.json
-$BASE/gnn_vs_sft_common50/agent_or_tool_owner/gsafeguard/metrics.json
-$BASE/gnn_vs_sft_common50/agent_or_tool_owner/blindguard/metrics.json
-$BASE/gnn_vs_sft_common50/agent_or_tool_owner/comparison_table.json
+gnn_vs_sft_common50/strict_agent/comparison_table.json
+gnn_vs_sft_common50/agent_or_tool_owner/comparison_table.json
 ```
 
-If `torch-geometric` / `torch-scatter` installation fails on the server, the blocker is dependency installation, not the benchmark design.
+仓库内也保存了当前结果：
+
+```text
+results/common50_latest/strict_agent/comparison_table.json
+results/common50_latest/agent_or_tool_owner/comparison_table.json
+```
+
+## 当前结论
+
+- `V8-SFT` 的 run-level 判断最强，但定位弱。
+- `V12-SFT` 的 run-level 判断略低于 V8，但 agent-level 定位接近 G-Safeguard，并且保留完整 audit JSON。
+- `G-Safeguard` 在 agent ranking 上有优势，但不能输出完整 MAS audit。
+- `BlindGuard` 在该 MARBLE audit setting 上失配较明显。
+

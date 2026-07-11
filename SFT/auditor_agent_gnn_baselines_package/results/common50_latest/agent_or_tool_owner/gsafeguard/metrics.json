@@ -1,0 +1,73 @@
+{
+  "method": "G-Safeguard-style supervised GAT adapter",
+  "agent_label_policy": "agent_or_tool_owner",
+  "n": 50,
+  "comparable_metrics": {
+    "binary_accuracy": 0.7,
+    "binary_report": {
+      "safe": {
+        "precision": 0.6818181818181818,
+        "recall": 0.967741935483871,
+        "f1-score": 0.8,
+        "support": 31.0
+      },
+      "unsafe": {
+        "precision": 0.8333333333333334,
+        "recall": 0.2631578947368421,
+        "f1-score": 0.4,
+        "support": 19.0
+      },
+      "accuracy": 0.7,
+      "macro avg": {
+        "precision": 0.7575757575757576,
+        "recall": 0.6154499151103565,
+        "f1-score": 0.6000000000000001,
+        "support": 50.0
+      },
+      "weighted avg": {
+        "precision": 0.7393939393939394,
+        "recall": 0.7,
+        "f1-score": 0.648,
+        "support": 50.0
+      }
+    },
+    "agent_localization_report": {
+      "not_target": {
+        "precision": 0.9461077844311377,
+        "recall": 0.9461077844311377,
+        "f1-score": 0.9461077844311377,
+        "support": 167.0
+      },
+      "target_agent": {
+        "precision": 0.35714285714285715,
+        "recall": 0.35714285714285715,
+        "f1-score": 0.35714285714285715,
+        "support": 14.0
+      },
+      "accuracy": 0.9005524861878453,
+      "macro avg": {
+        "precision": 0.6516253207869974,
+        "recall": 0.6516253207869974,
+        "f1-score": 0.6516253207869974,
+        "support": 181.0
+      },
+      "weighted avg": {
+        "precision": 0.9005524861878453,
+        "recall": 0.9005524861878453,
+        "f1-score": 0.9005524861878453,
+        "support": 181.0
+      }
+    },
+    "agent_top1_hit": 0.5833333333333334,
+    "agent_top2_hit": 0.75,
+    "agent_hit": 0.3333333333333333,
+    "exact_agent_set": 0.08333333333333333,
+    "run_auroc": 0.764006791171477
+  },
+  "not_applicable": [
+    "surface_f1",
+    "objective_f1",
+    "edge_tool_global_localization",
+    "json_audit_quality"
+  ]
+}
