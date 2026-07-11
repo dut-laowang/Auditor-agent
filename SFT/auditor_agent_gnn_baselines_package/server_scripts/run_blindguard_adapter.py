@@ -49,7 +49,7 @@ def train_model(TAMModel, train_rows, device, epochs, lr, hidden_dim, latent_dim
     opt = torch.optim.Adam(model.parameters(), lr=lr, weight_decay=2e-4)
     for epoch in range(1, epochs + 1):
         model.train()
-        total = 0.0
+        total_objective = 0.0
         for row in tqdm(safe_rows, desc=f"blindguard_tam_epoch_{epoch}"):
             x = torch.tensor(row["features"], dtype=torch.float32, device=device)
             edge_index = edge_index_from_adj(row, device)
@@ -63,8 +63,14 @@ def train_model(TAMModel, train_rows, device, epochs, lr, hidden_dim, latent_dim
             opt.zero_grad()
             loss.backward()
             opt.step()
-            total += float(loss.detach().cpu())
-        print(json.dumps({"epoch": epoch, "loss": total / max(len(safe_rows), 1)}))
+            total_objective += float(loss.detach().cpu())
+        avg_objective = total_objective / max(len(safe_rows), 1)
+        print(json.dumps({
+            "epoch": epoch,
+            "tam_objective": avg_objective,
+            "affinity_monitor": -avg_objective,
+            "note": "TAM maximizes graph affinity by minimizing a negative objective; tam_objective can be negative.",
+        }))
     return model
 
 

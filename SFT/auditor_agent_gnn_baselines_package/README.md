@@ -11,6 +11,8 @@ The goal is **not** to force all metrics to match. G-Safeguard and BlindGuard ar
 - `G-Safeguard-style GAT`
 - `BlindGuard-style TAM anomaly detector`
 
+For BlindGuard/TAM, the training log reports `tam_objective` rather than a standard positive loss. TAM maximizes graph affinity by minimizing a negative objective in the official implementation, so negative objective values are expected and are not treated as a normal BCE/CE loss.
+
 ## Strict Scope
 
 Comparable:
