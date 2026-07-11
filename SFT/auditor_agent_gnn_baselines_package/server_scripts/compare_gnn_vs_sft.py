@@ -34,6 +34,7 @@ def gnn_row(name, metrics):
     ar = cm.get("agent_localization_report", {})
     return {
         "method": name,
+        "agent_label_policy": metrics.get("agent_label_policy"),
         "n": metrics.get("n"),
         "binary_accuracy": cm.get("binary_accuracy"),
         "safe_f1": br.get("safe", {}).get("f1-score"),
@@ -50,6 +51,7 @@ def gnn_row(name, metrics):
 
 def main():
     parser = argparse.ArgumentParser()
+    parser.add_argument("--label-policy", default="unknown")
     parser.add_argument("--v8-metrics")
     parser.add_argument("--v12-metrics")
     parser.add_argument("--gsafeguard-metrics")
@@ -71,6 +73,12 @@ def main():
         rows.append(gnn_row("BlindGuard-style TAM", bg))
     result = {
         "comparison_scope": "Common MARBLE balanced test set. GNN baselines are adapted to agent-level anomaly detection; non-native SFT audit metrics are N/A for GNN.",
+        "agent_label_policy": args.label_policy,
+        "label_policy_note": (
+            "strict_agent: only N::agentX is converted to an agent label. "
+            "agent_or_tool_owner: N::agentX and T::agentX are converted to agent labels. "
+            "E::a->b and G::run are not converted to agent labels."
+        ),
         "rows": rows,
     }
     os.makedirs(os.path.dirname(args.output), exist_ok=True)

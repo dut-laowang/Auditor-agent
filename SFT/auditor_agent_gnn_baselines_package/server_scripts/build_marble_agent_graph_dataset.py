@@ -30,22 +30,22 @@ def agent_idx(agent, nodes):
         return None
 
 
-def component_to_agents(component_id):
+def component_to_agents(component_id, label_policy):
     if not component_id:
         return []
-    if component_id.startswith("N::") or component_id.startswith("T::"):
+    if component_id.startswith("N::"):
         return AGENT_RE.findall(component_id)
-    if component_id.startswith("E::"):
+    if label_policy == "agent_or_tool_owner" and component_id.startswith("T::"):
         return AGENT_RE.findall(component_id)
     return []
 
 
-def gold_agent_indices(user, assistant):
+def gold_agent_indices(user, assistant, label_policy):
     nodes = user.get("graph", {}).get("nodes", [])
     ids = assistant.get("localization", {}).get("component_ids", []) or []
     indices = set()
     for cid in ids:
-        for agent in component_to_agents(cid):
+        for agent in component_to_agents(cid, label_policy):
             idx = agent_idx(agent, nodes)
             if idx is not None:
                 indices.add(idx)
@@ -115,13 +115,13 @@ def make_communication_data(user, max_turns=4):
     return turns
 
 
-def convert_row(row):
+def convert_row(row, label_policy):
     user = parse_content(row, 1)
     assistant = parse_content(row, 2)
     metadata = row.get("metadata", {})
     nodes = user.get("graph", {}).get("nodes", [])
     verdict = assistant.get("decision", {}).get("verdict") or metadata.get("verdict")
-    attacker_idxes = gold_agent_indices(user, assistant) if verdict == "attack_success" else []
+    attacker_idxes = gold_agent_indices(user, assistant, label_policy) if verdict == "attack_success" else []
     return {
         "run_id": metadata.get("run_id"),
         "metadata": {
@@ -131,6 +131,7 @@ def convert_row(row):
             "objective": metadata.get("objective"),
             "verdict": verdict,
             "binary_label": "unsafe" if verdict == "attack_success" else "safe",
+            "agent_label_policy": label_policy,
         },
         "agents": nodes,
         "adj_matrix": adjacency(user),
@@ -166,22 +167,37 @@ def main():
     parser.add_argument("--sft-data-dir", required=True)
     parser.add_argument("--balanced-ids")
     parser.add_argument("--output-dir", required=True)
+    parser.add_argument(
+        "--agent-label-policy",
+        choices=["strict_agent", "agent_or_tool_owner"],
+        default="strict_agent",
+        help=(
+            "strict_agent maps only N::agentX to malicious-agent labels. "
+            "agent_or_tool_owner maps N::agentX and T::agentX; E::a->b and G::run are never mapped to agents."
+        ),
+    )
     args = parser.parse_args()
     os.makedirs(args.output_dir, exist_ok=True)
 
     report = {}
     for split in ["train", "test", "all"]:
         source = load_jsonl(os.path.join(args.sft_data_dir, f"{split}.jsonl"))
-        rows = [convert_row(row) for row in source]
+        rows = [convert_row(row, args.agent_label_policy) for row in source]
         write_jsonl(os.path.join(args.output_dir, f"{split}.jsonl"), rows)
         report[split] = summarize(rows)
 
     if args.balanced_ids:
-        balanced, missing = subset_by_ids([convert_row(row) for row in load_jsonl(os.path.join(args.sft_data_dir, "all.jsonl"))], args.balanced_ids)
+        balanced, missing = subset_by_ids([convert_row(row, args.agent_label_policy) for row in load_jsonl(os.path.join(args.sft_data_dir, "all.jsonl"))], args.balanced_ids)
         write_jsonl(os.path.join(args.output_dir, "balanced_common.jsonl"), balanced)
         report["balanced_common"] = summarize(balanced)
         report["balanced_common"]["missing_ids"] = missing
 
+    report["agent_label_policy"] = args.agent_label_policy
+    report["label_policy_note"] = (
+        "strict_agent: only N::agentX is an agent label. "
+        "agent_or_tool_owner: N::agentX and T::agentX are agent labels. "
+        "E::a->b and G::run are not converted to agent labels."
+    )
     with open(os.path.join(args.output_dir, "stats.json"), "w", encoding="utf-8") as handle:
         json.dump(report, handle, ensure_ascii=False, indent=2)
     print(json.dumps(report, ensure_ascii=False, indent=2))

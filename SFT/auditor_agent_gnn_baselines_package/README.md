@@ -31,6 +31,15 @@ Not directly comparable for GNN:
 
 These are written as `N/A` for GNN rows.
 
+## Agent Label Policies
+
+The one-shot script reports two GNN adaptations:
+
+- `strict_agent`: only `N::agentX` is converted into an agent label.
+- `agent_or_tool_owner`: `N::agentX` and `T::agentX` are converted into agent labels.
+
+In both policies, `E::agentA->agentB` and `G::run` are **not** converted into agent labels. Edge/global localization is reported as `N/A` for GNN rows because these baselines natively rank agents, not edges/tools/global components.
+
 ## Minimal Modification Policy
 
 The official GNN repos are not edited. The one-shot script clones:
@@ -54,9 +63,12 @@ CUDA_VISIBLE_DEVICES=0 bash Auditor-agent/SFT/auditor_agent_gnn_baselines_packag
 Outputs:
 
 ```text
-$BASE/gnn_vs_sft_common50/gsafeguard/metrics.json
-$BASE/gnn_vs_sft_common50/blindguard/metrics.json
-$BASE/gnn_vs_sft_common50/comparison_table.json
+$BASE/gnn_vs_sft_common50/strict_agent/gsafeguard/metrics.json
+$BASE/gnn_vs_sft_common50/strict_agent/blindguard/metrics.json
+$BASE/gnn_vs_sft_common50/strict_agent/comparison_table.json
+$BASE/gnn_vs_sft_common50/agent_or_tool_owner/gsafeguard/metrics.json
+$BASE/gnn_vs_sft_common50/agent_or_tool_owner/blindguard/metrics.json
+$BASE/gnn_vs_sft_common50/agent_or_tool_owner/comparison_table.json
 ```
 
 If `torch-geometric` / `torch-scatter` installation fails on the server, the blocker is dependency installation, not the benchmark design.

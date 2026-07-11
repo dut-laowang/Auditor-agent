@@ -10,7 +10,7 @@ BALANCED50=${BALANCED50:-$BASE/balanced_common_v8_v9_50/balanced_common_run_ids.
 REFS=${REFS:-$BASE/gnn_refs}
 GSAFE=${GSAFE:-$REFS/G-safeguard}
 BLIND=${BLIND:-$REFS/BlindGuard}
-GRAPH_DATA=${GRAPH_DATA:-$BASE/marble_agent_graph_common50}
+GRAPH_DATA_ROOT=${GRAPH_DATA_ROOT:-$BASE/marble_agent_graph_common50}
 OUT=${OUT:-$BASE/gnn_vs_sft_common50}
 
 export HF_HOME=${HF_HOME:-$BASE/sft_models/hf_cache}
@@ -61,39 +61,45 @@ if missing:
     subprocess.check_call([sys.executable, "-m", "pip", "install", "torch-geometric"])
 PY
 
-rm -rf "$GRAPH_DATA" "$OUT/gsafeguard" "$OUT/blindguard"
+rm -rf "$GRAPH_DATA_ROOT" "$OUT/strict_agent" "$OUT/agent_or_tool_owner"
 
-python "$PKG/server_scripts/build_marble_agent_graph_dataset.py" \
-  --sft-data-dir "$V12_DATA" \
-  --balanced-ids "$BALANCED50" \
-  --output-dir "$GRAPH_DATA"
+for POLICY in strict_agent agent_or_tool_owner; do
+  GRAPH_DATA="$GRAPH_DATA_ROOT/$POLICY"
+  POLICY_OUT="$OUT/$POLICY"
 
-CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0} python "$PKG/server_scripts/run_gsafeguard_adapter.py" \
-  --official-ta-dir "$GSAFE/TA" \
-  --graph-data-dir "$GRAPH_DATA" \
-  --output-dir "$OUT/gsafeguard" \
-  --epochs 50 \
-  --lr 0.001 \
-  --hidden-dim 1024
+  python "$PKG/server_scripts/build_marble_agent_graph_dataset.py" \
+    --sft-data-dir "$V12_DATA" \
+    --balanced-ids "$BALANCED50" \
+    --agent-label-policy "$POLICY" \
+    --output-dir "$GRAPH_DATA"
 
-CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0} python "$PKG/server_scripts/run_blindguard_adapter.py" \
-  --official-ta-dir "$BLIND/TA" \
-  --graph-data-dir "$GRAPH_DATA" \
-  --output-dir "$OUT/blindguard" \
-  --epochs 50 \
-  --lr 0.001 \
-  --hidden-dim 1024 \
-  --latent-dim 512
+  CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0} python "$PKG/server_scripts/run_gsafeguard_adapter.py" \
+    --official-ta-dir "$GSAFE/TA" \
+    --graph-data-dir "$GRAPH_DATA" \
+    --output-dir "$POLICY_OUT/gsafeguard" \
+    --epochs 50 \
+    --lr 0.001 \
+    --hidden-dim 1024
 
-python "$PKG/server_scripts/compare_gnn_vs_sft.py" \
-  --v8-metrics "$BASE/qwen3_8b_sft_v8_balanced50_eval_tok1024/metrics.json" \
-  --v12-metrics "$BASE/qwen3_8b_sft_v12_balanced50_eval_tok1024/metrics.json" \
-  --gsafeguard-metrics "$OUT/gsafeguard/metrics.json" \
-  --blindguard-metrics "$OUT/blindguard/metrics.json" \
-  --output "$OUT/comparison_table.json"
+  CUDA_VISIBLE_DEVICES=${CUDA_VISIBLE_DEVICES:-0} python "$PKG/server_scripts/run_blindguard_adapter.py" \
+    --official-ta-dir "$BLIND/TA" \
+    --graph-data-dir "$GRAPH_DATA" \
+    --output-dir "$POLICY_OUT/blindguard" \
+    --epochs 50 \
+    --lr 0.001 \
+    --hidden-dim 1024 \
+    --latent-dim 512
+
+  python "$PKG/server_scripts/compare_gnn_vs_sft.py" \
+    --label-policy "$POLICY" \
+    --v8-metrics "$BASE/qwen3_8b_sft_v8_balanced50_eval_tok1024/metrics.json" \
+    --v12-metrics "$BASE/qwen3_8b_sft_v12_balanced50_eval_tok1024/metrics.json" \
+    --gsafeguard-metrics "$POLICY_OUT/gsafeguard/metrics.json" \
+    --blindguard-metrics "$POLICY_OUT/blindguard/metrics.json" \
+    --output "$POLICY_OUT/comparison_table.json"
+done
 
 echo "Done."
-echo "Graph data: $GRAPH_DATA"
-echo "G-Safeguard-style metrics: $OUT/gsafeguard/metrics.json"
-echo "BlindGuard-style metrics: $OUT/blindguard/metrics.json"
-echo "Comparison: $OUT/comparison_table.json"
+echo "Graph data root: $GRAPH_DATA_ROOT"
+echo "Strict-agent comparison: $OUT/strict_agent/comparison_table.json"
+echo "Agent-or-tool-owner comparison: $OUT/agent_or_tool_owner/comparison_table.json"

@@ -80,7 +80,7 @@ def train_model(MyGAT, train_rows, device, epochs, lr, hidden_dim):
     return model
 
 
-def evaluate(model, rows, device, output_path):
+def evaluate(model, rows, device, output_path, agent_label_policy):
     records = []
     gold_run, pred_run, score_run = [], [], []
     gold_agent, pred_agent = [], []
@@ -120,6 +120,7 @@ def evaluate(model, rows, device, output_path):
             handle.write(json.dumps(record, ensure_ascii=False) + "\n")
     metrics = {
         "method": "G-Safeguard-style supervised GAT adapter",
+        "agent_label_policy": agent_label_policy,
         "n": len(rows),
         "comparable_metrics": {
             "binary_accuracy": accuracy_score(gold_run, pred_run),
@@ -152,8 +153,13 @@ def main():
     device = "cuda" if torch.cuda.is_available() else "cpu"
     train_rows = encode_rows(load_jsonl(os.path.join(args.graph_data_dir, "train.jsonl")), args.embedding_model)
     test_rows = encode_rows(load_jsonl(os.path.join(args.graph_data_dir, "balanced_common.jsonl")), args.embedding_model)
+    stats_path = os.path.join(args.graph_data_dir, "stats.json")
+    agent_label_policy = "unknown"
+    if os.path.exists(stats_path):
+        with open(stats_path, encoding="utf-8") as handle:
+            agent_label_policy = json.load(handle).get("agent_label_policy", "unknown")
     model = train_model(MyGAT, train_rows, device, args.epochs, args.lr, args.hidden_dim)
-    metrics = evaluate(model, test_rows, device, os.path.join(args.output_dir, "predictions.jsonl"))
+    metrics = evaluate(model, test_rows, device, os.path.join(args.output_dir, "predictions.jsonl"), agent_label_policy)
     with open(os.path.join(args.output_dir, "metrics.json"), "w", encoding="utf-8") as handle:
         json.dump(metrics, handle, indent=2)
     print(json.dumps(metrics, indent=2))
