@@ -94,6 +94,8 @@ def evaluate(model, rows, device, output_path, agent_label_policy):
     gold_agent, pred_agent = [], []
     top1_hits = []
     top2_hits = []
+    agent_hits = []
+    exact_agent_sets = []
     for row in tqdm(rows, desc="eval_blindguard"):
         scores = anomaly_scores(model, row, device)
         run_score = max(scores) if scores else 0.0
@@ -111,6 +113,8 @@ def evaluate(model, rows, device, output_path, agent_label_policy):
         if gold_set:
             top1_hits.append(1 if ranking and ranking[0] in gold_set else 0)
             top2_hits.append(1 if any(i in gold_set for i in ranking[:2]) else 0)
+            agent_hits.append(1 if pred_set & gold_set else 0)
+            exact_agent_sets.append(1 if pred_set == gold_set else 0)
         records.append({
             "run_id": row["run_id"],
             "gold_binary": row["metadata"]["binary_label"],
@@ -133,6 +137,8 @@ def evaluate(model, rows, device, output_path, agent_label_policy):
             "agent_localization_report": classification_report(gold_agent, pred_agent, labels=[0, 1], target_names=["not_target", "target_agent"], zero_division=0, output_dict=True),
             "agent_top1_hit": float(np.mean(top1_hits)) if top1_hits else None,
             "agent_top2_hit": float(np.mean(top2_hits)) if top2_hits else None,
+            "agent_hit": float(np.mean(agent_hits)) if agent_hits else None,
+            "exact_agent_set": float(np.mean(exact_agent_sets)) if exact_agent_sets else None,
         },
         "not_applicable": ["surface_f1", "objective_f1", "edge_tool_global_localization", "json_audit_quality"],
     }

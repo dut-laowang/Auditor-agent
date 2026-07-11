@@ -93,9 +93,13 @@ for POLICY in strict_agent agent_or_tool_owner; do
   python "$PKG/server_scripts/compare_gnn_vs_sft.py" \
     --label-policy "$POLICY" \
     --v8-metrics "$BASE/qwen3_8b_sft_v8_balanced50_eval_tok1024/metrics.json" \
+    --v8-predictions "$BASE/qwen3_8b_sft_v8_balanced50_eval_tok1024/predictions.jsonl" \
     --v12-metrics "$BASE/qwen3_8b_sft_v12_balanced50_eval_tok1024/metrics.json" \
+    --v12-predictions "$BASE/qwen3_8b_sft_v12_balanced50_eval_tok1024/predictions.jsonl" \
     --gsafeguard-metrics "$POLICY_OUT/gsafeguard/metrics.json" \
+    --gsafeguard-predictions "$POLICY_OUT/gsafeguard/predictions.jsonl" \
     --blindguard-metrics "$POLICY_OUT/blindguard/metrics.json" \
+    --blindguard-predictions "$POLICY_OUT/blindguard/predictions.jsonl" \
     --output "$POLICY_OUT/comparison_table.json"
 done
 
