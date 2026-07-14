@@ -7,6 +7,7 @@
 - 主线 SFT 版本：`../auditor_agent_sft_v12_package`
 - GNN 对比代码：`server_scripts/`
 - 最新 common50 结果：`results/common50_latest/`
+- 会议展示简版：`MEETING_BRIEF.md`
 - 已归档探索版：`../_archive_experimental_variants/`
 
 `V12` 是轻量 graph-grounded SFT auditor，不是 GNN。它输出完整 audit JSON，包括 `verdict`、`surface/objective`、`localization` 和 evidence trace。
@@ -66,4 +67,3 @@ results/common50_latest/agent_or_tool_owner/comparison_table.json
 - `V12-SFT` 的 run-level 判断略低于 V8，但 agent-level 定位接近 G-Safeguard，并且保留完整 audit JSON。
 - `G-Safeguard` 在 agent ranking 上有优势，但不能输出完整 MAS audit。
 - `BlindGuard` 在该 MARBLE audit setting 上失配较明显。
-
