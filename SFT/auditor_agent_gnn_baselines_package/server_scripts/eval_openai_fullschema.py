@@ -185,12 +185,12 @@ def trace_quality(row, generation):
     }
 
 
-def build_client():
+def build_client(timeout):
     api_key = os.environ.get("OPENAI_API_KEY")
     if not api_key:
         raise SystemExit("OPENAI_API_KEY is not set.")
     base_url = os.environ.get("OPENAI_BASE_URL") or os.environ.get("OPENAI_API_BASE")
-    kwargs = {"api_key": api_key}
+    kwargs = {"api_key": api_key, "timeout": timeout}
     if base_url:
         kwargs["base_url"] = base_url
     return OpenAI(**kwargs)
@@ -253,6 +253,7 @@ def main():
     parser.add_argument("--max-output-tokens", type=int, default=1024)
     parser.add_argument("--limit", type=int)
     parser.add_argument("--sleep", type=float, default=0.0)
+    parser.add_argument("--request-timeout", type=float, default=120.0)
     parser.add_argument("--no-json-mode", action="store_true", help="Use the exact chat prompt without JSON response_format.")
     parser.add_argument("--schema-hint", action="store_true", help="Append the V12 output schema to the system instruction.")
     args = parser.parse_args()
@@ -262,18 +263,23 @@ def main():
     if args.limit:
         rows = rows[: args.limit]
 
-    client = build_client()
+    client = build_client(args.request_timeout)
     pred_path = os.path.join(args.output_dir, "predictions.jsonl")
     with open(pred_path, "w", encoding="utf-8") as writer:
         for row in tqdm(rows, desc=f"{args.model}_fullschema"):
-            generation = call_model(
-                client,
-                row,
-                args.model,
-                args.max_output_tokens,
-                json_mode=not args.no_json_mode,
-                schema_hint=args.schema_hint,
-            )
+            error = None
+            try:
+                generation = call_model(
+                    client,
+                    row,
+                    args.model,
+                    args.max_output_tokens,
+                    json_mode=not args.no_json_mode,
+                    schema_hint=args.schema_hint,
+                )
+            except Exception as exc:
+                generation = ""
+                error = f"{type(exc).__name__}: {str(exc)}"
             gold = extract_verdict(row["messages"][2]["content"])
             pred = extract_verdict(generation)
             writer.write(
@@ -286,6 +292,7 @@ def main():
                         "pred_binary": to_binary(pred),
                         "trace_quality": trace_quality(row, generation),
                         "generation": generation,
+                        "error": error,
                     },
                     ensure_ascii=False,
                 )
@@ -324,7 +331,9 @@ def main():
             "max_output_tokens": args.max_output_tokens,
             "json_mode": not args.no_json_mode,
             "schema_hint": args.schema_hint,
+            "request_timeout": args.request_timeout,
         },
+        "error_count": sum(1 for row in recs if row.get("error")),
         "limit": args.limit,
         "parse_success_rate": sum(pred != "parse_error" for pred in p3) / len(p3),
         "three_class_accuracy": accuracy_score(y3, p3),
