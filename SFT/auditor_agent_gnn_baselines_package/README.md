@@ -47,6 +47,32 @@ rm -rf gnn_vs_sft_common50 marble_agent_graph_common50
 CUDA_VISIBLE_DEVICES=0 bash Auditor-agent/SFT/auditor_agent_gnn_baselines_package/server_scripts/run_all_gnn_baselines_common50.sh
 ```
 
+## 闭源模型对比
+
+用于补充 `GPT-4o-mini` baseline。该实验使用同一批 common50 run ids、同一个 V12 SFT 输入模板、同一套 evaluator；API key 只从环境变量读取，不写入文件。
+
+```bash
+cd /gs/bs/tgh-26IAW/hongbo/project_4_coauthor/Auditor-agent
+git pull
+cd /gs/bs/tgh-26IAW/hongbo/project_4_coauthor
+
+export OPENAI_API_KEY="你的 key"
+export OPENAI_BASE_URL="你的 base url，如无则不设置"
+
+rm -rf openai_vs_sft_common50
+
+bash Auditor-agent/SFT/auditor_agent_gnn_baselines_package/server_scripts/run_openai_v12_common50.sh
+```
+
+输出：
+
+```text
+openai_vs_sft_common50/gpt-4o-mini/metrics.json
+openai_vs_sft_common50/gpt-4o-mini/predictions.jsonl
+openai_vs_sft_common50/strict_agent/comparison_table.json
+openai_vs_sft_common50/agent_or_tool_owner/comparison_table.json
+```
+
 ## 输出位置
 
 ```text

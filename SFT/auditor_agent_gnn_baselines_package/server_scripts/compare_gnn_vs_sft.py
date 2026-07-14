@@ -168,6 +168,9 @@ def main():
     parser.add_argument("--v8-predictions")
     parser.add_argument("--v12-metrics")
     parser.add_argument("--v12-predictions")
+    parser.add_argument("--openai-name", default="GPT-4o-mini")
+    parser.add_argument("--openai-metrics")
+    parser.add_argument("--openai-predictions")
     parser.add_argument("--gsafeguard-metrics")
     parser.add_argument("--gsafeguard-predictions")
     parser.add_argument("--blindguard-metrics")
@@ -177,6 +180,7 @@ def main():
     rows = []
     v8 = load_json(args.v8_metrics)
     v12 = load_json(args.v12_metrics)
+    openai_metrics = load_json(args.openai_metrics)
     gs = load_json(args.gsafeguard_metrics)
     bg = load_json(args.blindguard_metrics)
     gs_predictions = load_jsonl(args.gsafeguard_predictions)
@@ -184,9 +188,11 @@ def main():
     gold_by_run, agents_by_run = build_agent_gold(gs_predictions or bg_predictions)
     v8_projection = None
     v12_projection = None
+    openai_projection = None
     if gold_by_run:
         v8_rows = load_jsonl(args.v8_predictions)
         v12_rows = load_jsonl(args.v12_predictions)
+        openai_rows = load_jsonl(args.openai_predictions)
         v8_projection = agent_projection_metrics(
             gold_by_run,
             agents_by_run,
@@ -197,10 +203,17 @@ def main():
             agents_by_run,
             {row.get("run_id"): sft_projected_agents(row, args.label_policy, agents_by_run.get(row.get("run_id"), [])) for row in v12_rows},
         )
+        openai_projection = agent_projection_metrics(
+            gold_by_run,
+            agents_by_run,
+            {row.get("run_id"): sft_projected_agents(row, args.label_policy, agents_by_run.get(row.get("run_id"), [])) for row in openai_rows},
+        )
     if v8:
         rows.append(sft_row("V8-SFT", v8, v8_projection))
     if v12:
         rows.append(sft_row("V12-SFT", v12, v12_projection))
+    if openai_metrics:
+        rows.append(sft_row(args.openai_name, openai_metrics, openai_projection))
     if gs:
         rows.append(gnn_row("G-Safeguard-style GAT", gs))
     if bg:
