@@ -1,0 +1,130 @@
+{
+  "schema": "Graph-grounded-Candidate-SFT/v12",
+  "source": "v12_format_converted_from_hq_visible_output_marker_labels",
+  "label_policy": "HQ visible-output marker labels: marker strings are accepted only when found in visible agent/message/tool/final output, not in private/config/prompt/attack metadata. Marker strings are redacted from SFT-visible input while preserving surrounding harmful behavior semantics.",
+  "files": {
+    "all": {
+      "total": 7362,
+      "by_verdict": {
+        "attack_failed": 4917,
+        "attack_success": 2253,
+        "clean_safe": 192
+      },
+      "by_surface": {
+        "dual": 569,
+        "input": 1291,
+        "memory": 1293,
+        "message": 1340,
+        "none": 192,
+        "profile": 1337,
+        "tool": 1340
+      }
+    },
+    "train": {
+      "total": 5879,
+      "by_verdict": {
+        "attack_failed": 3934,
+        "attack_success": 1801,
+        "clean_safe": 144
+      },
+      "by_surface": {
+        "dual": 457,
+        "input": 1031,
+        "memory": 988,
+        "message": 1078,
+        "none": 144,
+        "profile": 1096,
+        "tool": 1085
+      }
+    },
+    "test": {
+      "total": 1483,
+      "by_verdict": {
+        "attack_failed": 983,
+        "attack_success": 452,
+        "clean_safe": 48
+      },
+      "by_surface": {
+        "dual": 112,
+        "input": 260,
+        "memory": 305,
+        "message": 262,
+        "none": 48,
+        "profile": 241,
+        "tool": 255
+      }
+    }
+  },
+  "leak_check": {
+    "all": {},
+    "train": {},
+    "test": {}
+  },
+  "candidate_stats": {
+    "all": {
+      "avg_candidates": 13.435,
+      "min_candidates": 9,
+      "max_candidates": 87,
+      "by_type": {
+        "edge": 33152,
+        "global": 7362,
+        "node": 29199,
+        "tool": 29199
+      }
+    },
+    "train": {
+      "avg_candidates": 13.404,
+      "min_candidates": 9,
+      "max_candidates": 87,
+      "by_type": {
+        "edge": 26365,
+        "global": 5879,
+        "node": 23279,
+        "tool": 23279
+      }
+    },
+    "test": {
+      "avg_candidates": 13.56,
+      "min_candidates": 9,
+      "max_candidates": 87,
+      "by_type": {
+        "edge": 6787,
+        "global": 1483,
+        "node": 5920,
+        "tool": 5920
+      }
+    }
+  },
+  "trace_quality": {
+    "all": {
+      "trace_steps": {
+        "localize_component": 7362,
+        "verify_outcome_effect": 7362
+      },
+      "invalid_refs": 0,
+      "old_field_rows": {}
+    },
+    "train": {
+      "trace_steps": {
+        "localize_component": 5879,
+        "verify_outcome_effect": 5879
+      },
+      "invalid_refs": 0,
+      "old_field_rows": {}
+    },
+    "test": {
+      "trace_steps": {
+        "localize_component": 1483,
+        "verify_outcome_effect": 1483
+      },
+      "invalid_refs": 0,
+      "old_field_rows": {}
+    }
+  },
+  "quality_sample_problem_counts": {},
+  "hq_success_evidence_added": {
+    "all_added": 2109,
+    "train_added": 1683,
+    "test_added": 426
+  }
+}
