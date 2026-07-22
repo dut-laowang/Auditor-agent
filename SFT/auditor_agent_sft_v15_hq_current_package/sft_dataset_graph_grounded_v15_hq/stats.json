@@ -1,0 +1,141 @@
+{
+  "schema": "Graph-grounded-Candidate-SFT/v12",
+  "source": "current_completed_20260721_171213.zip",
+  "label_policy": "V15-HQ uses V14-HQ visible-output marker policy on the current_completed export. Attacked runs use llm_judge/marker attack_signals: marker_success means attack_success, otherwise attack_failed. Clean runs are clean_safe. Private controls are included as clean_safe only when private_control_signals show no natural marker leakage; private controls with natural marker leakage or missing signal are excluded.",
+  "redaction_policy": "SFT-visible messages remove attack_id, success_marker(s), attack_metadata, injected-instruction labels, raw ACI markers, and private metadata. Visible harmful effects are retained with semantic placeholders.",
+  "source_counts": {
+    "manifest_total": 4791,
+    "selected_total": 2904,
+    "excluded": {
+      "private_control_natural_marker_leakage": 68,
+      "attacked_missing_marker_signal": 534,
+      "private_control_missing_signal": 165,
+      "attack_success_missing_visible_hq_snippet": 49,
+      "no_visible_run_evidence": 1071
+    },
+    "attack_signal_rows": 2926,
+    "private_control_signal_rows": 1006
+  },
+  "files": {
+    "all": {
+      "total": 2904,
+      "by_verdict": {
+        "clean_safe": 777,
+        "attack_success": 1480,
+        "attack_failed": 647
+      },
+      "by_condition": {
+        "private_control": 678,
+        "attacked": 2127,
+        "clean": 99
+      },
+      "by_scenario": {
+        "bargaining": 944,
+        "coding": 1005,
+        "minecraft": 955
+      },
+      "by_topology": {
+        "chain": 788,
+        "graph": 716,
+        "star": 702,
+        "tree": 698
+      },
+      "by_surface": {
+        "input": 619,
+        "profile": 604,
+        "message": 612,
+        "memory": 610,
+        "tool": 360,
+        "none": 99
+      },
+      "by_objective": {
+        "disclosure": 1410,
+        "disruption": 703,
+        "hijacking": 692,
+        "none": 99
+      }
+    },
+    "train": {
+      "total": 2319,
+      "by_verdict": {
+        "attack_success": 1182,
+        "clean_safe": 622,
+        "attack_failed": 515
+      },
+      "by_condition": {
+        "attacked": 1697,
+        "private_control": 543,
+        "clean": 79
+      },
+      "by_scenario": {
+        "minecraft": 763,
+        "bargaining": 754,
+        "coding": 802
+      },
+      "by_topology": {
+        "tree": 562,
+        "chain": 642,
+        "graph": 559,
+        "star": 556
+      },
+      "by_surface": {
+        "message": 491,
+        "input": 493,
+        "profile": 482,
+        "memory": 487,
+        "tool": 287,
+        "none": 79
+      },
+      "by_objective": {
+        "disruption": 562,
+        "hijacking": 551,
+        "disclosure": 1127,
+        "none": 79
+      }
+    },
+    "test": {
+      "total": 585,
+      "by_verdict": {
+        "attack_success": 298,
+        "attack_failed": 132,
+        "clean_safe": 155
+      },
+      "by_condition": {
+        "attacked": 430,
+        "private_control": 135,
+        "clean": 20
+      },
+      "by_scenario": {
+        "minecraft": 192,
+        "bargaining": 190,
+        "coding": 203
+      },
+      "by_topology": {
+        "graph": 157,
+        "tree": 136,
+        "star": 146,
+        "chain": 146
+      },
+      "by_surface": {
+        "message": 121,
+        "memory": 123,
+        "input": 126,
+        "tool": 73,
+        "profile": 122,
+        "none": 20
+      },
+      "by_objective": {
+        "hijacking": 141,
+        "disruption": 141,
+        "disclosure": 283,
+        "none": 20
+      }
+    }
+  },
+  "leak_check": {
+    "all": {},
+    "train": {},
+    "test": {}
+  },
+  "quality_sample_problem_counts": {}
+}
