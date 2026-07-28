@@ -1,5 +1,10 @@
 # MAS Auditor SFT V16-Hybrid
 
+> **Rejected for training:** post-run auditing found deterministic target
+> leakage through `hq_visible_output_marker_scan`, clean-reference availability,
+> and clean-contrast flags. Use
+> `SFT/auditor_agent_sft_v16_1_leakfree_package/` instead.
+
 V16 keeps the V12 graph-grounded SFT schema and converts the completed
 `weekend_fresh_single1_10_dual1_5` benchmark into a uniform training corpus.
 It does not relabel the source benchmark.

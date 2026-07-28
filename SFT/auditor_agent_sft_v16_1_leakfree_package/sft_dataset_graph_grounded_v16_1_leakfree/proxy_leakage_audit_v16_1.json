@@ -1,0 +1,32 @@
+{
+  "status": "passed",
+  "rejected_v16_finding": {
+    "legacy_rule": "marker_scan_source => attack_success; else clean_reference => clean_safe; else attack_failed",
+    "test_accuracy": 1.0,
+    "conclusion": "rejected as target leakage"
+  },
+  "v16_1_hard_gates": {
+    "exact_train_test_prompt_overlap": 0,
+    "normalized_train_test_prompt_overlap": 0,
+    "train_test_task_group_overlap": 0,
+    "marker_scan_source_hits_train": 0,
+    "marker_scan_source_hits_test": 0,
+    "clean_reference_available_hits_train": 0,
+    "clean_reference_available_hits_test": 0,
+    "clean_contrast_flag_hits_train": 0,
+    "clean_contrast_flag_hits_test": 0,
+    "single_structural_features_support_ge_20_purity_ge_0_95": 0
+  },
+  "v16_1_proxy_baselines": {
+    "legacy_rule_train_accuracy": 0.4434712302924134,
+    "legacy_rule_test_accuracy": 0.44258760107816714,
+    "tfidf_word_bigram_logistic_test_accuracy": 0.5778975741239892,
+    "tfidf_three_class_macro_f1": 0.5730,
+    "tfidf_class_f1": {
+      "attack_failed": 0.6036,
+      "attack_success": 0.5722,
+      "clean_safe": 0.5431
+    }
+  },
+  "interpretation": "The deterministic privileged-label shortcut is removed. The remaining lightweight text baseline is far below perfect and reflects non-privileged visible run content."
+}
