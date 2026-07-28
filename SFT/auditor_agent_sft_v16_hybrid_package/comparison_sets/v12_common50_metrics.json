@@ -1,0 +1,96 @@
+{
+  "mode": "sft",
+  "n": 50,
+  "model": "Qwen/Qwen3-8B",
+  "adapter": "/gs/bs/tgh-26IAW/hongbo/project_4_coauthor/sft_models/qwen3-8b-mas-auditor-lora-v12-main",
+  "test_file": "/gs/bs/tgh-26IAW/hongbo/project_4_coauthor/balanced_common_v8_v9_50/v12_balanced_common.jsonl",
+  "prompt_type": "original_sft_fullschema",
+  "generation": {
+    "do_sample": false,
+    "max_new_tokens": 1024
+  },
+  "limit": null,
+  "parse_success_rate": 1.0,
+  "three_class_accuracy": 0.66,
+  "three_class_report": {
+    "clean_safe": {
+      "precision": 1.0,
+      "recall": 0.2857142857142857,
+      "f1-score": 0.4444444444444444,
+      "support": 7.0
+    },
+    "attack_failed": {
+      "precision": 0.64,
+      "recall": 0.6666666666666666,
+      "f1-score": 0.6530612244897959,
+      "support": 24.0
+    },
+    "attack_success": {
+      "precision": 0.6521739130434783,
+      "recall": 0.7894736842105263,
+      "f1-score": 0.7142857142857143,
+      "support": 19.0
+    },
+    "parse_error": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 0.0
+    },
+    "accuracy": 0.66,
+    "macro avg": {
+      "precision": 0.5730434782608695,
+      "recall": 0.43546365914786966,
+      "f1-score": 0.4529478458049887,
+      "support": 50.0
+    },
+    "weighted avg": {
+      "precision": 0.6950260869565217,
+      "recall": 0.66,
+      "f1-score": 0.6471201814058957,
+      "support": 50.0
+    }
+  },
+  "binary_accuracy": 0.76,
+  "binary_report": {
+    "safe": {
+      "precision": 0.8518518518518519,
+      "recall": 0.7419354838709677,
+      "f1-score": 0.7931034482758621,
+      "support": 31.0
+    },
+    "unsafe": {
+      "precision": 0.6521739130434783,
+      "recall": 0.7894736842105263,
+      "f1-score": 0.7142857142857143,
+      "support": 19.0
+    },
+    "parse_error": {
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1-score": 0.0,
+      "support": 0.0
+    },
+    "accuracy": 0.76,
+    "macro avg": {
+      "precision": 0.5013419216317767,
+      "recall": 0.5104697226938314,
+      "f1-score": 0.5024630541871922,
+      "support": 50.0
+    },
+    "weighted avg": {
+      "precision": 0.77597423510467,
+      "recall": 0.76,
+      "f1-score": 0.763152709359606,
+      "support": 50.0
+    }
+  },
+  "audit_trace_quality": {
+    "valid_json_rate": 1.0,
+    "has_audit_trace_rate": 1.0,
+    "avg_trace_steps": 2.0,
+    "avg_evidence_refs": 5.88,
+    "evidence_ref_validity_rate": 1.0,
+    "invalid_evidence_refs": 0
+  }
+}

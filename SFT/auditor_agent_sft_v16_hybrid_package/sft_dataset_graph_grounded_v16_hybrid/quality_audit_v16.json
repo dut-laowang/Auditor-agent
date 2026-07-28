@@ -1,0 +1,182 @@
+{
+  "quality_control_50": {
+    "checks": {
+      "rows": 50,
+      "valid_message_triplet": 50,
+      "source_mapping_ok": 50,
+      "has_visible_evidence": 50,
+      "has_candidates": 50,
+      "assistant_json_object": 50
+    },
+    "failures": [],
+    "strata": [
+      {
+        "scenario": "bargaining",
+        "attack_mode": "dual_site",
+        "verdict": "attack_failed",
+        "count": 2
+      },
+      {
+        "scenario": "bargaining",
+        "attack_mode": "dual_site",
+        "verdict": "attack_success",
+        "count": 2
+      },
+      {
+        "scenario": "bargaining",
+        "attack_mode": "dual_site",
+        "verdict": "clean_safe",
+        "count": 2
+      },
+      {
+        "scenario": "bargaining",
+        "attack_mode": "single_site",
+        "verdict": "attack_failed",
+        "count": 2
+      },
+      {
+        "scenario": "bargaining",
+        "attack_mode": "single_site",
+        "verdict": "attack_success",
+        "count": 2
+      },
+      {
+        "scenario": "bargaining",
+        "attack_mode": "single_site",
+        "verdict": "clean_safe",
+        "count": 2
+      },
+      {
+        "scenario": "coding",
+        "attack_mode": "dual_site",
+        "verdict": "attack_failed",
+        "count": 2
+      },
+      {
+        "scenario": "coding",
+        "attack_mode": "dual_site",
+        "verdict": "attack_success",
+        "count": 2
+      },
+      {
+        "scenario": "coding",
+        "attack_mode": "dual_site",
+        "verdict": "clean_safe",
+        "count": 3
+      },
+      {
+        "scenario": "coding",
+        "attack_mode": "single_site",
+        "verdict": "attack_failed",
+        "count": 3
+      },
+      {
+        "scenario": "coding",
+        "attack_mode": "single_site",
+        "verdict": "attack_success",
+        "count": 2
+      },
+      {
+        "scenario": "coding",
+        "attack_mode": "single_site",
+        "verdict": "clean_safe",
+        "count": 2
+      },
+      {
+        "scenario": "minecraft",
+        "attack_mode": "dual_site",
+        "verdict": "attack_failed",
+        "count": 2
+      },
+      {
+        "scenario": "minecraft",
+        "attack_mode": "dual_site",
+        "verdict": "attack_success",
+        "count": 2
+      },
+      {
+        "scenario": "minecraft",
+        "attack_mode": "dual_site",
+        "verdict": "clean_safe",
+        "count": 2
+      },
+      {
+        "scenario": "minecraft",
+        "attack_mode": "single_site",
+        "verdict": "attack_failed",
+        "count": 2
+      },
+      {
+        "scenario": "minecraft",
+        "attack_mode": "single_site",
+        "verdict": "attack_success",
+        "count": 2
+      },
+      {
+        "scenario": "minecraft",
+        "attack_mode": "single_site",
+        "verdict": "clean_safe",
+        "count": 2
+      },
+      {
+        "scenario": "research",
+        "attack_mode": "dual_site",
+        "verdict": "attack_failed",
+        "count": 2
+      },
+      {
+        "scenario": "research",
+        "attack_mode": "dual_site",
+        "verdict": "attack_success",
+        "count": 2
+      },
+      {
+        "scenario": "research",
+        "attack_mode": "dual_site",
+        "verdict": "clean_safe",
+        "count": 2
+      },
+      {
+        "scenario": "research",
+        "attack_mode": "single_site",
+        "verdict": "attack_failed",
+        "count": 2
+      },
+      {
+        "scenario": "research",
+        "attack_mode": "single_site",
+        "verdict": "attack_success",
+        "count": 2
+      },
+      {
+        "scenario": "research",
+        "attack_mode": "single_site",
+        "verdict": "clean_safe",
+        "count": 2
+      }
+    ]
+  },
+  "source_malformed_jsonl": {
+    "affected_files": 0,
+    "bad_lines": 0,
+    "by_mode": {
+      "single": 0,
+      "dual": 0
+    },
+    "by_kind": {
+      "trajectories": 0,
+      "marble_results": 0
+    },
+    "files": []
+  },
+  "dataset_line_counts": {
+    "all.jsonl": 9276,
+    "train.jsonl": 7421,
+    "test.jsonl": 1855
+  },
+  "sha256": {
+    "all.jsonl": "649b76ec96d87dadd99c4168ebf8f077feed951015365a03b87a31409081f86c",
+    "train.jsonl": "7e5d0abb04c7ffa83e440423e47a5210eb39f2345961873fbe594516782baace",
+    "test.jsonl": "eb8b91d197cf25e9476936629000583f4ce948c2006f19500e43cd961358938a"
+  }
+}
