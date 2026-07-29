@@ -19,3 +19,8 @@ The workflow performs:
 
 Outputs are written under `$BASE`, while model and Hugging Face caches stay on
 the AutoDL data disk.
+
+The workflow is restart-safe. Training resumes from the newest `checkpoint-*`
+under the model output directory, and each evaluation continues from the
+validated prefix already stored in `predictions.jsonl`. Re-running the same
+command therefore continues an interrupted job instead of discarding progress.

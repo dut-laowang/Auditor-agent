@@ -39,7 +39,8 @@ CUDA_VISIBLE_DEVICES="$GPU" python "$PKG/server_scripts/train_qwen3_lora_sft.py"
   --epochs 2 \
   --lr 2e-4 \
   --batch 4 \
-  --grad-accum 4
+  --grad-accum 4 \
+  --resume auto
 
 python "$PKG/server_scripts/make_stratified_subset.py" \
   --input-file "$DATA/test.jsonl" \
@@ -59,7 +60,8 @@ CUDA_VISIBLE_DEVICES="$GPU" python "$PKG/server_scripts/eval_qwen3_fullschema.py
   --adapter "$OUT" \
   --test-file "$SUBSET50" \
   --output-dir "$EVAL50" \
-  --max-new-tokens 1024
+  --max-new-tokens 1024 \
+  --resume
 
 CUDA_VISIBLE_DEVICES="$GPU" python "$PKG/server_scripts/eval_qwen3_fullschema.py" \
   --mode sft \
@@ -67,7 +69,8 @@ CUDA_VISIBLE_DEVICES="$GPU" python "$PKG/server_scripts/eval_qwen3_fullschema.py
   --adapter "$OUT" \
   --test-file "$SUBSET200" \
   --output-dir "$EVAL200" \
-  --max-new-tokens 1024
+  --max-new-tokens 1024 \
+  --resume
 
 CUDA_VISIBLE_DEVICES="$GPU" python "$PKG/server_scripts/eval_qwen3_fullschema.py" \
   --mode sft \
@@ -75,7 +78,8 @@ CUDA_VISIBLE_DEVICES="$GPU" python "$PKG/server_scripts/eval_qwen3_fullschema.py
   --adapter "$OUT" \
   --test-file "$DATA/test.jsonl" \
   --output-dir "$EVALFULL" \
-  --max-new-tokens 1024
+  --max-new-tokens 1024 \
+  --resume
 
 if [[ -n "${COMMON50:-}" && -f "$COMMON50" ]]; then
   CUDA_VISIBLE_DEVICES="$GPU" python "$PKG/server_scripts/eval_qwen3_fullschema.py" \
@@ -84,7 +88,8 @@ if [[ -n "${COMMON50:-}" && -f "$COMMON50" ]]; then
     --adapter "$OUT" \
     --test-file "$COMMON50" \
     --output-dir "$EVALCOMMON" \
-    --max-new-tokens 1024
+    --max-new-tokens 1024 \
+    --resume
 
   if [[ -n "${V12_COMMON50_METRICS:-}" && -f "$V12_COMMON50_METRICS" ]]; then
     python "$PKG/server_scripts/compare_eval_metrics.py" \

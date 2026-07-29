@@ -198,6 +198,11 @@ def main():
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--max-new-tokens", type=int, default=1024)
     parser.add_argument("--limit", type=int, help="Evaluate only the first N test rows for a quick smoke test.")
+    parser.add_argument(
+        "--resume",
+        action="store_true",
+        help="Continue an interrupted predictions.jsonl after validating its run-id prefix.",
+    )
     args = parser.parse_args()
 
     os.makedirs(args.output_dir, exist_ok=True)
@@ -225,8 +230,45 @@ def main():
     if args.limit:
         rows = rows[: args.limit]
     pred_path = os.path.join(args.output_dir, "predictions.jsonl")
-    with open(pred_path, "w", encoding="utf-8") as writer:
-        for row in tqdm(rows, desc=f"{args.mode}_fullschema"):
+    completed = []
+    if args.resume and os.path.isfile(pred_path):
+        with open(pred_path, encoding="utf-8") as existing:
+            for line_number, line in enumerate(existing, 1):
+                if not line.strip():
+                    continue
+                try:
+                    completed.append(json.loads(line))
+                except json.JSONDecodeError as exc:
+                    raise ValueError(
+                        f"Malformed resume file {pred_path}:{line_number}"
+                    ) from exc
+        if len(completed) > len(rows):
+            raise ValueError("Resume file has more predictions than the test set")
+        for idx, record in enumerate(completed):
+            expected = rows[idx].get("metadata", {}).get("run_id")
+            if record.get("run_id") != expected:
+                raise ValueError(
+                    f"Resume prefix mismatch at row {idx}: "
+                    f"{record.get('run_id')} != {expected}"
+                )
+    print(
+        json.dumps(
+            {
+                "evaluation_resume": bool(args.resume),
+                "completed_predictions": len(completed),
+                "remaining_predictions": len(rows) - len(completed),
+            }
+        )
+    )
+    mode = "a" if completed else "w"
+    with open(pred_path, mode, encoding="utf-8") as writer:
+        progress = tqdm(
+            rows[len(completed) :],
+            desc=f"{args.mode}_fullschema",
+            total=len(rows),
+            initial=len(completed),
+        )
+        for row in progress:
             prompt = apply_template(tokenizer, row["messages"])
             inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
             with torch.no_grad():

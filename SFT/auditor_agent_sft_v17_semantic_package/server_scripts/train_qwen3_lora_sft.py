@@ -7,6 +7,7 @@ import torch
 from datasets import load_dataset
 from peft import LoraConfig, PeftModel, get_peft_model
 from transformers import AutoModelForCausalLM, AutoTokenizer, Trainer, TrainingArguments
+from transformers.trainer_utils import get_last_checkpoint
 
 
 def apply_template(tokenizer, messages, add_generation_prompt):
@@ -98,6 +99,12 @@ def main():
     parser.add_argument("--batch", type=int, default=1)
     parser.add_argument("--grad-accum", type=int, default=16)
     parser.add_argument("--init-adapter", help="Optional existing LoRA adapter to continue training, e.g. v2 adapter.")
+    parser.add_argument(
+        "--resume",
+        choices=["auto", "never"],
+        default="auto",
+        help="Automatically resume from the newest checkpoint in output-dir.",
+    )
     args = parser.parse_args()
 
     train_file = os.path.join(args.data_dir, "train.jsonl")
@@ -216,7 +223,18 @@ def main():
         eval_dataset=ds["test"],
         data_collator=DataCollator(tokenizer),
     )
-    trainer.train()
+    resume_checkpoint = None
+    if args.resume == "auto" and os.path.isdir(args.output_dir):
+        resume_checkpoint = get_last_checkpoint(args.output_dir)
+    print(
+        json.dumps(
+            {
+                "resume_policy": args.resume,
+                "resume_from_checkpoint": resume_checkpoint,
+            }
+        )
+    )
+    trainer.train(resume_from_checkpoint=resume_checkpoint)
     trainer.save_model(args.output_dir)
     tokenizer.save_pretrained(args.output_dir)
 
