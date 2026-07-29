@@ -32,14 +32,44 @@ def preprocess(example, tokenizer, max_len):
     full = tokenizer(full_text, add_special_tokens=False)
     prompt = tokenizer(prompt_text, add_special_tokens=False)
 
-    input_ids = full["input_ids"][:max_len]
-    attention_mask = full["attention_mask"][:max_len]
-    labels = input_ids.copy()
-    prompt_len = min(len(prompt["input_ids"]), len(labels))
-    labels[:prompt_len] = [-100] * prompt_len
-    if all(x == -100 for x in labels):
-        labels[-1] = input_ids[-1]
-    return {"input_ids": input_ids, "attention_mask": attention_mask, "labels": labels}
+    full_ids = full["input_ids"]
+    prompt_ids = prompt["input_ids"]
+    # The generation-prompt template and the full conversation can differ at
+    # the assistant boundary. Find their actual common prefix instead of
+    # assuming prompt length is an exact boundary.
+    boundary = 0
+    for left, right in zip(full_ids, prompt_ids):
+        if left != right:
+            break
+        boundary += 1
+    prefix_ids = full_ids[:boundary]
+    target_ids = full_ids[boundary:]
+    if not target_ids:
+        raise ValueError("No assistant target tokens after chat-template boundary")
+    if len(target_ids) >= max_len:
+        raise ValueError(
+            f"Assistant target has {len(target_ids)} tokens, exceeding max_len={max_len}"
+        )
+
+    prompt_budget = max_len - len(target_ids)
+    prompt_was_truncated = len(prefix_ids) > prompt_budget
+    if prompt_was_truncated:
+        # Retain the system/header prefix plus the most recent run evidence.
+        head = min(256, prompt_budget)
+        tail = prompt_budget - head
+        prefix_ids = prefix_ids[:head] + (prefix_ids[-tail:] if tail else [])
+    input_ids = prefix_ids + target_ids
+    attention_mask = [1] * len(input_ids)
+    labels = [-100] * len(prefix_ids) + target_ids
+    if not any(token != -100 for token in labels):
+        raise ValueError("Assistant supervision was lost during preprocessing")
+    return {
+        "input_ids": input_ids,
+        "attention_mask": attention_mask,
+        "labels": labels,
+        "supervised_tokens": len(target_ids),
+        "prompt_was_truncated": prompt_was_truncated,
+    }
 
 
 class DataCollator:
@@ -97,6 +127,26 @@ def main():
         lambda row: preprocess(row, tokenizer, args.max_len),
         remove_columns=ds["train"].column_names,
     )
+    for split in ("train", "test"):
+        supervised = ds[split]["supervised_tokens"]
+        truncated = ds[split]["prompt_was_truncated"]
+        if not supervised or min(supervised) < 16:
+            raise ValueError(
+                f"Invalid assistant supervision in {split}: "
+                f"minimum target tokens={min(supervised) if supervised else 0}"
+            )
+        print(
+            json.dumps(
+                {
+                    "preprocess_split": split,
+                    "rows": len(supervised),
+                    "min_supervised_tokens": min(supervised),
+                    "max_supervised_tokens": max(supervised),
+                    "prompt_truncated_rows": sum(bool(x) for x in truncated),
+                }
+            )
+        )
+    ds = ds.remove_columns(["supervised_tokens", "prompt_was_truncated"])
 
     model = AutoModelForCausalLM.from_pretrained(
         args.model,
