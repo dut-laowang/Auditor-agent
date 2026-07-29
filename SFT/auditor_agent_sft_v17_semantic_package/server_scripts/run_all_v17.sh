@@ -7,6 +7,7 @@ PKG="$REPO/SFT/auditor_agent_sft_v17_semantic_package"
 DATA="$PKG/sft_dataset_graph_grounded_v17_semantic"
 OUT="${OUT:-$BASE/sft_models/qwen3-8b-mas-auditor-lora-v17-semantic-e2-b4g4}"
 GPU="${GPU:-0}"
+TRAIN_DONE="$OUT/.v17_training_complete"
 
 SUBSET_DIR="$BASE/qwen3_8b_sft_v17_semantic_subsets"
 SUBSET50="$SUBSET_DIR/v17_semantic_test50.jsonl"
@@ -31,16 +32,21 @@ if [[ -f "$DATA/SHA256SUMS" ]]; then
   (cd "$DATA" && sha256sum -c SHA256SUMS)
 fi
 
-CUDA_VISIBLE_DEVICES="$GPU" python "$PKG/server_scripts/train_qwen3_lora_sft.py" \
-  --model Qwen/Qwen3-8B \
-  --data-dir "$DATA" \
-  --output-dir "$OUT" \
-  --max-len 4096 \
-  --epochs 2 \
-  --lr 2e-4 \
-  --batch 4 \
-  --grad-accum 4 \
-  --resume auto
+if [[ -f "$TRAIN_DONE" ]]; then
+  echo "Training already completed: $TRAIN_DONE"
+else
+  CUDA_VISIBLE_DEVICES="$GPU" python "$PKG/server_scripts/train_qwen3_lora_sft.py" \
+    --model Qwen/Qwen3-8B \
+    --data-dir "$DATA" \
+    --output-dir "$OUT" \
+    --max-len 4096 \
+    --epochs 2 \
+    --lr 2e-4 \
+    --batch 4 \
+    --grad-accum 4 \
+    --resume auto
+  touch "$TRAIN_DONE"
+fi
 
 python "$PKG/server_scripts/make_stratified_subset.py" \
   --input-file "$DATA/test.jsonl" \
