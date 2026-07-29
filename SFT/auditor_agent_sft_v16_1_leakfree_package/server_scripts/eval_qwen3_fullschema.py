@@ -205,9 +205,12 @@ def main():
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
 
+    if not torch.cuda.is_available():
+        raise RuntimeError("CUDA GPU is required for V16.1 evaluation")
+    model_dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
     model = AutoModelForCausalLM.from_pretrained(
         args.model,
-        torch_dtype=torch.bfloat16,
+        torch_dtype=model_dtype,
         device_map="auto",
         trust_remote_code=True,
     )

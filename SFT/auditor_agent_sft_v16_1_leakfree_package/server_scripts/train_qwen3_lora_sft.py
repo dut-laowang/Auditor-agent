@@ -148,9 +148,23 @@ def main():
         )
     ds = ds.remove_columns(["supervised_tokens", "prompt_was_truncated"])
 
+    if not torch.cuda.is_available():
+        raise RuntimeError("CUDA GPU is required for V16.1 training")
+    use_bf16 = torch.cuda.is_bf16_supported()
+    use_tf32 = torch.cuda.get_device_capability()[0] >= 8
+    model_dtype = torch.bfloat16 if use_bf16 else torch.float16
+    print(
+        json.dumps(
+            {
+                "cuda_device": torch.cuda.get_device_name(0),
+                "precision": "bf16" if use_bf16 else "fp16",
+                "tf32": use_tf32,
+            }
+        )
+    )
     model = AutoModelForCausalLM.from_pretrained(
         args.model,
-        torch_dtype=torch.bfloat16,
+        torch_dtype=model_dtype,
         device_map="auto",
         trust_remote_code=True,
     )
@@ -179,8 +193,9 @@ def main():
         per_device_train_batch_size=args.batch,
         per_device_eval_batch_size=1,
         gradient_accumulation_steps=args.grad_accum,
-        bf16=True,
-        tf32=True,
+        bf16=use_bf16,
+        fp16=not use_bf16,
+        tf32=use_tf32,
         gradient_checkpointing=True,
         logging_steps=10,
         eval_strategy="steps",
