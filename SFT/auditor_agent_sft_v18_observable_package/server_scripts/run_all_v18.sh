@@ -22,6 +22,16 @@ V12_COMMON50_METRICS="${V12_COMMON50_METRICS:-$PKG/comparison_sets/v12_common50_
 export HF_HOME="${HF_HOME:-$BASE/sft_models/hf_cache}"
 export HF_HUB_CACHE="${HF_HUB_CACHE:-$HF_HOME/hub}"
 export HF_HUB_DISABLE_XET=1
+# TSUBAME QRSH jobs can have a strict per-job thread/process limit.  PyArrow,
+# BLAS, tokenizers, and PyTorch otherwise create independent CPU pools while
+# loading JSONL, which can abort before the first example is read.
+export OMP_NUM_THREADS="${OMP_NUM_THREADS:-1}"
+export MKL_NUM_THREADS="${MKL_NUM_THREADS:-1}"
+export OPENBLAS_NUM_THREADS="${OPENBLAS_NUM_THREADS:-1}"
+export NUMEXPR_NUM_THREADS="${NUMEXPR_NUM_THREADS:-1}"
+export ARROW_NUM_THREADS="${ARROW_NUM_THREADS:-1}"
+export RAYON_NUM_THREADS="${RAYON_NUM_THREADS:-1}"
+export TOKENIZERS_PARALLELISM=false
 
 mkdir -p "$SUBSET_DIR"
 
