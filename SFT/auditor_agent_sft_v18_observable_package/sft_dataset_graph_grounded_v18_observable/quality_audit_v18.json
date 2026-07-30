@@ -1,0 +1,236 @@
+{
+  "quality_control_200": {
+    "checks": {
+      "rows": 200,
+      "valid_message_triplet": 200,
+      "source_mapping_ok": 200,
+      "has_visible_evidence": 200,
+      "has_candidates": 200,
+      "assistant_json_object": 200
+    },
+    "failures": [],
+    "strata": [
+      {
+        "scenario": "bargaining",
+        "attack_mode": "dual_site",
+        "verdict": "attack_failed",
+        "count": 9
+      },
+      {
+        "scenario": "bargaining",
+        "attack_mode": "dual_site",
+        "verdict": "attack_success",
+        "count": 8
+      },
+      {
+        "scenario": "bargaining",
+        "attack_mode": "dual_site",
+        "verdict": "clean_safe",
+        "count": 8
+      },
+      {
+        "scenario": "bargaining",
+        "attack_mode": "single_site",
+        "verdict": "attack_failed",
+        "count": 8
+      },
+      {
+        "scenario": "bargaining",
+        "attack_mode": "single_site",
+        "verdict": "attack_success",
+        "count": 8
+      },
+      {
+        "scenario": "bargaining",
+        "attack_mode": "single_site",
+        "verdict": "clean_safe",
+        "count": 8
+      },
+      {
+        "scenario": "coding",
+        "attack_mode": "dual_site",
+        "verdict": "attack_failed",
+        "count": 9
+      },
+      {
+        "scenario": "coding",
+        "attack_mode": "dual_site",
+        "verdict": "attack_success",
+        "count": 8
+      },
+      {
+        "scenario": "coding",
+        "attack_mode": "dual_site",
+        "verdict": "clean_safe",
+        "count": 9
+      },
+      {
+        "scenario": "coding",
+        "attack_mode": "single_site",
+        "verdict": "attack_failed",
+        "count": 9
+      },
+      {
+        "scenario": "coding",
+        "attack_mode": "single_site",
+        "verdict": "attack_success",
+        "count": 8
+      },
+      {
+        "scenario": "coding",
+        "attack_mode": "single_site",
+        "verdict": "clean_safe",
+        "count": 8
+      },
+      {
+        "scenario": "minecraft",
+        "attack_mode": "dual_site",
+        "verdict": "attack_failed",
+        "count": 8
+      },
+      {
+        "scenario": "minecraft",
+        "attack_mode": "dual_site",
+        "verdict": "attack_success",
+        "count": 8
+      },
+      {
+        "scenario": "minecraft",
+        "attack_mode": "dual_site",
+        "verdict": "clean_safe",
+        "count": 9
+      },
+      {
+        "scenario": "minecraft",
+        "attack_mode": "single_site",
+        "verdict": "attack_failed",
+        "count": 8
+      },
+      {
+        "scenario": "minecraft",
+        "attack_mode": "single_site",
+        "verdict": "attack_success",
+        "count": 8
+      },
+      {
+        "scenario": "minecraft",
+        "attack_mode": "single_site",
+        "verdict": "clean_safe",
+        "count": 8
+      },
+      {
+        "scenario": "research",
+        "attack_mode": "dual_site",
+        "verdict": "attack_failed",
+        "count": 8
+      },
+      {
+        "scenario": "research",
+        "attack_mode": "dual_site",
+        "verdict": "attack_success",
+        "count": 9
+      },
+      {
+        "scenario": "research",
+        "attack_mode": "dual_site",
+        "verdict": "clean_safe",
+        "count": 8
+      },
+      {
+        "scenario": "research",
+        "attack_mode": "single_site",
+        "verdict": "attack_failed",
+        "count": 9
+      },
+      {
+        "scenario": "research",
+        "attack_mode": "single_site",
+        "verdict": "attack_success",
+        "count": 9
+      },
+      {
+        "scenario": "research",
+        "attack_mode": "single_site",
+        "verdict": "clean_safe",
+        "count": 8
+      }
+    ]
+  },
+  "source_malformed_jsonl": {
+    "affected_files": 0,
+    "bad_lines": 0,
+    "by_mode": {
+      "single": 0,
+      "dual": 0
+    },
+    "by_kind": {
+      "trajectories": 0,
+      "marble_results": 0
+    },
+    "files": []
+  },
+  "dataset_line_counts": {
+    "all.jsonl": 8487,
+    "train.jsonl": 6784,
+    "test.jsonl": 1703
+  },
+  "split_leakage": {
+    "exact_prompt_overlap": 0,
+    "normalized_prompt_overlap": 0,
+    "task_group_overlap": 0,
+    "train_privileged_hits": {},
+    "test_privileged_hits": {},
+    "legacy_proxy_rule_accuracy_train": 0.4002063679245283,
+    "legacy_proxy_rule_accuracy_test": 0.3981209630064592
+  },
+  "semantic_visibility": {
+    "train.jsonl": {
+      "clean_safe": {
+        "rows": 2128,
+        "has_redacted_entity": 2000,
+        "has_protected_context": 165
+      },
+      "attack_failed": {
+        "rows": 2715,
+        "has_redacted_entity": 1769,
+        "has_protected_context": 37
+      },
+      "attack_success": {
+        "rows": 1941,
+        "has_redacted_entity": 1576,
+        "has_protected_context": 140
+      }
+    },
+    "test.jsonl": {
+      "clean_safe": {
+        "rows": 526,
+        "has_redacted_entity": 494,
+        "has_protected_context": 38
+      },
+      "attack_failed": {
+        "rows": 678,
+        "has_redacted_entity": 433,
+        "has_protected_context": 12
+      },
+      "attack_success": {
+        "rows": 499,
+        "has_redacted_entity": 402,
+        "has_protected_context": 46
+      }
+    }
+  },
+  "redaction_integrity": {
+    "unique_source_markers": 36,
+    "raw_source_marker_hits": {},
+    "forbidden_benchmark_identity_hits": {},
+    "forbidden_input_key_hits": {},
+    "invalid_observable_event_hits": {},
+    "redacted_entity_ids": 6693,
+    "redacted_entity_ids_reused_across_runs": 0
+  },
+  "sha256": {
+    "all.jsonl": "6773e3c177febac28bb43e6b65b7a910788abed0d66db9fa30be1095f31d1741",
+    "train.jsonl": "7af5ebb87137e3a0cf32ee9e7093da202725db9092046cbaa1dc306a30034555",
+    "test.jsonl": "2e3ad6b59d7df7e0165625c371fead6ffcf5159f0c0314c394bb7971f5688210"
+  }
+}

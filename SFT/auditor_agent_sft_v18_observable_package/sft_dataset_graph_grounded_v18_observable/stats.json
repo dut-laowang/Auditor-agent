@@ -1,0 +1,247 @@
+{
+  "schema": "Graph-grounded-Candidate-SFT/v12",
+  "source_archive": "weekend_fresh_single1_10_dual1_5_bundle.tar.zst",
+  "policy": {
+    "source_immutability": "Source final labels are preserved. No attacked label is rewritten.",
+    "training_selection": "Attacked success/failure are mapped structurally to attack_success/attack_failed. not_exposed, ambiguous, and invalid remain unchanged in the exclusion audit and are not forced into the three-class SFT target.",
+    "controls": "Completed clean runs are clean_safe. Completed private controls are clean_safe only when their provided private-control signal has no natural marker leakage.",
+    "localization": "Candidate localization projects the source attack placement; it is not relabeled as causal attribution.",
+    "split": "Task-group holdout: one task from 1-5 and one from 6-10 per scenario.",
+    "redaction": "Per-run entity pseudonyms replace raw markers and private values. Benchmark injection tags are removed while ordinary instruction, communication, tool, and outcome semantics are retained."
+  },
+  "source_audit": {
+    "single": {
+      "manifest_rows": 9280,
+      "final_label_rows": 6840,
+      "security_judgment_rows": 6840,
+      "attack_signal_rows": 6840,
+      "private_control_signal_rows": 2280,
+      "malformed_jsonl_lines_skipped": 0,
+      "counts": {
+        "selected_private_control": 2126,
+        "selected_success": 1948,
+        "private_control_natural_marker_leakage": 151,
+        "selected_failure": 2862,
+        "excluded_not_exposed": 1211,
+        "excluded_ambiguous": 124,
+        "insufficient_observable_evidence": 689,
+        "non_completed": 9,
+        "selected_clean": 160
+      }
+    },
+    "dual": {
+      "manifest_rows": 1680,
+      "final_label_rows": 1200,
+      "security_judgment_rows": 1200,
+      "attack_signal_rows": 1200,
+      "private_control_signal_rows": 400,
+      "malformed_jsonl_lines_skipped": 0,
+      "counts": {
+        "selected_private_control": 368,
+        "selected_failure": 531,
+        "selected_success": 492,
+        "private_control_natural_marker_leakage": 32,
+        "excluded_not_exposed": 57,
+        "insufficient_observable_evidence": 100,
+        "non_completed": 2,
+        "excluded_ambiguous": 18,
+        "duplicate_cross_suite_clean": 80
+      }
+    }
+  },
+  "excluded": {
+    "private_control_natural_marker_leakage": 183,
+    "source_final_label::not_exposed": 1268,
+    "source_final_label::ambiguous": 142,
+    "insufficient_observable_evidence": 789,
+    "non_completed": 11,
+    "duplicate_cross_suite_clean": 80
+  },
+  "held_out_tasks": {
+    "bargaining": [
+      1,
+      6
+    ],
+    "coding": [
+      3,
+      7
+    ],
+    "minecraft": [
+      2,
+      7
+    ],
+    "research": [
+      1,
+      10
+    ]
+  },
+  "split_group_overlap": [],
+  "files": {
+    "all": {
+      "total": 8487,
+      "by_verdict": {
+        "clean_safe": 2654,
+        "attack_success": 2440,
+        "attack_failed": 3393
+      },
+      "by_source_final_label": {
+        "private_control": 2494,
+        "success": 2440,
+        "failure": 3393,
+        "clean": 160
+      },
+      "by_label_quality": {
+        "control": 2654,
+        "gold": 4845,
+        "silver": 988
+      },
+      "by_condition": {
+        "private_control": 2494,
+        "attacked": 5833,
+        "clean": 160
+      },
+      "by_scenario": {
+        "bargaining": 2288,
+        "coding": 2408,
+        "minecraft": 1948,
+        "research": 1843
+      },
+      "by_topology": {
+        "chain": 2289,
+        "graph": 2337,
+        "star": 1849,
+        "tree": 2012
+      },
+      "by_surface": {
+        "input": 1873,
+        "profile": 1637,
+        "message": 1186,
+        "memory": 1266,
+        "tool": 974,
+        "none": 160,
+        "dual": 1391
+      },
+      "by_objective": {
+        "disclosure": 4467,
+        "disruption": 1955,
+        "hijacking": 1905,
+        "none": 160
+      },
+      "by_attack_mode": {
+        "single_site": 7096,
+        "dual_site": 1391
+      }
+    },
+    "train": {
+      "total": 6784,
+      "by_verdict": {
+        "attack_failed": 2715,
+        "attack_success": 1941,
+        "clean_safe": 2128
+      },
+      "by_source_final_label": {
+        "failure": 2715,
+        "success": 1941,
+        "private_control": 2000,
+        "clean": 128
+      },
+      "by_label_quality": {
+        "gold": 3864,
+        "silver": 792,
+        "control": 2128
+      },
+      "by_condition": {
+        "attacked": 4656,
+        "private_control": 2000,
+        "clean": 128
+      },
+      "by_scenario": {
+        "bargaining": 1833,
+        "research": 1458,
+        "coding": 1942,
+        "minecraft": 1551
+      },
+      "by_topology": {
+        "chain": 1833,
+        "tree": 1610,
+        "graph": 1873,
+        "star": 1468
+      },
+      "by_surface": {
+        "memory": 1013,
+        "tool": 767,
+        "profile": 1304,
+        "input": 1500,
+        "message": 959,
+        "dual": 1113,
+        "none": 128
+      },
+      "by_objective": {
+        "disclosure": 3574,
+        "hijacking": 1527,
+        "disruption": 1555,
+        "none": 128
+      },
+      "by_attack_mode": {
+        "single_site": 5671,
+        "dual_site": 1113
+      }
+    },
+    "test": {
+      "total": 1703,
+      "by_verdict": {
+        "clean_safe": 526,
+        "attack_success": 499,
+        "attack_failed": 678
+      },
+      "by_source_final_label": {
+        "private_control": 494,
+        "success": 499,
+        "failure": 678,
+        "clean": 32
+      },
+      "by_label_quality": {
+        "control": 526,
+        "gold": 981,
+        "silver": 196
+      },
+      "by_condition": {
+        "private_control": 494,
+        "attacked": 1177,
+        "clean": 32
+      },
+      "by_scenario": {
+        "minecraft": 397,
+        "bargaining": 455,
+        "research": 385,
+        "coding": 466
+      },
+      "by_topology": {
+        "star": 381,
+        "graph": 464,
+        "chain": 456,
+        "tree": 402
+      },
+      "by_surface": {
+        "dual": 278,
+        "input": 373,
+        "message": 227,
+        "profile": 333,
+        "memory": 253,
+        "tool": 207,
+        "none": 32
+      },
+      "by_objective": {
+        "disclosure": 893,
+        "hijacking": 378,
+        "disruption": 400,
+        "none": 32
+      },
+      "by_attack_mode": {
+        "dual_site": 278,
+        "single_site": 1425
+      }
+    }
+  },
+  "validation": {}
+}

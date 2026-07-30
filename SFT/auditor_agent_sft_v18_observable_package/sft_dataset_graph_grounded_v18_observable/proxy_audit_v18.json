@@ -1,0 +1,117 @@
+{
+  "purpose": "Diagnostic proxy audit. Lexical predictability can reflect legitimate attack semantics and is not by itself evidence of label leakage.",
+  "test_rows": 1703,
+  "test_label_distribution": {
+    "clean_safe": 526,
+    "attack_success": 499,
+    "attack_failed": 678
+  },
+  "tfidf_word_bigram": {
+    "accuracy": 0.719906048150323,
+    "report": {
+      "clean_safe": {
+        "precision": 0.7294469357249627,
+        "recall": 0.9277566539923955,
+        "f1-score": 0.8167364016736401,
+        "support": 526.0
+      },
+      "attack_failed": {
+        "precision": 0.7131782945736435,
+        "recall": 0.6784660766961652,
+        "f1-score": 0.6953892668178382,
+        "support": 678.0
+      },
+      "attack_success": {
+        "precision": 0.7146529562982005,
+        "recall": 0.5571142284569138,
+        "f1-score": 0.6261261261261262,
+        "support": 499.0
+      },
+      "accuracy": 0.719906048150323,
+      "macro avg": {
+        "precision": 0.719092728865602,
+        "recall": 0.7211123197151581,
+        "f1-score": 0.7127505982058682,
+        "support": 1703.0
+      },
+      "weighted avg": {
+        "precision": 0.7186352302437244,
+        "recall": 0.719906048150323,
+        "f1-score": 0.712574402301683,
+        "support": 1703.0
+      }
+    },
+    "prediction_distribution": {
+      "clean_safe": 669,
+      "attack_success": 389,
+      "attack_failed": 645
+    }
+  },
+  "shallow_structural_proxy": {
+    "features": [
+      "scenario",
+      "topology",
+      "attack_mode",
+      "has_redacted_entity",
+      "has_protected_context",
+      "observed_event_count",
+      "final_output_count"
+    ],
+    "accuracy": 0.4732824427480916,
+    "report": {
+      "clean_safe": {
+        "precision": 0.4608,
+        "recall": 0.5475285171102662,
+        "f1-score": 0.5004344048653345,
+        "support": 526.0
+      },
+      "attack_failed": {
+        "precision": 0.6609686609686609,
+        "recall": 0.3421828908554572,
+        "f1-score": 0.4509232264334305,
+        "support": 678.0
+      },
+      "attack_success": {
+        "precision": 0.39339752407152684,
+        "recall": 0.5731462925851704,
+        "f1-score": 0.466557911908646,
+        "support": 499.0
+      },
+      "accuracy": 0.4732824427480916,
+      "macro avg": {
+        "precision": 0.5050553950133959,
+        "recall": 0.4876192335169646,
+        "f1-score": 0.47263851440247034,
+        "support": 1703.0
+      },
+      "weighted avg": {
+        "precision": 0.5207415834694328,
+        "recall": 0.4732824427480916,
+        "f1-score": 0.470796736654989,
+        "support": 1703.0
+      }
+    },
+    "prediction_distribution": {
+      "attack_success": 727,
+      "clean_safe": 625,
+      "attack_failed": 351
+    }
+  },
+  "redacted_entity_visibility": {
+    "clean_safe": {
+      "rows": 526,
+      "rows_with_entity": 494,
+      "rate": 0.9391634980988594
+    },
+    "attack_failed": {
+      "rows": 678,
+      "rows_with_entity": 433,
+      "rate": 0.6386430678466076
+    },
+    "attack_success": {
+      "rows": 499,
+      "rows_with_entity": 402,
+      "rate": 0.8056112224448898
+    }
+  }
+}
