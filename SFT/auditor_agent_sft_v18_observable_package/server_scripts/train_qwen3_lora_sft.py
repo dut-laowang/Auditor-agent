@@ -112,7 +112,7 @@ def main():
     ds = load_dataset("json", data_files={"train": train_file, "test": test_file})
 
     leak_pattern = re.compile(
-        r"ACI_[A-Z0-9_]+|\baci_[a-z0-9_]+\b|END_NEGOTIATION|success_marker|success_markers|"
+        r"ACI_[A-Z0-9_]+|\baci_[a-z0-9_]+\b|\bEND_NEGOTIATION\b|success_marker|success_markers|"
         r"attack_metadata|attack_id|marker_check|\[Injected[^\]]*\]|"
         r"offline verifier|attack-success index|labeled as attack-success",
         re.I,
