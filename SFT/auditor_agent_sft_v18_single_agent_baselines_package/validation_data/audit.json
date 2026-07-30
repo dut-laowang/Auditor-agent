@@ -1,0 +1,35 @@
+{
+  "protocol": "validation_third_frozen_before_training",
+  "seed": 20260730,
+  "train_rows": 2261,
+  "test_rows": 200,
+  "actual_train_fraction": 0.33328419811320753,
+  "flat_graph_train_run_order_equal": true,
+  "flat_graph_test_run_order_equal": true,
+  "flat_graph_train_targets_equal": true,
+  "flat_graph_test_targets_equal": true,
+  "flat_graph_train_evidence_equal": true,
+  "flat_graph_test_evidence_equal": true,
+  "train_test_run_overlap": 0,
+  "manifest_train_ids_equal": true,
+  "manifest_test_ids_equal": true,
+  "train_verdict_distribution": {
+    "attack_failed": 904,
+    "attack_success": 644,
+    "clean_safe": 713
+  },
+  "test_verdict_distribution": {
+    "attack_failed": 78,
+    "clean_safe": 64,
+    "attack_success": 58
+  },
+  "train_attack_mode_distribution": {
+    "single_site": 1891,
+    "dual_site": 370
+  },
+  "test_attack_mode_distribution": {
+    "dual_site": 33,
+    "single_site": 167
+  },
+  "violations": []
+}

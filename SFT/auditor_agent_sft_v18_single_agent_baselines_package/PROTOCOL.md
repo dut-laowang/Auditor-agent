@@ -4,7 +4,9 @@ This protocol is fixed before baseline predictions are generated.
 
 ## Primary controlled comparison
 
-Compare V18-Flat and V18-Graph on the exact same 1,703 test run IDs.
+Compare V18-Flat and V18-Graph after training on the exact same frozen
+one-third subset (2,261 run IDs) and evaluating on the exact same 200 test run
+IDs.
 
 - Primary classification endpoint: three-class macro-F1.
 - Secondary classification endpoints: three-class accuracy, binary accuracy,
@@ -27,6 +29,12 @@ same V18 200-run subset.
 - Outcome-adapted protocol: primary AgentDoG-to-V18 binary comparison.
 - No few-shot examples, calibration, threshold selection, or prompt revision
   after predictions are observed.
+
+## Domain-adapted AgentDoG
+
+Continue from the official AgentDoG 1.5 Llama-3.1-8B checkpoint with LoRA on
+the same frozen 2,261 V18-Flat rows. Use the same optimization settings and
+the same three-class/localization targets as the Qwen Flat/Graph models.
 
 ## Interpretation
 
