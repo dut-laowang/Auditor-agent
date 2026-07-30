@@ -1,0 +1,14 @@
+{
+  "train_rows": 6784,
+  "test_rows": 1703,
+  "run_id_overlap": 0,
+  "task_group_overlap": 0,
+  "normalized_prompt_overlap": 0,
+  "graph_flat_train_run_order_equal": true,
+  "graph_flat_test_run_order_equal": true,
+  "graph_flat_train_targets_equal": true,
+  "graph_flat_test_targets_equal": true,
+  "graph_flat_train_observable_evidence_equal": true,
+  "graph_flat_test_observable_evidence_equal": true,
+  "violations": []
+}

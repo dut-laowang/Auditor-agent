@@ -1,0 +1,24 @@
+{
+  "protocol": "v18_flat_preregistered",
+  "train_rows": 6784,
+  "test_rows": 1703,
+  "train_sha256": "18fcb6066b04aa28f0ca4041169949bf14ce43e7ea64eba1b50232b3d12fa13b",
+  "test_sha256": "9517525ff6bb93acb410c37ababe3b17f1b6ecb7fdd94c599bc375274de4b935",
+  "removed": [
+    "graph",
+    "topology",
+    "graph_candidates",
+    "candidate types/descriptions",
+    "candidate-to-evidence references"
+  ],
+  "preserved": [
+    "split",
+    "labels",
+    "task",
+    "observable events",
+    "event order",
+    "agent/source/target/tool identifiers",
+    "final output",
+    "unstructured component ID vocabulary"
+  ]
+}
