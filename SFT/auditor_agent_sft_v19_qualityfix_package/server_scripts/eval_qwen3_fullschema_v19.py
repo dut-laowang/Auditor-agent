@@ -257,12 +257,14 @@ def main():
         seal_record = os.path.join(args.output_dir, "SEALED_TEST_CONSUMED.json")
         if os.path.exists(seal_record) and not args.resume:
             raise RuntimeError(f"Sealed test already consumed: {seal_record}")
-        with open(seal_record, "w", encoding="utf-8") as handle:
-            json.dump(
-                {"test_sha256": test_sha256, "rows": len(rows), "mode": args.mode},
-                handle,
-                indent=2,
-            )
+        seal_payload = {"test_sha256": test_sha256, "rows": len(rows), "mode": args.mode}
+        if os.path.exists(seal_record):
+            with open(seal_record, encoding="utf-8") as handle:
+                if json.load(handle) != seal_payload:
+                    raise RuntimeError("Sealed-test resume metadata mismatch")
+        else:
+            with open(seal_record, "w", encoding="utf-8") as handle:
+                json.dump(seal_payload, handle, indent=2)
     pred_path = os.path.join(args.output_dir, "predictions.jsonl")
     completed = []
     if args.resume and os.path.isfile(pred_path):

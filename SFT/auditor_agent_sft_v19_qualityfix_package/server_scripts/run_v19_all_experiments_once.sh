@@ -39,10 +39,12 @@ for track in marble_only autogen_only mixed; do
     --validation-file "$data/validation.jsonl" \
     --output "$track_root/lexical_shortcut_validation.json"
   counterfactual_data="$track_root/validation_counterfactuals"
-  python "$PKG/scripts/make_validation_ablations.py" \
-    --validation-file "$data/validation.jsonl" \
-    --shortcut-report "$track_root/lexical_shortcut_validation.json" \
-    --output-dir "$counterfactual_data" --seed 42
+  if [[ ! -d "$counterfactual_data" ]]; then
+    python "$PKG/scripts/make_validation_ablations.py" \
+      --validation-file "$data/validation.jsonl" \
+      --shortcut-report "$track_root/lexical_shortcut_validation.json" \
+      --output-dir "$counterfactual_data" --seed 42
+  fi
 
   TRACK="$track" OUT="$adapter" BASE="$BASE" REPO="$REPO" GPU="$GPU" \
     bash "$PKG/server_scripts/run_train_v19.sh" \

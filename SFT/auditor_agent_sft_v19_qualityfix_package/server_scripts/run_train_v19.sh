@@ -20,16 +20,21 @@ export OPENBLAS_NUM_THREADS="${OPENBLAS_NUM_THREADS:-1}"
 export TOKENIZERS_PARALLELISM=false
 mkdir -p "$OUT"
 
-CUDA_VISIBLE_DEVICES="$GPU" python "$PKG/server_scripts/train_qwen3_lora_sft_v19.py" \
-  --model Qwen/Qwen3-8B \
-  --data-dir "$DATA" \
-  --output-dir "$OUT" \
-  --max-len 6144 \
-  --epochs 2 \
-  --lr 2e-4 \
-  --batch 2 \
-  --grad-accum 8 \
-  --seed 42 \
-  --resume auto 2>&1 | tee "$OUT/training.log"
+if [[ -f "$OUT/TRAINING_COMPLETE" ]]; then
+  echo "Training already complete: $OUT"
+else
+  CUDA_VISIBLE_DEVICES="$GPU" python "$PKG/server_scripts/train_qwen3_lora_sft_v19.py" \
+    --model Qwen/Qwen3-8B \
+    --data-dir "$DATA" \
+    --output-dir "$OUT" \
+    --max-len 6144 \
+    --epochs 2 \
+    --lr 2e-4 \
+    --batch 2 \
+    --grad-accum 8 \
+    --seed 42 \
+    --resume auto 2>&1 | tee "$OUT/training.log"
+  touch "$OUT/TRAINING_COMPLETE"
+fi
 
 echo "Training complete. Do not run final test until validation and ablations are frozen."

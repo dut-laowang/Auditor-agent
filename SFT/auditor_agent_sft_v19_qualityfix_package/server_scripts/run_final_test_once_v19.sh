@@ -10,7 +10,10 @@ case "$TRACK" in marble_only|autogen_only|mixed) ;; *) echo "Invalid TRACK=$TRAC
 DATA="$PKG/three_track_datasets/$TRACK"
 
 test -f "$ADAPTER/run_manifest.json"
-test ! -e "$OUTPUT/SEALED_TEST_CONSUMED.json"
+resume_args=()
+if [[ -e "$OUTPUT/SEALED_TEST_CONSUMED.json" ]]; then
+  resume_args+=(--resume)
+fi
 
 CUDA_VISIBLE_DEVICES="$GPU" python "$PKG/server_scripts/eval_qwen3_fullschema_v19.py" \
   --mode sft \
@@ -20,4 +23,5 @@ CUDA_VISIBLE_DEVICES="$GPU" python "$PKG/server_scripts/eval_qwen3_fullschema_v1
   --dataset-role test \
   --output-dir "$OUTPUT" \
   --max-new-tokens 1024 \
-  --sealed-test-ack FINAL_ONCE
+  --sealed-test-ack FINAL_ONCE \
+  "${resume_args[@]}"
