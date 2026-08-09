@@ -1,0 +1,41 @@
+{
+  "schema": "Graph-grounded-Candidate-SFT/v13",
+  "allowed_source_types": [
+    "autogen_native"
+  ],
+  "split_assignment": "inherited unchanged from the unified V19 grouped split",
+  "stats": {
+    "train": {
+      "total": 1023,
+      "verdict::attack_success": 268,
+      "source::autogen_native": 1023,
+      "topology::selector_group_chat": 672,
+      "verdict::attack_failed": 707,
+      "topology::swarm": 351,
+      "verdict::clean_safe": 48
+    },
+    "validation": {
+      "total": 425,
+      "verdict::attack_failed": 304,
+      "source::autogen_native": 425,
+      "topology::selector_group_chat": 272,
+      "topology::swarm": 153,
+      "verdict::attack_success": 105,
+      "verdict::clean_safe": 16
+    },
+    "test": {
+      "total": 337,
+      "verdict::attack_failed": 246,
+      "source::autogen_native": 337,
+      "topology::selector_group_chat": 228,
+      "topology::swarm": 109,
+      "verdict::attack_success": 75,
+      "verdict::clean_safe": 16
+    }
+  },
+  "sha256": {
+    "train.jsonl": "5523a9fd193a41ca71e311e20bf79799a9370dd81ae7a78a5759aa89c9084168",
+    "validation.jsonl": "328b5b13b23de705a40c7965189516b73496579160f63af56f7b0dfc30d13677",
+    "test.jsonl": "dd038c3e7c958be419a4ebc444ca8cf854635f0584af54049dc145345e83b9e6"
+  }
+}

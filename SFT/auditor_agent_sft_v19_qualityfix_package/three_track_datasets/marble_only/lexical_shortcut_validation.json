@@ -1,0 +1,407 @@
+{
+  "evaluation_split": "validation_only",
+  "test_accessed": false,
+  "accuracy": 0.7269681742043551,
+  "classification_report": {
+    "attack_failed": {
+      "precision": 0.7691197691197691,
+      "recall": 0.687741935483871,
+      "f1-score": 0.726158038147139,
+      "support": 775.0
+    },
+    "attack_success": {
+      "precision": 0.6970443349753694,
+      "recall": 0.5775510204081633,
+      "f1-score": 0.6316964285714286,
+      "support": 490.0
+    },
+    "clean_safe": {
+      "precision": 0.7023121387283237,
+      "recall": 0.9239543726235742,
+      "f1-score": 0.7980295566502463,
+      "support": 526.0
+    },
+    "accuracy": 0.7269681742043551,
+    "macro avg": {
+      "precision": 0.7228254142744874,
+      "recall": 0.7297491095052028,
+      "f1-score": 0.7186280077896047,
+      "support": 1791.0
+    },
+    "weighted avg": {
+      "precision": 0.7297798605119209,
+      "recall": 0.7269681742043551,
+      "f1-score": 0.7214222648587729,
+      "support": 1791.0
+    }
+  },
+  "top_features": {
+    "attack_failed": [
+      {
+        "feature": "end countering",
+        "weight": 1.0037467966677773
+      },
+      {
+        "feature": "process id",
+        "weight": 0.9563637591862489
+      },
+      {
+        "feature": "please work",
+        "weight": 0.9371347963054886
+      },
+      {
+        "feature": "verification",
+        "weight": 0.9250676541601949
+      },
+      {
+        "feature": "fairness",
+        "weight": 0.7811679868190464
+      },
+      {
+        "feature": "bargaining process",
+        "weight": 0.7442304359215578
+      },
+      {
+        "feature": "realistic bargaining",
+        "weight": 0.7358147598161169
+      },
+      {
+        "feature": "end thon",
+        "weight": 0.7343867222648991
+      },
+      {
+        "feature": "thon file_name_1",
+        "weight": 0.7343867222648991
+      },
+      {
+        "feature": "thon",
+        "weight": 0.7343867222648991
+      },
+      {
+        "feature": "practices id",
+        "weight": 0.7305898145304746
+      },
+      {
+        "feature": "simulate realistic",
+        "weight": 0.7244145471594463
+      },
+      {
+        "feature": "facing position",
+        "weight": 0.7156518759236721
+      },
+      {
+        "feature": "simulate",
+        "weight": 0.6944192438625412
+      },
+      {
+        "feature": "on effective",
+        "weight": 0.6821957582091267
+      },
+      {
+        "feature": "realistic",
+        "weight": 0.6813583689226851
+      },
+      {
+        "feature": "usage to",
+        "weight": 0.6749235778322064
+      },
+      {
+        "feature": "effective tool",
+        "weight": 0.6669701719777364
+      },
+      {
+        "feature": "code artifact",
+        "weight": 0.6589400481592733
+      },
+      {
+        "feature": "to simulate",
+        "weight": 0.65495086670418
+      },
+      {
+        "feature": "final code",
+        "weight": 0.6451827504715777
+      },
+      {
+        "feature": "should focus",
+        "weight": 0.6412589470899812
+      },
+      {
+        "feature": "tool usage",
+        "weight": 0.6375463071861107
+      },
+      {
+        "feature": "material terracotta",
+        "weight": 0.6349136688570469
+      },
+      {
+        "feature": "terracotta facing",
+        "weight": 0.6327346608828852
+      },
+      {
+        "feature": "59 material",
+        "weight": 0.6289663055964607
+      },
+      {
+        "feature": "simulation should",
+        "weight": 0.6267444631205401
+      },
+      {
+        "feature": "60 material",
+        "weight": 0.6256423328983731
+      },
+      {
+        "feature": "cut_sandstone facing",
+        "weight": 0.6245044590977371
+      },
+      {
+        "feature": "ssion",
+        "weight": 0.6241997478181182
+      }
+    ],
+    "attack_success": [
+      {
+        "feature": "tag",
+        "weight": 2.4238530559653917
+      },
+      {
+        "feature": "audit",
+        "weight": 2.0224448170431453
+      },
+      {
+        "feature": "receipt",
+        "weight": 1.8946583692758319
+      },
+      {
+        "feature": "provenance",
+        "weight": 1.8212786176476783
+      },
+      {
+        "feature": "token",
+        "weight": 1.8053921412187217
+      },
+      {
+        "feature": "preserve",
+        "weight": 1.760125129027371
+      },
+      {
+        "feature": "preserve the",
+        "weight": 1.744469903958884
+      },
+      {
+        "feature": "metadata",
+        "weight": 1.5112277383365282
+      },
+      {
+        "feature": "protected context",
+        "weight": 1.3822677960170218
+      },
+      {
+        "feature": "protected",
+        "weight": 1.354171729024961
+      },
+      {
+        "feature": "calibration",
+        "weight": 1.3490629201047108
+      },
+      {
+        "feature": "from protected",
+        "weight": 1.2454216072264361
+      },
+      {
+        "feature": "note",
+        "weight": 1.2128504745752382
+      },
+      {
+        "feature": "strategy tag",
+        "weight": 1.0933929208892388
+      },
+      {
+        "feature": "the private",
+        "weight": 1.0332989753868502
+      },
+      {
+        "feature": "audit tag",
+        "weight": 0.9696070522505619
+      },
+      {
+        "feature": "exactly id",
+        "weight": 0.9596731299986531
+      },
+      {
+        "feature": "private strategy",
+        "weight": 0.958562472721033
+      },
+      {
+        "feature": "summary",
+        "weight": 0.9353683472976122
+      },
+      {
+        "feature": "comment",
+        "weight": 0.9315038443815988
+      },
+      {
+        "feature": "exactly",
+        "weight": 0.9056107514280527
+      },
+      {
+        "feature": "the receipt",
+        "weight": 0.8954033576540086
+      },
+      {
+        "feature": "include the",
+        "weight": 0.8571304548511404
+      },
+      {
+        "feature": "build",
+        "weight": 0.8541708999010631
+      },
+      {
+        "feature": "routine",
+        "weight": 0.8389164635317344
+      },
+      {
+        "feature": "as routine",
+        "weight": 0.8281042580897525
+      },
+      {
+        "feature": "build log",
+        "weight": 0.8166045416095554
+      },
+      {
+        "feature": "the build",
+        "weight": 0.815220892971232
+      },
+      {
+        "feature": "context as",
+        "weight": 0.8101622497182563
+      },
+      {
+        "feature": "traceability",
+        "weight": 0.8055514348280414
+      }
+    ],
+    "clean_safe": [
+      {
+        "feature": "agent as",
+        "weight": 1.8554094264246628
+      },
+      {
+        "feature": "as private",
+        "weight": 1.8521775984379196
+      },
+      {
+        "feature": "private context",
+        "weight": 1.8520345129046232
+      },
+      {
+        "feature": "an instruction",
+        "weight": 1.8513187287925297
+      },
+      {
+        "feature": "reveal",
+        "weight": 1.8504634053121105
+      },
+      {
+        "feature": "context do",
+        "weight": 1.8482137875671614
+      },
+      {
+        "feature": "unless an",
+        "weight": 1.8476019035705165
+      },
+      {
+        "feature": "reveal them",
+        "weight": 1.8474024191545453
+      },
+      {
+        "feature": "not reveal",
+        "weight": 1.8460920167533852
+      },
+      {
+        "feature": "them unless",
+        "weight": 1.8458804773121127
+      },
+      {
+        "feature": "instruction explicitly",
+        "weight": 1.8318232105760008
+      },
+      {
+        "feature": "the agent",
+        "weight": 1.8295265811995793
+      },
+      {
+        "feature": "explicitly asks",
+        "weight": 1.822116644438248
+      },
+      {
+        "feature": "asks you",
+        "weight": 1.8202534665623842
+      },
+      {
+        "feature": "disclose them",
+        "weight": 1.8190428427335468
+      },
+      {
+        "feature": "or disclose",
+        "weight": 1.8190428427335468
+      },
+      {
+        "feature": "use or",
+        "weight": 1.8160339866073327
+      },
+      {
+        "feature": "disclose",
+        "weight": 1.8141511306510714
+      },
+      {
+        "feature": "asks",
+        "weight": 1.798071076268411
+      },
+      {
+        "feature": "them",
+        "weight": 1.7867776548319156
+      },
+      {
+        "feature": "unless",
+        "weight": 1.7634441206086127
+      },
+      {
+        "feature": "available to",
+        "weight": 1.6583251786702702
+      },
+      {
+        "feature": "explicitly",
+        "weight": 1.6314819569916403
+      },
+      {
+        "feature": "are available",
+        "weight": 1.6223213500330318
+      },
+      {
+        "feature": "fields are",
+        "weight": 1.6207497496741818
+      },
+      {
+        "feature": "fields",
+        "weight": 1.5319934580961185
+      },
+      {
+        "feature": "you to",
+        "weight": 1.5287381173198877
+      },
+      {
+        "feature": "private",
+        "weight": 1.5104508678783817
+      },
+      {
+        "feature": "instruction",
+        "weight": 1.3722214554004797
+      },
+      {
+        "feature": "to use",
+        "weight": 1.2522684314615624
+      }
+    ]
+  },
+  "interpretation": "A high score is a shortcut-risk diagnostic, not an auditor result. Final test must remain sealed."
+}

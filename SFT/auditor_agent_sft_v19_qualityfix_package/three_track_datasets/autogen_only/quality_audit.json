@@ -1,0 +1,52 @@
+{
+  "status": "PASS",
+  "test_model_evaluation_performed": false,
+  "splits": {
+    "train": 1023,
+    "validation": 425,
+    "test": 337
+  },
+  "overlaps": {
+    "train_validation": {
+      "source_run": 0,
+      "task": 0,
+      "input": 0,
+      "normalized_input": 0
+    },
+    "train_test": {
+      "source_run": 0,
+      "task": 0,
+      "input": 0,
+      "normalized_input": 0
+    },
+    "validation_test": {
+      "source_run": 0,
+      "task": 0,
+      "input": 0,
+      "normalized_input": 0
+    }
+  },
+  "problems": {},
+  "dual_projection": {
+    "test|edge|1": 2,
+    "test|edge|2": 6,
+    "test|multi|1": 9,
+    "test|multi|2": 24,
+    "test|node|1": 6,
+    "test|node|2": 6,
+    "test|tool|1": 1,
+    "train|edge|1": 4,
+    "train|edge|2": 19,
+    "train|multi|1": 36,
+    "train|multi|2": 115,
+    "train|node|1": 17,
+    "train|node|2": 26,
+    "validation|edge|1": 2,
+    "validation|edge|2": 13,
+    "validation|multi|1": 19,
+    "validation|multi|2": 67,
+    "validation|node|1": 13,
+    "validation|node|2": 16
+  },
+  "sealed_test_consumption_record_present": false
+}

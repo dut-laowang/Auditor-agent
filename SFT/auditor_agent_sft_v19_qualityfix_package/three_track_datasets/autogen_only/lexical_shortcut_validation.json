@@ -1,0 +1,407 @@
+{
+  "evaluation_split": "validation_only",
+  "test_accessed": false,
+  "accuracy": 0.6329411764705882,
+  "classification_report": {
+    "attack_failed": {
+      "precision": 0.7802197802197802,
+      "recall": 0.7006578947368421,
+      "f1-score": 0.7383015597920277,
+      "support": 304.0
+    },
+    "attack_success": {
+      "precision": 0.381294964028777,
+      "recall": 0.5047619047619047,
+      "f1-score": 0.4344262295081967,
+      "support": 105.0
+    },
+    "clean_safe": {
+      "precision": 0.23076923076923078,
+      "recall": 0.1875,
+      "f1-score": 0.20689655172413793,
+      "support": 16.0
+    },
+    "accuracy": 0.6329411764705882,
+    "macro avg": {
+      "precision": 0.46409465833926267,
+      "recall": 0.4643065998329156,
+      "f1-score": 0.45987478034145407,
+      "support": 425.0
+    },
+    "weighted avg": {
+      "precision": 0.6609766872991587,
+      "recall": 0.6329411764705882,
+      "f1-score": 0.6432206425946431,
+      "support": 425.0
+    }
+  },
+  "top_features": {
+    "attack_failed": [
+      {
+        "feature": "we have",
+        "weight": 0.534248027657541
+      },
+      {
+        "feature": "text see",
+        "weight": 0.5155320459815176
+      },
+      {
+        "feature": "inventory",
+        "weight": 0.4644632586589106
+      },
+      {
+        "feature": "dsml",
+        "weight": 0.4016418270376465
+      },
+      {
+        "feature": "file_path",
+        "weight": 0.37424170496644277
+      },
+      {
+        "feature": "before",
+        "weight": 0.3717204577393475
+      },
+      {
+        "feature": "note",
+        "weight": 0.359385156815042
+      },
+      {
+        "feature": "true solution",
+        "weight": 0.3589080870806256
+      },
+      {
+        "feature": "name file_path",
+        "weight": 0.3549061709979285
+      },
+      {
+        "feature": "see",
+        "weight": 0.33744575280353956
+      },
+      {
+        "feature": "check inventory",
+        "weight": 0.33719432269777816
+      },
+      {
+        "feature": "solution file",
+        "weight": 0.3346525492610739
+      },
+      {
+        "feature": "file_path string",
+        "weight": 0.3271370076837818
+      },
+      {
+        "feature": "specific",
+        "weight": 0.32584917538565045
+      },
+      {
+        "feature": "injected",
+        "weight": 0.32421942437245127
+      },
+      {
+        "feature": "see need",
+        "weight": 0.31938515074103263
+      },
+      {
+        "feature": "test",
+        "weight": 0.3184480898621911
+      },
+      {
+        "feature": "go",
+        "weight": 0.31419704880591987
+      },
+      {
+        "feature": "use the",
+        "weight": 0.3126347858524684
+      },
+      {
+        "feature": "protocol",
+        "weight": 0.31198313594122973
+      },
+      {
+        "feature": "concrete",
+        "weight": 0.307038861774776
+      },
+      {
+        "feature": "don have",
+        "weight": 0.3057918460611477
+      },
+      {
+        "feature": "the environment",
+        "weight": 0.3030538217859766
+      },
+      {
+        "feature": "name create_solution",
+        "weight": 0.300372777318599
+      },
+      {
+        "feature": "through",
+        "weight": 0.2968174598036557
+      },
+      {
+        "feature": "build the",
+        "weight": 0.29389600066891763
+      },
+      {
+        "feature": "tool_calls dsml",
+        "weight": 0.2930092542090125
+      },
+      {
+        "feature": "create_solution dsml",
+        "weight": 0.29267429431114567
+      },
+      {
+        "feature": "enum",
+        "weight": 0.29000903735661915
+      },
+      {
+        "feature": "results",
+        "weight": 0.2875631606402339
+      }
+    ],
+    "attack_success": [
+      {
+        "feature": "tag",
+        "weight": 0.889534885496403
+      },
+      {
+        "feature": "private",
+        "weight": 0.7889320053593233
+      },
+      {
+        "feature": "text the",
+        "weight": 0.7462011809591707
+      },
+      {
+        "feature": "receipt",
+        "weight": 0.6930926483268494
+      },
+      {
+        "feature": "anchor",
+        "weight": 0.6896851187380737
+      },
+      {
+        "feature": "calibration anchor",
+        "weight": 0.6151887202150937
+      },
+      {
+        "feature": "calibration",
+        "weight": 0.5569846226414212
+      },
+      {
+        "feature": "text need",
+        "weight": 0.5001245955331738
+      },
+      {
+        "feature": "must",
+        "weight": 0.49872051828467123
+      },
+      {
+        "feature": "audit",
+        "weight": 0.4958551697602412
+      },
+      {
+        "feature": "the private",
+        "weight": 0.49507266170760755
+      },
+      {
+        "feature": "checklist",
+        "weight": 0.46615818958687155
+      },
+      {
+        "feature": "feasible",
+        "weight": 0.4310316491634413
+      },
+      {
+        "feature": "private material",
+        "weight": 0.41852875465647116
+      },
+      {
+        "feature": "token",
+        "weight": 0.4036550436268505
+      },
+      {
+        "feature": "summary",
+        "weight": 0.3798879883504426
+      },
+      {
+        "feature": "token is",
+        "weight": 0.37717116848239235
+      },
+      {
+        "feature": "range",
+        "weight": 0.37310970690118855
+      },
+      {
+        "feature": "material checklist",
+        "weight": 0.36086142127652276
+      },
+      {
+        "feature": "from the",
+        "weight": 0.35272875949095356
+      },
+      {
+        "feature": "parties",
+        "weight": 0.3445761977393125
+      },
+      {
+        "feature": "material",
+        "weight": 0.34422943117864263
+      },
+      {
+        "feature": "gpt id",
+        "weight": 0.3428511880997151
+      },
+      {
+        "feature": "calibration key",
+        "weight": 0.3411864625770837
+      },
+      {
+        "feature": "key is",
+        "weight": 0.33872039497357864
+      },
+      {
+        "feature": "final answer",
+        "weight": 0.3324686459897612
+      },
+      {
+        "feature": "multi",
+        "weight": 0.3269968815112649
+      },
+      {
+        "feature": "operational",
+        "weight": 0.3265887410042074
+      },
+      {
+        "feature": "heavy",
+        "weight": 0.3235967841691667
+      },
+      {
+        "feature": "receipt is",
+        "weight": 0.31889769642583543
+      }
+    ],
+    "clean_safe": [
+      {
+        "feature": "text let",
+        "weight": 0.5655639981478162
+      },
+      {
+        "feature": "immediately",
+        "weight": 0.5595761436719877
+      },
+      {
+        "feature": "see if",
+        "weight": 0.5436176088348114
+      },
+      {
+        "feature": "there chest",
+        "weight": 0.5237106136628191
+      },
+      {
+        "feature": "immediately id",
+        "weight": 0.5178387766910614
+      },
+      {
+        "feature": "user def",
+        "weight": 0.5095438388377703
+      },
+      {
+        "feature": "or if",
+        "weight": 0.4995108195123097
+      },
+      {
+        "feature": "transferred to",
+        "weight": 0.4972499551134376
+      },
+      {
+        "feature": "text transferred",
+        "weight": 0.4972499551134376
+      },
+      {
+        "feature": "adopting the",
+        "weight": 0.4972499551134376
+      },
+      {
+        "feature": "adopting",
+        "weight": 0.4972499551134376
+      },
+      {
+        "feature": "transferred",
+        "weight": 0.4972499551134376
+      },
+      {
+        "feature": "win",
+        "weight": 0.49601090153047683
+      },
+      {
+        "feature": "role of",
+        "weight": 0.49158115445226125
+      },
+      {
+        "feature": "get_paper_by_keyword",
+        "weight": 0.49119637197072447
+      },
+      {
+        "feature": "the role",
+        "weight": 0.4859078758835903
+      },
+      {
+        "feature": "agent2 immediately",
+        "weight": 0.4816247139493529
+      },
+      {
+        "feature": "agent2 adopting",
+        "weight": 0.4816247139493529
+      },
+      {
+        "feature": "of agent2",
+        "weight": 0.4816247139493529
+      },
+      {
+        "feature": "max_papers",
+        "weight": 0.46918176879310297
+      },
+      {
+        "feature": "know",
+        "weight": 0.4496143182276693
+      },
+      {
+        "feature": "keyword",
+        "weight": 0.4479623720391771
+      },
+      {
+        "feature": "generative model",
+        "weight": 0.4439851384791506
+      },
+      {
+        "feature": "bulk order",
+        "weight": 0.4409546799522475
+      },
+      {
+        "feature": "functionality python",
+        "weight": 0.43971051534029437
+      },
+      {
+        "feature": "bpm int",
+        "weight": 0.4392160894974557
+      },
+      {
+        "feature": "user self",
+        "weight": 0.431525827445536
+      },
+      {
+        "feature": "false 10",
+        "weight": 0.43149890297395843
+      },
+      {
+        "feature": "any of",
+        "weight": 0.4285144356660951
+      },
+      {
+        "feature": "str created_at",
+        "weight": 0.42072083115314
+      }
+    ]
+  },
+  "interpretation": "A high score is a shortcut-risk diagnostic, not an auditor result. Final test must remain sealed."
+}

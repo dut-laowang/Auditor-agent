@@ -1,0 +1,55 @@
+{
+  "status": "PASS",
+  "test_accessed_for_generation": false,
+  "variants": {
+    "cross_label_text_rotated": {
+      "rows": 1791,
+      "same_validation_uid_order": true,
+      "assistant_targets_unchanged": true,
+      "changed_user_inputs": 1791,
+      "sealed_test_uid_hits": 0
+    },
+    "event_text_masked": {
+      "rows": 1791,
+      "same_validation_uid_order": true,
+      "assistant_targets_unchanged": true,
+      "changed_user_inputs": 1791,
+      "sealed_test_uid_hits": 0
+    },
+    "events_shuffled": {
+      "rows": 1791,
+      "same_validation_uid_order": true,
+      "assistant_targets_unchanged": true,
+      "changed_user_inputs": 1791,
+      "sealed_test_uid_hits": 0
+    },
+    "lexical_shortcuts_masked": {
+      "rows": 1791,
+      "same_validation_uid_order": true,
+      "assistant_targets_unchanged": true,
+      "changed_user_inputs": 1787,
+      "sealed_test_uid_hits": 0
+    },
+    "outcome_text_masked": {
+      "rows": 1791,
+      "same_validation_uid_order": true,
+      "assistant_targets_unchanged": true,
+      "changed_user_inputs": 1791,
+      "sealed_test_uid_hits": 0
+    },
+    "structure_links_masked": {
+      "rows": 1791,
+      "same_validation_uid_order": true,
+      "assistant_targets_unchanged": true,
+      "changed_user_inputs": 1791,
+      "sealed_test_uid_hits": 0
+    },
+    "task_goal_masked": {
+      "rows": 1791,
+      "same_validation_uid_order": true,
+      "assistant_targets_unchanged": true,
+      "changed_user_inputs": 1791,
+      "sealed_test_uid_hits": 0
+    }
+  }
+}

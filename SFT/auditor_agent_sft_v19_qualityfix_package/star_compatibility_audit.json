@@ -1,0 +1,293 @@
+{
+  "single": {
+    "manifest_old_star": 2320,
+    "manifest_new_star": 2320,
+    "shared_run_ids": 2320,
+    "old_only": 0,
+    "new_only": 0,
+    "common_manifest_keys": [
+      "agent_output_events",
+      "attack_active",
+      "attack_exposed",
+      "attack_id",
+      "attack_metadata",
+      "attack_payload_template",
+      "attack_spec_hash",
+      "auditor_revision",
+      "condition",
+      "config_path",
+      "control_run_id",
+      "environment_mode",
+      "environment_type",
+      "error",
+      "evaluator_valid",
+      "experiment_config_hash",
+      "exposed_agents",
+      "exposure_event_ids",
+      "marble_revision",
+      "multi_agent_execution",
+      "objective",
+      "pair_id",
+      "participant_count",
+      "participating_agents",
+      "placement",
+      "run_config_hash",
+      "run_id",
+      "sample_id",
+      "scenario",
+      "schema_version",
+      "seed",
+      "status",
+      "surface",
+      "topology",
+      "warning"
+    ],
+    "only_old_keys": [],
+    "only_new_keys": [
+      "configured_agent_count",
+      "participation_valid",
+      "required_participant_count"
+    ],
+    "schema_old": {
+      "2": 2320
+    },
+    "schema_new": {
+      "2": 2320
+    },
+    "scenario_old": {
+      "bargaining": 610,
+      "coding": 610,
+      "minecraft": 490,
+      "research": 610
+    },
+    "scenario_new": {
+      "bargaining": 610,
+      "coding": 610,
+      "minecraft": 490,
+      "research": 610
+    },
+    "condition_old": {
+      "private_control": 570,
+      "attacked": 1710,
+      "clean": 40
+    },
+    "condition_new": {
+      "private_control": 570,
+      "attacked": 1710,
+      "clean": 40
+    },
+    "surface_old": {
+      "input": 480,
+      "profile": 480,
+      "message": 480,
+      "memory": 480,
+      "tool": 360,
+      "None": 40
+    },
+    "surface_new": {
+      "input": 480,
+      "profile": 480,
+      "message": 480,
+      "memory": 480,
+      "tool": 360,
+      "None": 40
+    },
+    "objective_old": {
+      "disclosure": 1140,
+      "disruption": 570,
+      "hijacking": 570,
+      "None": 40
+    },
+    "objective_new": {
+      "disclosure": 1140,
+      "disruption": 570,
+      "hijacking": 570,
+      "None": 40
+    },
+    "status_old": {
+      "completed": 2319,
+      "failed": 1
+    },
+    "status_new": {
+      "completed": 2319,
+      "failed": 1
+    },
+    "labels_old": {
+      "success": 529,
+      "failure": 627,
+      "not_exposed": 519,
+      "ambiguous": 35
+    },
+    "labels_new": {
+      "success": 490,
+      "failure": 1046,
+      "ambiguous": 19,
+      "not_exposed": 155
+    },
+    "label_shared": 1710,
+    "label_changes": {
+      "not_exposed->failure": 323,
+      "success->failure": 208,
+      "failure->success": 118,
+      "ambiguous->failure": 22,
+      "not_exposed->success": 59,
+      "failure->not_exposed": 14,
+      "ambiguous->success": 10,
+      "success->not_exposed": 11,
+      "not_exposed->ambiguous": 7,
+      "success->ambiguous": 7,
+      "failure->ambiguous": 2
+    },
+    "marble_revisions_old": {
+      "8d60fa17b5596b44458a52d4296061b9fc13d6f2": 2320
+    },
+    "marble_revisions_new": {
+      "8d60fa17b5596b44458a52d4296061b9fc13d6f2": 2320
+    },
+    "auditor_revisions_old": {
+      "64564804e1ee7e1a957018df64d37fbc388272e3": 2320
+    },
+    "auditor_revisions_new": {
+      "64564804e1ee7e1a957018df64d37fbc388272e3": 2320
+    }
+  },
+  "dual": {
+    "manifest_old_star": 420,
+    "manifest_new_star": 420,
+    "shared_run_ids": 420,
+    "old_only": 0,
+    "new_only": 0,
+    "common_manifest_keys": [
+      "agent_output_events",
+      "attack_active",
+      "attack_exposed",
+      "attack_id",
+      "attack_metadata",
+      "attack_payload_template",
+      "attack_spec_hash",
+      "auditor_revision",
+      "condition",
+      "config_path",
+      "control_run_id",
+      "environment_mode",
+      "environment_type",
+      "error",
+      "evaluator_valid",
+      "experiment_config_hash",
+      "exposed_agents",
+      "exposure_event_ids",
+      "marble_revision",
+      "multi_agent_execution",
+      "objective",
+      "pair_id",
+      "participant_count",
+      "participating_agents",
+      "placement",
+      "run_config_hash",
+      "run_id",
+      "sample_id",
+      "scenario",
+      "schema_version",
+      "seed",
+      "status",
+      "surface",
+      "topology",
+      "warning"
+    ],
+    "only_old_keys": [],
+    "only_new_keys": [
+      "configured_agent_count",
+      "participation_valid",
+      "required_participant_count"
+    ],
+    "schema_old": {
+      "2": 420
+    },
+    "schema_new": {
+      "2": 420
+    },
+    "scenario_old": {
+      "bargaining": 125,
+      "coding": 125,
+      "minecraft": 45,
+      "research": 125
+    },
+    "scenario_new": {
+      "bargaining": 125,
+      "coding": 125,
+      "minecraft": 45,
+      "research": 125
+    },
+    "condition_old": {
+      "private_control": 100,
+      "attacked": 300,
+      "clean": 20
+    },
+    "condition_new": {
+      "private_control": 100,
+      "attacked": 300,
+      "clean": 20
+    },
+    "surface_old": {
+      "dual": 400,
+      "None": 20
+    },
+    "surface_new": {
+      "dual": 400,
+      "None": 20
+    },
+    "objective_old": {
+      "disclosure": 200,
+      "disruption": 100,
+      "hijacking": 100,
+      "None": 20
+    },
+    "objective_new": {
+      "disclosure": 200,
+      "disruption": 100,
+      "hijacking": 100,
+      "None": 20
+    },
+    "status_old": {
+      "completed": 420
+    },
+    "status_new": {
+      "completed": 420
+    },
+    "labels_old": {
+      "success": 139,
+      "failure": 136,
+      "not_exposed": 21,
+      "ambiguous": 4
+    },
+    "labels_new": {
+      "success": 134,
+      "failure": 155,
+      "ambiguous": 6,
+      "not_exposed": 5
+    },
+    "label_shared": 300,
+    "label_changes": {
+      "success->ambiguous": 4,
+      "success->failure": 40,
+      "not_exposed->failure": 15,
+      "failure->success": 36,
+      "failure->ambiguous": 1,
+      "ambiguous->failure": 1,
+      "not_exposed->success": 1,
+      "ambiguous->success": 2
+    },
+    "marble_revisions_old": {
+      "8d60fa17b5596b44458a52d4296061b9fc13d6f2": 420
+    },
+    "marble_revisions_new": {
+      "8d60fa17b5596b44458a52d4296061b9fc13d6f2": 420
+    },
+    "auditor_revisions_old": {
+      "64564804e1ee7e1a957018df64d37fbc388272e3": 420
+    },
+    "auditor_revisions_new": {
+      "64564804e1ee7e1a957018df64d37fbc388272e3": 420
+    }
+  }
+}

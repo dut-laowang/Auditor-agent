@@ -1,0 +1,55 @@
+{
+  "status": "PASS",
+  "test_model_evaluation_performed": false,
+  "splits": {
+    "train": 5588,
+    "validation": 2216,
+    "test": 1828
+  },
+  "overlaps": {
+    "train_validation": {
+      "source_run": 0,
+      "task": 0,
+      "input": 0,
+      "normalized_input": 0
+    },
+    "train_test": {
+      "source_run": 0,
+      "task": 0,
+      "input": 0,
+      "normalized_input": 0
+    },
+    "validation_test": {
+      "source_run": 0,
+      "task": 0,
+      "input": 0,
+      "normalized_input": 0
+    }
+  },
+  "problems": {},
+  "dual_projection": {
+    "test|edge|1": 2,
+    "test|edge|2": 20,
+    "test|multi|1": 9,
+    "test|multi|2": 107,
+    "test|node|1": 6,
+    "test|node|2": 37,
+    "test|tool|1": 1,
+    "test|tool|2": 3,
+    "train|edge|1": 4,
+    "train|edge|2": 58,
+    "train|multi|1": 36,
+    "train|multi|2": 507,
+    "train|node|1": 17,
+    "train|node|2": 139,
+    "train|tool|2": 11,
+    "validation|edge|1": 2,
+    "validation|edge|2": 39,
+    "validation|multi|1": 19,
+    "validation|multi|2": 319,
+    "validation|node|1": 13,
+    "validation|node|2": 81,
+    "validation|tool|2": 8
+  },
+  "sealed_test_consumption_record_present": false
+}

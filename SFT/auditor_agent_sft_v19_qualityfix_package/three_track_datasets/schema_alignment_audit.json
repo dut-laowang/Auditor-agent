@@ -1,0 +1,33 @@
+{
+  "status": "PASS",
+  "tracks": {
+    "marble_only": {
+      "schemas": {
+        "Graph-grounded-Candidate-SFT/v13": 7847
+      },
+      "signature_items": 188
+    },
+    "autogen_only": {
+      "schemas": {
+        "Graph-grounded-Candidate-SFT/v13": 1785
+      },
+      "signature_items": 188
+    },
+    "mixed": {
+      "schemas": {
+        "Graph-grounded-Candidate-SFT/v13": 9632
+      },
+      "signature_items": 188
+    }
+  },
+  "differences": {
+    "autogen_only": {
+      "missing": [],
+      "extra": []
+    },
+    "mixed": {
+      "missing": [],
+      "extra": []
+    }
+  }
+}

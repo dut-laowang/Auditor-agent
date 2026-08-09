@@ -1,0 +1,61 @@
+{
+  "schema": "Graph-grounded-Candidate-SFT/v13",
+  "allowed_source_types": [
+    "autogen_native",
+    "marble_legacy_nonstar",
+    "marble_star_fixed"
+  ],
+  "split_assignment": "inherited unchanged from the unified V19 grouped split",
+  "stats": {
+    "train": {
+      "total": 5588,
+      "verdict::attack_success": 1527,
+      "source::autogen_native": 1023,
+      "topology::selector_group_chat": 672,
+      "verdict::clean_safe": 1403,
+      "source::marble_star_fixed": 645,
+      "topology::star": 645,
+      "source::marble_legacy_nonstar": 3920,
+      "topology::chain": 1338,
+      "topology::graph": 1384,
+      "verdict::attack_failed": 2658,
+      "topology::tree": 1198,
+      "topology::swarm": 351
+    },
+    "validation": {
+      "total": 2216,
+      "verdict::clean_safe": 542,
+      "source::marble_legacy_nonstar": 1479,
+      "topology::graph": 524,
+      "verdict::attack_failed": 1079,
+      "topology::tree": 441,
+      "source::marble_star_fixed": 312,
+      "topology::star": 312,
+      "topology::chain": 514,
+      "verdict::attack_success": 595,
+      "source::autogen_native": 425,
+      "topology::selector_group_chat": 272,
+      "topology::swarm": 153
+    },
+    "test": {
+      "total": 1828,
+      "verdict::attack_failed": 877,
+      "source::marble_legacy_nonstar": 1239,
+      "topology::chain": 437,
+      "verdict::clean_safe": 462,
+      "verdict::attack_success": 489,
+      "source::marble_star_fixed": 252,
+      "topology::star": 252,
+      "topology::tree": 373,
+      "source::autogen_native": 337,
+      "topology::selector_group_chat": 228,
+      "topology::graph": 429,
+      "topology::swarm": 109
+    }
+  },
+  "sha256": {
+    "train.jsonl": "9d55a320468d9fbd05e1a108b4b3a28f104a0df0c1e4e372d7c6b134246a8ec3",
+    "validation.jsonl": "7d1a7cacdabcb9d13d75967526044f6dfd70afc8f68ccb9371446390191d11b1",
+    "test.jsonl": "b4a522fd89b8bd7026314c82731d2420865f63db8fb06fc8e7598fc7e90a2e3b"
+  }
+}

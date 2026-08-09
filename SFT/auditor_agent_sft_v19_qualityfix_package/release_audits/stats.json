@@ -1,0 +1,441 @@
+{
+  "schema": "Graph-grounded-Candidate-SFT/v13",
+  "version": "V19-qualityfix",
+  "source_policy": {
+    "marble_legacy": "chain/graph/tree retained; legacy star excluded",
+    "marble_star": "star_fixed replaces legacy star",
+    "autogen": "native AutoGen added as a cross-framework source"
+  },
+  "split_policy": "Grouped by (scenario, sample_id) across all frameworks and topologies; test is not an input to training or model selection.",
+  "held_out_tasks": {
+    "bargaining": {
+      "test": [
+        4,
+        8
+      ],
+      "validation": [
+        3,
+        9
+      ]
+    },
+    "coding": {
+      "test": [
+        4,
+        6
+      ],
+      "validation": [
+        3,
+        5
+      ]
+    },
+    "minecraft": {
+      "test": [
+        6,
+        8
+      ],
+      "validation": [
+        1,
+        3
+      ]
+    },
+    "research": {
+      "test": [
+        8,
+        9
+      ],
+      "validation": [
+        1,
+        4
+      ]
+    }
+  },
+  "sources": {
+    "marble_legacy_nonstar": {
+      "total": 6638,
+      "by_verdict": {
+        "clean_safe": 1992,
+        "attack_success": 1799,
+        "attack_failed": 2847
+      },
+      "by_source_final_label": {
+        "private_control": 1872,
+        "success": 1799,
+        "failure": 2847,
+        "clean": 120
+      },
+      "by_label_quality": {
+        "control": 1992,
+        "gold": 3927,
+        "silver": 719
+      },
+      "by_condition": {
+        "private_control": 1872,
+        "attacked": 4646,
+        "clean": 120
+      },
+      "by_scenario": {
+        "bargaining": 1757,
+        "coding": 1852,
+        "minecraft": 1534,
+        "research": 1495
+      },
+      "by_topology": {
+        "chain": 2289,
+        "graph": 2337,
+        "tree": 2012
+      },
+      "by_surface": {
+        "input": 1408,
+        "profile": 1264,
+        "message": 826,
+        "memory": 1155,
+        "tool": 793,
+        "none": 120,
+        "dual": 1072
+      },
+      "by_objective": {
+        "disclosure": 3435,
+        "disruption": 1556,
+        "hijacking": 1527,
+        "none": 120
+      },
+      "by_attack_mode": {
+        "single_site": 5566,
+        "dual_site": 1072
+      }
+    },
+    "marble_star_fixed": {
+      "total": 1209,
+      "by_verdict": {
+        "clean_safe": 335,
+        "attack_success": 364,
+        "attack_failed": 510
+      },
+      "by_source_final_label": {
+        "private_control": 317,
+        "success": 364,
+        "failure": 510,
+        "clean": 18
+      },
+      "by_label_quality": {
+        "control": 335,
+        "gold": 777,
+        "silver": 97
+      },
+      "by_condition": {
+        "private_control": 317,
+        "attacked": 874,
+        "clean": 18
+      },
+      "by_scenario": {
+        "bargaining": 591,
+        "coding": 510,
+        "research": 68,
+        "minecraft": 40
+      },
+      "by_topology": {
+        "star": 1209
+      },
+      "by_surface": {
+        "input": 195,
+        "profile": 196,
+        "message": 185,
+        "memory": 160,
+        "tool": 125,
+        "none": 18,
+        "dual": 330
+      },
+      "by_objective": {
+        "disclosure": 625,
+        "disruption": 291,
+        "hijacking": 275,
+        "none": 18
+      },
+      "by_attack_mode": {
+        "single_site": 879,
+        "dual_site": 330
+      }
+    },
+    "autogen_native": {
+      "total": 1785,
+      "by_verdict": {
+        "clean_safe": 80,
+        "attack_success": 448,
+        "attack_failed": 1257
+      },
+      "by_source_final_label": {
+        "clean": 80,
+        "success": 448,
+        "failure": 1257
+      },
+      "by_label_quality": {
+        "control": 80,
+        "gold": 1585,
+        "silver": 120
+      },
+      "by_condition": {
+        "clean": 80,
+        "attacked": 1705
+      },
+      "by_scenario": {
+        "bargaining": 607,
+        "coding": 562,
+        "minecraft": 345,
+        "research": 271
+      },
+      "by_topology": {
+        "selector_group_chat": 1172,
+        "swarm": 613
+      },
+      "by_surface": {
+        "none": 80,
+        "profile": 262,
+        "tool": 175,
+        "input": 374,
+        "message": 251,
+        "memory": 242,
+        "dual": 401
+      },
+      "by_objective": {
+        "none": 80,
+        "disclosure": 467,
+        "disruption": 709,
+        "hijacking": 529
+      },
+      "by_attack_mode": {
+        "single_site": 1384,
+        "dual_site": 401
+      }
+    }
+  },
+  "files": {
+    "all": {
+      "total": 9632,
+      "by_verdict": {
+        "clean_safe": 2407,
+        "attack_success": 2611,
+        "attack_failed": 4614
+      },
+      "by_source_final_label": {
+        "private_control": 2189,
+        "success": 2611,
+        "failure": 4614,
+        "clean": 218
+      },
+      "by_label_quality": {
+        "control": 2407,
+        "gold": 6289,
+        "silver": 936
+      },
+      "by_condition": {
+        "private_control": 2189,
+        "attacked": 7225,
+        "clean": 218
+      },
+      "by_scenario": {
+        "bargaining": 2955,
+        "coding": 2924,
+        "minecraft": 1919,
+        "research": 1834
+      },
+      "by_topology": {
+        "chain": 2289,
+        "graph": 2337,
+        "tree": 2012,
+        "star": 1209,
+        "selector_group_chat": 1172,
+        "swarm": 613
+      },
+      "by_surface": {
+        "input": 1977,
+        "profile": 1722,
+        "message": 1262,
+        "memory": 1557,
+        "tool": 1093,
+        "none": 218,
+        "dual": 1803
+      },
+      "by_objective": {
+        "disclosure": 4527,
+        "disruption": 2556,
+        "hijacking": 2331,
+        "none": 218
+      },
+      "by_attack_mode": {
+        "single_site": 7829,
+        "dual_site": 1803
+      }
+    },
+    "train": {
+      "total": 5588,
+      "by_verdict": {
+        "attack_success": 1527,
+        "clean_safe": 1403,
+        "attack_failed": 2658
+      },
+      "by_source_final_label": {
+        "success": 1527,
+        "private_control": 1273,
+        "failure": 2658,
+        "clean": 130
+      },
+      "by_label_quality": {
+        "silver": 542,
+        "control": 1403,
+        "gold": 3643
+      },
+      "by_condition": {
+        "attacked": 4185,
+        "private_control": 1273,
+        "clean": 130
+      },
+      "by_scenario": {
+        "minecraft": 1146,
+        "bargaining": 1753,
+        "research": 1104,
+        "coding": 1585
+      },
+      "by_topology": {
+        "selector_group_chat": 672,
+        "star": 645,
+        "chain": 1338,
+        "graph": 1384,
+        "tree": 1198,
+        "swarm": 351
+      },
+      "by_surface": {
+        "dual": 967,
+        "tool": 653,
+        "input": 1163,
+        "profile": 1012,
+        "message": 737,
+        "memory": 926,
+        "none": 130
+      },
+      "by_objective": {
+        "hijacking": 1357,
+        "disclosure": 2635,
+        "disruption": 1466,
+        "none": 130
+      },
+      "by_attack_mode": {
+        "dual_site": 967,
+        "single_site": 4621
+      }
+    },
+    "validation": {
+      "total": 2216,
+      "by_verdict": {
+        "clean_safe": 542,
+        "attack_failed": 1079,
+        "attack_success": 595
+      },
+      "by_source_final_label": {
+        "private_control": 498,
+        "failure": 1079,
+        "success": 595,
+        "clean": 44
+      },
+      "by_label_quality": {
+        "control": 542,
+        "gold": 1453,
+        "silver": 221
+      },
+      "by_condition": {
+        "private_control": 498,
+        "attacked": 1674,
+        "clean": 44
+      },
+      "by_scenario": {
+        "minecraft": 430,
+        "bargaining": 595,
+        "coding": 731,
+        "research": 460
+      },
+      "by_topology": {
+        "graph": 524,
+        "tree": 441,
+        "star": 312,
+        "chain": 514,
+        "selector_group_chat": 272,
+        "swarm": 153
+      },
+      "by_surface": {
+        "memory": 313,
+        "profile": 357,
+        "message": 258,
+        "tool": 229,
+        "dual": 608,
+        "none": 44,
+        "input": 407
+      },
+      "by_objective": {
+        "disclosure": 1034,
+        "disruption": 609,
+        "hijacking": 529,
+        "none": 44
+      },
+      "by_attack_mode": {
+        "single_site": 1608,
+        "dual_site": 608
+      }
+    },
+    "test": {
+      "total": 1828,
+      "by_verdict": {
+        "attack_failed": 877,
+        "clean_safe": 462,
+        "attack_success": 489
+      },
+      "by_source_final_label": {
+        "failure": 877,
+        "private_control": 418,
+        "success": 489,
+        "clean": 44
+      },
+      "by_label_quality": {
+        "gold": 1193,
+        "control": 462,
+        "silver": 173
+      },
+      "by_condition": {
+        "attacked": 1366,
+        "private_control": 418,
+        "clean": 44
+      },
+      "by_scenario": {
+        "minecraft": 343,
+        "coding": 608,
+        "bargaining": 607,
+        "research": 270
+      },
+      "by_topology": {
+        "chain": 437,
+        "star": 252,
+        "tree": 373,
+        "selector_group_chat": 228,
+        "graph": 429,
+        "swarm": 109
+      },
+      "by_surface": {
+        "profile": 353,
+        "input": 407,
+        "message": 267,
+        "tool": 211,
+        "dual": 228,
+        "memory": 318,
+        "none": 44
+      },
+      "by_objective": {
+        "hijacking": 445,
+        "disclosure": 858,
+        "disruption": 481,
+        "none": 44
+      },
+      "by_attack_mode": {
+        "single_site": 1600,
+        "dual_site": 228
+      }
+    }
+  }
+}
