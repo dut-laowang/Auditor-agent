@@ -37,6 +37,9 @@ coordination modes and explicitly excludes MARBLE data.
 - training reads train + validation only;
 - final test evaluation requires an explicit `FINAL_ONCE` acknowledgement and
   writes a consumption record;
+- evaluation uses deterministic greedy decoding with configurable batching
+  (`EVAL_BATCH_SIZE=4` in the one-click runner), records the batch size in new
+  metric files, and resumes from the validated prediction prefix;
 - evidence references are selected from localized candidate events and final
   observable outcomes;
 - validation-only lexical shortcut and counterfactual ablation scripts are

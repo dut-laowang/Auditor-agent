@@ -5,6 +5,7 @@ set -euo pipefail
 : "${ADAPTER:?Set ADAPTER to the frozen V19 adapter path}"
 : "${OUTPUT:?Set OUTPUT to a new final-evaluation directory}"
 GPU="${GPU:-0}"
+EVAL_BATCH_SIZE="${EVAL_BATCH_SIZE:-4}"
 TRACK="${TRACK:?Set TRACK to marble_only, autogen_only, or mixed}"
 case "$TRACK" in marble_only|autogen_only|mixed) ;; *) echo "Invalid TRACK=$TRACK" >&2; exit 2;; esac
 DATA="$PKG/three_track_datasets/$TRACK"
@@ -23,5 +24,6 @@ CUDA_VISIBLE_DEVICES="$GPU" python "$PKG/server_scripts/eval_qwen3_fullschema_v1
   --dataset-role test \
   --output-dir "$OUTPUT" \
   --max-new-tokens 1024 \
+  --batch-size "$EVAL_BATCH_SIZE" \
   --sealed-test-ack FINAL_ONCE \
   "${resume_args[@]}"

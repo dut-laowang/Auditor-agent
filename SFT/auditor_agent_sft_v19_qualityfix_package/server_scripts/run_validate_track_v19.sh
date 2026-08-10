@@ -7,6 +7,7 @@ set -euo pipefail
 : "${TRACK:?Set TRACK to marble_only, autogen_only, or mixed}"
 case "$TRACK" in marble_only|autogen_only|mixed) ;; *) echo "Invalid TRACK=$TRACK" >&2; exit 2;; esac
 GPU="${GPU:-0}"
+EVAL_BATCH_SIZE="${EVAL_BATCH_SIZE:-4}"
 DATA="$PKG/three_track_datasets/$TRACK"
 EVAL="$PKG/server_scripts/eval_qwen3_fullschema_v19.py"
 
@@ -16,7 +17,8 @@ run_eval() {
   CUDA_VISIBLE_DEVICES="$GPU" python "$EVAL" \
     --mode sft --model Qwen/Qwen3-8B --adapter "$ADAPTER" \
     --test-file "$file" --dataset-role validation \
-    --output-dir "$OUTPUT/$name" --max-new-tokens 1024 --resume
+    --output-dir "$OUTPUT/$name" --max-new-tokens 1024 \
+    --batch-size "$EVAL_BATCH_SIZE" --resume
 }
 
 run_eval clean "$DATA/validation.jsonl"

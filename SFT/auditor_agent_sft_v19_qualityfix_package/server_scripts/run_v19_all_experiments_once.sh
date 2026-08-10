@@ -20,6 +20,7 @@ export MKL_NUM_THREADS="${MKL_NUM_THREADS:-1}"
 export OPENBLAS_NUM_THREADS="${OPENBLAS_NUM_THREADS:-1}"
 export NUMEXPR_NUM_THREADS="${NUMEXPR_NUM_THREADS:-1}"
 export TOKENIZERS_PARALLELISM=false
+EVAL_BATCH_SIZE="${EVAL_BATCH_SIZE:-4}"
 
 for track in marble_only autogen_only mixed; do
   data="$PKG/three_track_datasets/$track"
@@ -53,16 +54,22 @@ for track in marble_only autogen_only mixed; do
   # Validate the clean set and every predetermined counterfactual. No model or
   # hyperparameter choice is changed after these fixed evaluations.
   EVAL="$PKG/server_scripts/eval_qwen3_fullschema_v19.py"
-  CUDA_VISIBLE_DEVICES="$GPU" python "$EVAL" \
-    --mode sft --model Qwen/Qwen3-8B --adapter "$adapter" \
-    --test-file "$data/validation.jsonl" --dataset-role validation \
-    --output-dir "$validation/clean" --max-new-tokens 1024 --resume
-  for file in "$counterfactual_data"/*.jsonl; do
-    name="$(basename "$file" .jsonl)"
+  if [[ ! -f "$validation/clean/metrics.json" ]]; then
     CUDA_VISIBLE_DEVICES="$GPU" python "$EVAL" \
       --mode sft --model Qwen/Qwen3-8B --adapter "$adapter" \
-      --test-file "$file" --dataset-role validation \
-      --output-dir "$validation/$name" --max-new-tokens 1024 --resume
+      --test-file "$data/validation.jsonl" --dataset-role validation \
+      --output-dir "$validation/clean" --max-new-tokens 1024 \
+      --batch-size "$EVAL_BATCH_SIZE" --resume
+  fi
+  for file in "$counterfactual_data"/*.jsonl; do
+    name="$(basename "$file" .jsonl)"
+    if [[ ! -f "$validation/$name/metrics.json" ]]; then
+      CUDA_VISIBLE_DEVICES="$GPU" python "$EVAL" \
+        --mode sft --model Qwen/Qwen3-8B --adapter "$adapter" \
+        --test-file "$file" --dataset-role validation \
+        --output-dir "$validation/$name" --max-new-tokens 1024 \
+        --batch-size "$EVAL_BATCH_SIZE" --resume
+    fi
   done
   python "$PKG/scripts/summarize_counterfactuals.py" \
     --result-root "$validation" \
@@ -70,6 +77,7 @@ for track in marble_only autogen_only mixed; do
 
   # The protocol is fixed above; consume this track's final test exactly once.
   TRACK="$track" ADAPTER="$adapter" OUTPUT="$final_test" PKG="$PKG" GPU="$GPU" \
+    EVAL_BATCH_SIZE="$EVAL_BATCH_SIZE" \
     bash "$PKG/server_scripts/run_final_test_once_v19.sh" \
     2>&1 | tee "$track_root/final_test_driver.log"
 done

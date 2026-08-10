@@ -213,6 +213,12 @@ def main():
     )
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--max-new-tokens", type=int, default=1024)
+    parser.add_argument(
+        "--batch-size",
+        type=int,
+        default=1,
+        help="Number of prompts generated together. Resume remains prefix-based.",
+    )
     parser.add_argument("--limit", type=int, help="Evaluate only the first N test rows for a quick smoke test.")
     parser.add_argument(
         "--resume",
@@ -220,6 +226,8 @@ def main():
         help="Continue an interrupted predictions.jsonl after validating its run-id prefix.",
     )
     args = parser.parse_args()
+    if args.batch_size < 1:
+        raise ValueError("--batch-size must be at least 1")
 
     if args.dataset_role == "test" and args.sealed_test_ack != "FINAL_ONCE":
         raise ValueError("Final test requires --sealed-test-ack FINAL_ONCE")
@@ -231,6 +239,7 @@ def main():
     tokenizer = AutoTokenizer.from_pretrained(tokenizer_path, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
+    tokenizer.padding_side = "left"
 
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA GPU is required for V19 evaluation")
@@ -257,7 +266,12 @@ def main():
         seal_record = os.path.join(args.output_dir, "SEALED_TEST_CONSUMED.json")
         if os.path.exists(seal_record) and not args.resume:
             raise RuntimeError(f"Sealed test already consumed: {seal_record}")
-        seal_payload = {"test_sha256": test_sha256, "rows": len(rows), "mode": args.mode}
+        seal_payload = {
+            "test_sha256": test_sha256,
+            "rows": len(rows),
+            "mode": args.mode,
+            "batch_size": args.batch_size,
+        }
         if os.path.exists(seal_record):
             with open(seal_record, encoding="utf-8") as handle:
                 if json.load(handle) != seal_payload:
@@ -293,20 +307,22 @@ def main():
                 "evaluation_resume": bool(args.resume),
                 "completed_predictions": len(completed),
                 "remaining_predictions": len(rows) - len(completed),
+                "batch_size": args.batch_size,
             }
         )
     )
     mode = "a" if completed else "w"
     with open(pred_path, mode, encoding="utf-8") as writer:
+        remaining_rows = rows[len(completed) :]
         progress = tqdm(
-            rows[len(completed) :],
-            desc=f"{args.mode}_fullschema",
             total=len(rows),
             initial=len(completed),
+            desc=f"{args.mode}_fullschema",
         )
-        for row in progress:
-            prompt = apply_template(tokenizer, row["messages"])
-            inputs = tokenizer(prompt, return_tensors="pt").to(model.device)
+        for start in range(0, len(remaining_rows), args.batch_size):
+            batch_rows = remaining_rows[start : start + args.batch_size]
+            prompts = [apply_template(tokenizer, row["messages"]) for row in batch_rows]
+            inputs = tokenizer(prompts, padding=True, return_tensors="pt").to(model.device)
             with torch.no_grad():
                 output = model.generate(
                     **inputs,
@@ -314,38 +330,44 @@ def main():
                     do_sample=False,
                     pad_token_id=tokenizer.eos_token_id,
                 )
-            generation = tokenizer.decode(output[0][inputs["input_ids"].shape[1] :], skip_special_tokens=True)
-            gold = extract_verdict(row["messages"][2]["content"])
-            pred = extract_verdict(generation)
-            gold_scope, gold_components = extract_localization(row["messages"][2]["content"])
-            pred_scope, pred_components = extract_localization(generation)
-            gold_surface, gold_objective = extract_attack(row["messages"][2]["content"])
-            pred_surface, pred_objective = extract_attack(generation)
-            quality = trace_quality(row, generation)
-            writer.write(
-                json.dumps(
-                    {
-                        "run_id": row.get("metadata", {}).get("run_id"),
-                        "gold": gold,
-                        "pred": pred,
-                        "gold_binary": to_binary(gold),
-                        "pred_binary": to_binary(pred),
-                        "gold_scope": gold_scope,
-                        "pred_scope": pred_scope,
-                        "gold_components": sorted(gold_components),
-                        "pred_components": sorted(pred_components),
-                        "gold_surface": gold_surface,
-                        "pred_surface": pred_surface,
-                        "gold_objective": gold_objective,
-                        "pred_objective": pred_objective,
-                        "trace_quality": quality,
-                        "generation": generation,
-                    },
-                    ensure_ascii=False,
-                )
-                + "\n"
+            prompt_width = inputs["input_ids"].shape[1]
+            generations = tokenizer.batch_decode(
+                output[:, prompt_width:], skip_special_tokens=True
             )
-            writer.flush()
+            for row, generation in zip(batch_rows, generations):
+                gold = extract_verdict(row["messages"][2]["content"])
+                pred = extract_verdict(generation)
+                gold_scope, gold_components = extract_localization(row["messages"][2]["content"])
+                pred_scope, pred_components = extract_localization(generation)
+                gold_surface, gold_objective = extract_attack(row["messages"][2]["content"])
+                pred_surface, pred_objective = extract_attack(generation)
+                quality = trace_quality(row, generation)
+                writer.write(
+                    json.dumps(
+                        {
+                            "run_id": row.get("metadata", {}).get("run_id"),
+                            "gold": gold,
+                            "pred": pred,
+                            "gold_binary": to_binary(gold),
+                            "pred_binary": to_binary(pred),
+                            "gold_scope": gold_scope,
+                            "pred_scope": pred_scope,
+                            "gold_components": sorted(gold_components),
+                            "pred_components": sorted(pred_components),
+                            "gold_surface": gold_surface,
+                            "pred_surface": pred_surface,
+                            "gold_objective": gold_objective,
+                            "pred_objective": pred_objective,
+                            "trace_quality": quality,
+                            "generation": generation,
+                        },
+                        ensure_ascii=False,
+                    )
+                    + "\n"
+                )
+                writer.flush()
+                progress.update(1)
+        progress.close()
 
     recs = [json.loads(line) for line in open(pred_path, encoding="utf-8") if line.strip()]
     y3 = [row["gold"] for row in recs]
@@ -460,7 +482,11 @@ def main():
         "test_file": args.test_file,
         "dataset_role": args.dataset_role,
         "prompt_type": "original_sft_fullschema",
-        "generation": {"do_sample": False, "max_new_tokens": args.max_new_tokens},
+        "generation": {
+            "do_sample": False,
+            "max_new_tokens": args.max_new_tokens,
+            "batch_size": args.batch_size,
+        },
         "limit": args.limit,
         "gold_distribution": dict(Counter(y3)),
         "prediction_distribution": dict(Counter(p3)),
