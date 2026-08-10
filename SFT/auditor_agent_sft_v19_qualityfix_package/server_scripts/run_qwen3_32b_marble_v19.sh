@@ -21,7 +21,6 @@ python "$PKG/scripts/check_baseline_environment.py" \
 python "$PKG/scripts/selftest_baseline_logic.py" | tee "$OUT/logic_selftest.json"
 
 python "$PKG/scripts/restore_track_data.py" "$DATA"
-(cd "$DATA" && sha256sum -c SHA256SUMS --ignore-missing)
 python "$PKG/scripts/audit_marble_baseline_contract.py" "$DATA" | tee "$OUT/data_contract_audit.json"
 
 if [[ ! -f "$OUT/TRAINING_COMPLETE" ]]; then

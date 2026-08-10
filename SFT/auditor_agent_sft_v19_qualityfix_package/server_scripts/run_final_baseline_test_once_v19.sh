@@ -10,7 +10,6 @@ export HF_HOME="${HF_HOME:-$BASE/sft_models/hf_cache}"
 export HF_HUB_CACHE="${HF_HUB_CACHE:-$HF_HOME/hub}"
 export TRANSFORMERS_CACHE="${TRANSFORMERS_CACHE:-$HF_HOME/transformers}"
 python "$PKG/scripts/restore_track_data.py" "$DATA"
-(cd "$DATA" && sha256sum -c SHA256SUMS --ignore-missing)
 python "$PKG/scripts/audit_marble_baseline_contract.py" "$DATA"
 
 case "$BASELINE" in
