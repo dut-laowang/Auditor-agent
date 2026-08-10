@@ -31,14 +31,15 @@ case "$BASELINE" in
     python "$PKG/scripts/check_baseline_environment.py" --baseline modernbert
     python "$PKG/scripts/selftest_baseline_logic.py"
     MODEL="answerdotai/ModernBERT-base"
-    MODEL_DIR="${MODEL_DIR:-$BASE/sft_models/modernbert-base-8192-multitask-v19-marble}"
+    MODEL_DIR="${MODEL_DIR:-$BASE/sft_models/modernbert-base-8192-sdpa-fp32-multitask-v19-marble}"
     CHECKPOINT="${CHECKPOINT:-$MODEL_DIR/checkpoint-epoch-3.pt}"
-    OUTPUT="${OUTPUT:-$BASE/modernbert8192_v19_marble_final_test}"
+    OUTPUT="${OUTPUT:-$BASE/modernbert8192_sdpa_fp32_v19_marble_final_test}"
     mkdir -p "$OUTPUT"
     python "$PKG/server_scripts/modernbert_multitask_v19.py" \
       --mode eval --model "$MODEL" --revision 8949b909ec900327062f0ebf497f51aef5e6f0c8 \
       --checkpoint "$CHECKPOINT" \
       --data-file "$DATA/test.jsonl" --dataset-role test --sealed-test-ack FINAL_ONCE \
+      --attn-implementation sdpa \
       --output-dir "$OUTPUT" --max-len 8192 --input-mode user \
       --batch "${EVAL_BATCH_SIZE:-2}" --seed 42
     ;;

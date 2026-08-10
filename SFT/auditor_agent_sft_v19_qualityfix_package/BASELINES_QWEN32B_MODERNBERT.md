@@ -103,6 +103,10 @@ Training and evaluation directories carry machine-checked contracts. Qwen
 resume binds the dataset, model revision, quantization, adapter hashes, and
 decoding settings. ModernBERT binds the validation-selected component threshold
 to the exact checkpoint SHA-256 and refuses an ad-hoc final-test threshold.
+ModernBERT explicitly uses PyTorch SDPA rather than FlashAttention because the
+official Transformers issue tracker documents NaN logits during ModernBERT
+fine-tuning with FlashAttention. AdamW uses `(beta1, beta2)=(0.9, 0.98)` and
+`eps=1e-6`; every optimizer update rejects non-finite loss or gradient norm.
 
 The component threshold is selected once on validation by micro-F1 and saved as
 `component_threshold.json`. Final test refuses to run without that frozen file.

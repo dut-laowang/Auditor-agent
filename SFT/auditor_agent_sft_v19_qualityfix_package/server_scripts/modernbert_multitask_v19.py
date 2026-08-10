@@ -181,9 +181,13 @@ class Collator:
 
 
 class ModernBertMultiTask(nn.Module):
-    def __init__(self, model_name, revision):
+    def __init__(self, model_name, revision, attn_implementation="sdpa"):
         super().__init__()
-        self.encoder = AutoModel.from_pretrained(model_name, revision=revision)
+        self.encoder = AutoModel.from_pretrained(
+            model_name,
+            revision=revision,
+            attn_implementation=attn_implementation,
+        )
         hidden = self.encoder.config.hidden_size
         dropout = getattr(self.encoder.config, "classifier_dropout", None) or 0.1
         self.dropout = nn.Dropout(dropout)
@@ -366,6 +370,7 @@ def main():
     parser.add_argument("--mode", choices=["train", "eval"], required=True)
     parser.add_argument("--model", default="answerdotai/ModernBERT-base")
     parser.add_argument("--revision", default=MODERNBERT_REVISION)
+    parser.add_argument("--attn-implementation", choices=["sdpa"], default="sdpa")
     parser.add_argument("--data-file", required=True)
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--checkpoint")
@@ -415,6 +420,8 @@ def main():
         "max_length": args.max_len,
         "candidate_max_length": args.candidate_max_len,
         "input_mode": args.input_mode,
+        "attention_implementation": args.attn_implementation,
+        "training_precision": "fp32",
         "verdict_labels": VERDICTS,
         "scope_labels": SCOPES,
         "lambda_scope": args.lambda_scope,
@@ -492,7 +499,9 @@ def main():
         num_workers=args.num_workers,
         pin_memory=torch.cuda.is_available(),
     )
-    model = ModernBertMultiTask(args.model, args.revision).to(device)
+    model = ModernBertMultiTask(
+        args.model, args.revision, args.attn_implementation
+    ).to(device)
     model_context = getattr(model.encoder.config, "max_position_embeddings", None)
     if model_context is not None and model_context < args.max_len:
         raise ValueError(f"Model context limit {model_context} < {args.max_len}")
@@ -546,44 +555,56 @@ def main():
             component_logits,
         )
         torch.cuda.empty_cache()
-        optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=0.01)
+        optimizer = torch.optim.AdamW(
+            model.parameters(),
+            lr=args.lr,
+            betas=(0.9, 0.98),
+            eps=1e-6,
+            weight_decay=0.01,
+        )
         updates = (len(loader) + args.grad_accum - 1) // args.grad_accum * args.epochs
         scheduler = get_cosine_schedule_with_warmup(optimizer, max(1, int(updates * 0.03)), updates)
-        scaler = torch.amp.GradScaler("cuda", enabled=device.type == "cuda" and not torch.cuda.is_bf16_supported())
-        amp_dtype = torch.bfloat16 if device.type == "cuda" and torch.cuda.is_bf16_supported() else torch.float16
         model.train()
         optimizer.zero_grad(set_to_none=True)
         step = 0
         for epoch in range(args.epochs):
             progress = tqdm(loader, desc=f"modernbert_train_epoch_{epoch + 1}")
             for batch_index, batch in enumerate(progress):
+                grad_norm = None
                 batch = move(batch, device)
-                with torch.autocast(device_type=device.type, dtype=amp_dtype, enabled=device.type == "cuda"):
-                    verdict_logits, scope_logits, component_logits = model(batch)
-                    verdict_loss = F.cross_entropy(verdict_logits, batch["verdict_labels"])
-                    scope_loss = F.cross_entropy(scope_logits, batch["scope_labels"])
-                    component_loss = F.binary_cross_entropy_with_logits(
-                        component_logits,
-                        batch["candidate_labels"],
-                        pos_weight=torch.tensor(component_pos_weight, device=device),
+                verdict_logits, scope_logits, component_logits = model(batch)
+                verdict_loss = F.cross_entropy(verdict_logits, batch["verdict_labels"])
+                scope_loss = F.cross_entropy(scope_logits, batch["scope_labels"])
+                component_loss = F.binary_cross_entropy_with_logits(
+                    component_logits,
+                    batch["candidate_labels"],
+                    pos_weight=torch.tensor(component_pos_weight, device=device),
+                )
+                group_start = (batch_index // args.grad_accum) * args.grad_accum
+                group_size = min(args.grad_accum, len(loader) - group_start)
+                loss = (
+                    verdict_loss
+                    + args.lambda_scope * scope_loss
+                    + args.lambda_component * component_loss
+                ) / group_size
+                if not torch.isfinite(loss):
+                    raise FloatingPointError(
+                        "Non-finite ModernBERT training loss before backward at "
+                        f"epoch={epoch + 1}, batch={batch_index}, run_ids={batch['run_ids']}"
                     )
-                    group_start = (batch_index // args.grad_accum) * args.grad_accum
-                    group_size = min(args.grad_accum, len(loader) - group_start)
-                    loss = (
-                        verdict_loss
-                        + args.lambda_scope * scope_loss
-                        + args.lambda_component * component_loss
-                    ) / group_size
-                scaler.scale(loss).backward()
+                loss.backward()
                 if (batch_index + 1) % args.grad_accum == 0 or batch_index + 1 == len(loader):
-                    scaler.unscale_(optimizer)
-                    torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
-                    scaler.step(optimizer)
-                    scaler.update()
+                    grad_norm = torch.nn.utils.clip_grad_norm_(
+                        model.parameters(), 1.0, error_if_nonfinite=True
+                    )
+                    optimizer.step()
                     optimizer.zero_grad(set_to_none=True)
                     scheduler.step()
                     step += 1
-                progress.set_postfix(loss=float(loss.item() * args.grad_accum))
+                progress.set_postfix(
+                    loss=float(loss.item() * group_size),
+                    grad_norm=float(grad_norm) if grad_norm is not None else None,
+                )
             torch.save(model.state_dict(), os.path.join(args.output_dir, f"checkpoint-epoch-{epoch + 1}.pt"))
         tokenizer.save_pretrained(args.output_dir)
         config = vars(args).copy()
@@ -646,6 +667,7 @@ def main():
             "max_length": args.max_len,
             "candidate_max_length": args.candidate_max_len,
             "input_mode": args.input_mode,
+            "attention_implementation": args.attn_implementation,
         }
         for key, expected in expected_threshold_contract.items():
             if threshold_contract.get(key) != expected:
@@ -684,6 +706,7 @@ def main():
                 "max_length": args.max_len,
                 "candidate_max_length": args.candidate_max_len,
                 "input_mode": args.input_mode,
+                "attention_implementation": args.attn_implementation,
             }, handle, indent=2)
     metrics = metrics_from_records(records, threshold)
     metrics.update({
@@ -696,6 +719,7 @@ def main():
         "dataset_role": args.dataset_role,
         "max_length": args.max_len,
         "input_mode": args.input_mode,
+        "attention_implementation": args.attn_implementation,
     })
     with open(os.path.join(args.output_dir, "predictions.jsonl"), "w", encoding="utf-8") as handle:
         for record in records:
