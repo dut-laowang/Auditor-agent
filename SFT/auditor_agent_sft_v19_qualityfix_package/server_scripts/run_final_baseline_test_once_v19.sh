@@ -22,18 +22,19 @@ case "$BASELINE" in
     CUDA_VISIBLE_DEVICES="$GPU" python "$PKG/server_scripts/eval_qwen3_fullschema_v19.py" \
       --mode sft --model "$MODEL" --adapter "$ADAPTER" --load-in-4bit \
       --test-file "$DATA/test.jsonl" --dataset-role test --sealed-test-ack FINAL_ONCE \
-      --output-dir "$OUTPUT" --max-new-tokens 1024 --batch-size "${EVAL_BATCH_SIZE:-2}"
+      --output-dir "$OUTPUT" --max-input-len 6144 --max-new-tokens 1024 \
+      --batch-size "${EVAL_BATCH_SIZE:-2}"
     ;;
   modernbert)
     MODEL="${MODEL:-answerdotai/ModernBERT-base}"
-    MODEL_DIR="${MODEL_DIR:-$BASE/sft_models/modernbert-base-4096-multitask-v19-marble}"
+    MODEL_DIR="${MODEL_DIR:-$BASE/sft_models/modernbert-base-6144-multitask-v19-marble}"
     CHECKPOINT="${CHECKPOINT:-$MODEL_DIR/checkpoint-epoch-3.pt}"
-    OUTPUT="${OUTPUT:-$BASE/modernbert4096_v19_marble_final_test}"
+    OUTPUT="${OUTPUT:-$BASE/modernbert6144_v19_marble_final_test}"
     mkdir -p "$OUTPUT"
     CUDA_VISIBLE_DEVICES="$GPU" python "$PKG/server_scripts/modernbert_multitask_v19.py" \
       --mode eval --model "$MODEL" --checkpoint "$CHECKPOINT" \
       --data-file "$DATA/test.jsonl" --dataset-role test --sealed-test-ack FINAL_ONCE \
-      --output-dir "$OUTPUT" --max-len 4096 --input-mode user \
+      --output-dir "$OUTPUT" --max-len 6144 --input-mode user \
       --batch "${EVAL_BATCH_SIZE:-2}" --seed 42
     ;;
   *) echo "BASELINE must be qwen32b or modernbert" >&2; exit 2 ;;

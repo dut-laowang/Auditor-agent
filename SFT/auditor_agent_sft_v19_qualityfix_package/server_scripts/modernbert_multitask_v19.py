@@ -1,4 +1,4 @@
-"""ModernBERT-4096 multi-task baseline for the frozen V19 MARBLE split."""
+"""ModernBERT-6144 multi-task baseline for the frozen V19 MARBLE split."""
 
 import argparse
 import hashlib
@@ -101,20 +101,29 @@ class V19Dataset(Dataset):
         candidates = candidates_from_row(row)
         document = self.tokenizer(
             visible_text(row, self.input_mode),
-            truncation=True,
-            max_length=self.max_len,
+            truncation=False,
             add_special_tokens=True,
         )["input_ids"]
+        if len(document) > self.max_len:
+            raise ValueError(
+                f"Zero-truncation document gate failed at row {index}: "
+                f"{len(document)} > {self.max_len}"
+            )
         candidate_ids = [item[0] for item in candidates]
         candidate_tokens = [
             self.tokenizer(
                 text,
-                truncation=True,
-                max_length=self.candidate_max_len,
+                truncation=False,
                 add_special_tokens=True,
             )["input_ids"]
             for _, text in candidates
         ]
+        too_long = [len(tokens) for tokens in candidate_tokens if len(tokens) > self.candidate_max_len]
+        if too_long:
+            raise ValueError(
+                f"Zero-truncation candidate gate failed at row {index}: "
+                f"max={max(too_long)} > {self.candidate_max_len}"
+            )
         return {
             "run_id": row.get("metadata", {}).get("run_id"),
             "document": document,
@@ -294,12 +303,40 @@ def metrics_from_records(records, threshold):
     precision = tp / (tp + fp) if tp + fp else 0.0
     recall = tp / (tp + fn) if tp + fn else 0.0
     f1 = 2 * precision * recall / (precision + recall) if precision + recall else 0.0
+    by_scope = {}
+    for scope in ("global", "node", "edge", "tool", "multi"):
+        scoped = [row for row in localized if row["gold_scope"] == scope]
+        if scoped:
+            by_scope[scope] = {
+                "n": len(scoped),
+                "component_hit_rate": sum(
+                    bool(set(row["gold_components"]) & set(row["pred_components"]))
+                    for row in scoped
+                ) / len(scoped),
+                "component_exact_match": sum(
+                    set(row["gold_components"]) == set(row["pred_components"])
+                    for row in scoped
+                ) / len(scoped),
+                "scope_accuracy": sum(
+                    row["gold_scope"] == row["pred_scope"] for row in scoped
+                ) / len(scoped),
+                "predicted_scope_distribution": dict(
+                    Counter(row["pred_scope"] for row in scoped)
+                ),
+            }
     return {
         "mode": "modernbert_multitask",
         "n": len(records),
         "component_threshold": threshold,
         "gold_distribution": dict(Counter(y3)),
         "prediction_distribution": dict(Counter(p3)),
+        "confusion_matrix": {
+            gold: {
+                pred: sum(row["gold"] == gold and row["pred"] == pred for row in records)
+                for pred in VERDICTS
+            }
+            for gold in VERDICTS
+        },
         "three_class_accuracy": accuracy_score(y3, p3),
         "three_class_report": classification_report(y3, p3, labels=VERDICTS, zero_division=0, output_dict=True),
         "binary_accuracy": accuracy_score(yb, pb),
@@ -312,6 +349,7 @@ def metrics_from_records(records, threshold):
             "component_hit_rate": sum(bool(set(r["gold_components"]) & set(r["pred_components"])) for r in localized) / len(localized) if localized else 0.0,
             "component_exact_match": sum(set(r["gold_components"]) == set(r["pred_components"]) for r in localized) / len(localized) if localized else 0.0,
             "scope_accuracy": sum(r["gold_scope"] == r["pred_scope"] for r in localized) / len(localized) if localized else 0.0,
+            "by_gold_scope": by_scope,
             "localization_policy": "source attack-placement candidate projection",
         },
     }
@@ -326,8 +364,8 @@ def main():
     parser.add_argument("--checkpoint")
     parser.add_argument("--dataset-role", choices=["train", "validation", "test"], required=True)
     parser.add_argument("--sealed-test-ack", choices=["FINAL_ONCE"])
-    parser.add_argument("--max-len", type=int, default=4096)
-    parser.add_argument("--candidate-max-len", type=int, default=256)
+    parser.add_argument("--max-len", type=int, default=6144)
+    parser.add_argument("--candidate-max-len", type=int, default=6144)
     parser.add_argument("--input-mode", choices=["user", "system_user"], default="user")
     parser.add_argument("--epochs", type=int, default=3)
     parser.add_argument("--lr", type=float, default=2e-5)
@@ -339,8 +377,8 @@ def main():
     parser.add_argument("--threshold", type=float)
     parser.add_argument("--num-workers", type=int, default=2)
     args = parser.parse_args()
-    if args.max_len != 4096:
-        raise ValueError("The controlled ModernBERT experiment requires --max-len 4096")
+    if args.max_len != 6144:
+        raise ValueError("The controlled ModernBERT experiment requires --max-len 6144")
     if args.dataset_role == "test" and args.sealed_test_ack != "FINAL_ONCE":
         raise ValueError("Final test requires --sealed-test-ack FINAL_ONCE")
     if args.mode == "train" and args.dataset_role != "train":
@@ -361,8 +399,29 @@ def main():
         1.0,
         (component_total - component_positive) / max(1, component_positive),
     )
+    dataset = V19Dataset(
+        rows, tokenizer, args.max_len, args.candidate_max_len, args.input_mode
+    )
+    max_document_tokens = 0
+    max_candidate_tokens = 0
+    for index in tqdm(range(len(dataset)), desc=f"zero_truncation_preflight_{args.dataset_role}"):
+        item = dataset[index]
+        max_document_tokens = max(max_document_tokens, len(item["document"]))
+        max_candidate_tokens = max(
+            max_candidate_tokens,
+            max(map(len, item["candidates"])),
+        )
+    print(json.dumps({
+        "zero_truncation_preflight": "PASS",
+        "dataset_role": args.dataset_role,
+        "rows": len(dataset),
+        "max_document_tokens": max_document_tokens,
+        "document_limit": args.max_len,
+        "max_candidate_tokens": max_candidate_tokens,
+        "candidate_limit": args.candidate_max_len,
+    }))
     loader = DataLoader(
-        V19Dataset(rows, tokenizer, args.max_len, args.candidate_max_len, args.input_mode),
+        dataset,
         batch_size=args.batch,
         shuffle=args.mode == "train",
         collate_fn=Collator(tokenizer),

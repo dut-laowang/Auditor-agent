@@ -54,18 +54,18 @@ def preprocess(example, tokenizer, max_len):
         raise ValueError(
             f"Invalid assistant target length={len(target_ids)} for max_len={max_len}"
         )
-    prompt_budget = max_len - len(target_ids)
-    truncated = len(prefix_ids) > prompt_budget
-    if truncated:
-        head = min(256, prompt_budget)
-        tail = prompt_budget - head
-        prefix_ids = prefix_ids[:head] + (prefix_ids[-tail:] if tail else [])
+    total_tokens = len(prefix_ids) + len(target_ids)
+    if total_tokens > max_len:
+        raise ValueError(
+            f"Zero-truncation V19 gate failed: sequence has {total_tokens} tokens, "
+            f"exceeding max_len={max_len}"
+        )
     return {
         "input_ids": prefix_ids + target_ids,
         "attention_mask": [1] * (len(prefix_ids) + len(target_ids)),
         "labels": [-100] * len(prefix_ids) + target_ids,
         "supervised_tokens": len(target_ids),
-        "prompt_was_truncated": truncated,
+        "sequence_tokens": total_tokens,
     }
 
 
@@ -114,7 +114,7 @@ def main():
     )
     for split in ("train", "validation"):
         for idx, row in enumerate(ds[split]):
-            if leak_pattern.search(json.dumps(row["messages"], ensure_ascii=False)):
+            if leak_pattern.search(json.dumps(row["messages"][:2], ensure_ascii=False)):
                 raise ValueError(f"SFT-visible leak in {split}:{idx}")
             if len(row["messages"]) != 3 or [m["role"] for m in row["messages"]] != [
                 "system", "user", "assistant"
@@ -131,7 +131,7 @@ def main():
     )
     for split in ("train", "validation"):
         supervised = ds[split]["supervised_tokens"]
-        truncated = ds[split]["prompt_was_truncated"]
+        sequence_tokens = ds[split]["sequence_tokens"]
         if min(supervised) < 16:
             raise ValueError(f"Assistant supervision too short in {split}")
         print(json.dumps({
@@ -139,9 +139,11 @@ def main():
             "rows": len(supervised),
             "min_supervised_tokens": min(supervised),
             "max_supervised_tokens": max(supervised),
-            "prompt_truncated_rows": sum(map(bool, truncated)),
+            "min_sequence_tokens": min(sequence_tokens),
+            "max_sequence_tokens": max(sequence_tokens),
+            "prompt_truncated_rows": 0,
         }))
-    ds = ds.remove_columns(["supervised_tokens", "prompt_was_truncated"])
+    ds = ds.remove_columns(["supervised_tokens", "sequence_tokens"])
 
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA GPU is required")

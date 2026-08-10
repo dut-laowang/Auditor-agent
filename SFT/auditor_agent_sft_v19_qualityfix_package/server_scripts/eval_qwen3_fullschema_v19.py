@@ -217,6 +217,7 @@ def main():
         help="Required guard acknowledging that this consumes the sealed final test.",
     )
     parser.add_argument("--output-dir", required=True)
+    parser.add_argument("--max-input-len", type=int, default=6144)
     parser.add_argument("--max-new-tokens", type=int, default=1024)
     parser.add_argument(
         "--batch-size",
@@ -246,6 +247,33 @@ def main():
         tokenizer.pad_token = tokenizer.eos_token
     tokenizer.padding_side = "left"
 
+    rows = [json.loads(line) for line in open(args.test_file, encoding="utf-8") if line.strip()]
+    if args.limit is not None:
+        if args.limit < 1:
+            raise ValueError("--limit must be positive")
+        rows = rows[: args.limit]
+    max_prompt_tokens = 0
+    for index, row in enumerate(tqdm(rows, desc="zero_truncation_preflight")):
+        prompt_tokens = len(
+            tokenizer(
+                apply_template(tokenizer, row["messages"]),
+                add_special_tokens=False,
+                truncation=False,
+            )["input_ids"]
+        )
+        if prompt_tokens > args.max_input_len:
+            raise ValueError(
+                f"Zero-truncation evaluation gate failed at row {index}: "
+                f"{prompt_tokens} > {args.max_input_len}"
+            )
+        max_prompt_tokens = max(max_prompt_tokens, prompt_tokens)
+    print(json.dumps({
+        "zero_truncation_preflight": "PASS",
+        "rows": len(rows),
+        "max_prompt_tokens": max_prompt_tokens,
+        "max_input_len": args.max_input_len,
+    }))
+
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA GPU is required for V19 evaluation")
     model_dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
@@ -270,7 +298,6 @@ def main():
         model = PeftModel.from_pretrained(model, args.adapter)
     model.eval()
 
-    rows = [json.loads(line) for line in open(args.test_file, encoding="utf-8") if line.strip()]
     digest = hashlib.sha256()
     with open(args.test_file, "rb") as handle:
         for block in iter(lambda: handle.read(1024 * 1024), b""):
@@ -494,6 +521,8 @@ def main():
         "model": args.model,
         "adapter": args.adapter if args.mode == "sft" else None,
         "load_in_4bit": args.load_in_4bit,
+        "max_input_len": args.max_input_len,
+        "max_prompt_tokens_observed": max_prompt_tokens,
         "test_file": args.test_file,
         "dataset_role": args.dataset_role,
         "prompt_type": "original_sft_fullschema",

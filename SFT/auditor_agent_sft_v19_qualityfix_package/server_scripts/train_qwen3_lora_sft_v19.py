@@ -54,13 +54,12 @@ def preprocess(example, tokenizer, max_len):
             f"Assistant target has {len(target_ids)} tokens, exceeding max_len={max_len}"
         )
 
-    prompt_budget = max_len - len(target_ids)
-    prompt_was_truncated = len(prefix_ids) > prompt_budget
-    if prompt_was_truncated:
-        # Retain the system/header prefix plus the most recent run evidence.
-        head = min(256, prompt_budget)
-        tail = prompt_budget - head
-        prefix_ids = prefix_ids[:head] + (prefix_ids[-tail:] if tail else [])
+    total_tokens = len(prefix_ids) + len(target_ids)
+    if total_tokens > max_len:
+        raise ValueError(
+            f"Zero-truncation V19 gate failed: sequence has {total_tokens} tokens, "
+            f"exceeding max_len={max_len}"
+        )
     input_ids = prefix_ids + target_ids
     attention_mask = [1] * len(input_ids)
     labels = [-100] * len(prefix_ids) + target_ids
@@ -71,7 +70,7 @@ def preprocess(example, tokenizer, max_len):
         "attention_mask": attention_mask,
         "labels": labels,
         "supervised_tokens": len(target_ids),
-        "prompt_was_truncated": prompt_was_truncated,
+        "sequence_tokens": total_tokens,
     }
 
 
@@ -95,7 +94,7 @@ def main():
     parser.add_argument("--model", default="Qwen/Qwen3-8B")
     parser.add_argument("--data-dir", required=True)
     parser.add_argument("--output-dir", required=True)
-    parser.add_argument("--max-len", type=int, default=4096)
+    parser.add_argument("--max-len", type=int, default=6144)
     parser.add_argument("--epochs", type=float, default=2)
     parser.add_argument("--lr", type=float, default=2e-4)
     parser.add_argument("--batch", type=int, default=1)
@@ -109,6 +108,8 @@ def main():
         help="Automatically resume from the newest checkpoint in output-dir.",
     )
     args = parser.parse_args()
+    if args.max_len != 6144:
+        raise ValueError("The controlled V19 experiment requires --max-len 6144")
 
     train_file = os.path.join(args.data_dir, "train.jsonl")
     validation_file = os.path.join(args.data_dir, "validation.jsonl")
@@ -124,7 +125,7 @@ def main():
     )
     for split in ("train", "validation"):
         for idx, row in enumerate(ds[split]):
-            visible = json.dumps(row["messages"], ensure_ascii=False)
+            visible = json.dumps(row["messages"][:2], ensure_ascii=False)
             if leak_pattern.search(visible):
                 raise ValueError(f"SFT-visible leak in {split}:{idx}")
             if not all(isinstance(msg.get("content"), str) for msg in row["messages"]):
@@ -141,7 +142,7 @@ def main():
     )
     for split in ("train", "validation"):
         supervised = ds[split]["supervised_tokens"]
-        truncated = ds[split]["prompt_was_truncated"]
+        sequence_tokens = ds[split]["sequence_tokens"]
         if not supervised or min(supervised) < 16:
             raise ValueError(
                 f"Invalid assistant supervision in {split}: "
@@ -154,11 +155,13 @@ def main():
                     "rows": len(supervised),
                     "min_supervised_tokens": min(supervised),
                     "max_supervised_tokens": max(supervised),
-                    "prompt_truncated_rows": sum(bool(x) for x in truncated),
+                    "min_sequence_tokens": min(sequence_tokens),
+                    "max_sequence_tokens": max(sequence_tokens),
+                    "prompt_truncated_rows": 0,
                 }
             )
         )
-    ds = ds.remove_columns(["supervised_tokens", "prompt_was_truncated"])
+    ds = ds.remove_columns(["supervised_tokens", "sequence_tokens"])
 
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA GPU is required for V19 training")

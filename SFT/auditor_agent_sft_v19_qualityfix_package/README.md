@@ -51,6 +51,6 @@ review queue, not evidence that human quality control has been completed.
 
 ## Additional controlled MARBLE baselines
 
-The Qwen3-32B QLoRA and ModernBERT-4096 multi-task baselines, including two
+The Qwen3-32B QLoRA and ModernBERT-6144 multi-task baselines, including two
 independent single-GPU runners and the sealed-test command, are documented in
 [`BASELINES_QWEN32B_MODERNBERT.md`](BASELINES_QWEN32B_MODERNBERT.md).

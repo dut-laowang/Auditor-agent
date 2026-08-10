@@ -32,7 +32,7 @@ fi
 CUDA_VISIBLE_DEVICES="$GPU" python "$PKG/server_scripts/eval_qwen3_fullschema_v19.py" \
   --mode sft --model "$MODEL" --adapter "$OUT" --load-in-4bit \
   --test-file "$DATA/validation.jsonl" --dataset-role validation \
-  --output-dir "$RESULTS" --max-new-tokens 1024 \
+  --output-dir "$RESULTS" --max-input-len 6144 --max-new-tokens 1024 \
   --batch-size "${EVAL_BATCH_SIZE:-2}" --resume 2>&1 | tee "$RESULTS/evaluation.log"
 
 echo "Qwen3-32B V19 MARBLE training and validation complete. Final test remains sealed."

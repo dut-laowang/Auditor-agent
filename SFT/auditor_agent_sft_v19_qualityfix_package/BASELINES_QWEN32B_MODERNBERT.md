@@ -1,4 +1,4 @@
-# V19 MARBLE controlled baselines: Qwen3-32B and ModernBERT-4096
+# V19 MARBLE controlled baselines: Qwen3-32B and ModernBERT-6144
 
 These baselines consume only the frozen `marble_only` V19 files. AutoGen and
 `mixed` are intentionally out of scope. The immutable split hashes are:
@@ -37,11 +37,11 @@ cd /gs/bs/tgh-26IAW/hongbo/project_4_coauthor/Auditor-agent
 GPU=0 bash SFT/auditor_agent_sft_v19_qualityfix_package/server_scripts/run_qwen3_32b_marble_v19.sh
 ```
 
-Run ModernBERT-4096 on another allocated GPU:
+Run ModernBERT-6144 on another allocated GPU:
 
 ```bash
 cd /gs/bs/tgh-26IAW/hongbo/project_4_coauthor/Auditor-agent
-GPU=0 bash SFT/auditor_agent_sft_v19_qualityfix_package/server_scripts/run_modernbert4096_marble_v19.sh
+GPU=0 bash SFT/auditor_agent_sft_v19_qualityfix_package/server_scripts/run_modernbert6144_marble_v19.sh
 ```
 
 `GPU=0` is correct when each job receives one isolated GPU. If both jobs share
@@ -59,7 +59,7 @@ the data, seed, epochs, maximum length, prompt template, or LoRA targets.
 | V19 MARBLE bytes/splits | identical | identical | identical |
 | visible fields | system + user | system + user | user JSON only |
 | target source | assistant JSON | assistant JSON | assistant JSON parsed into labels |
-| maximum length | 6,144 in the released runner | 6,144 | 4,096 |
+| maximum length | 6,144 in the released runner | 6,144 | 6,144 |
 | optimization | LoRA | same LoRA targets/rank, NF4 base | full encoder multitask |
 | verdict | generated | generated | 3-class head |
 | scope | generated | generated | 6-class head |
@@ -71,6 +71,12 @@ generative model. Its document input is exactly `messages[1].content`; candidate
 texts are the unmodified `graph_candidates` objects already present in that
 same visible JSON. Metadata is used only after prediction for `run_id` bookkeeping
 and never enters the encoder.
+
+All three paths use the same 6,144-token ceiling. The new runners enforce a
+zero-truncation preflight over the complete split before loading the model. If
+even one document, candidate, prompt, or assistant-supervised training sequence
+would exceed the ceiling, the run terminates before optimization or generation;
+no head-tail retention or silent tokenizer truncation is permitted.
 
 The component threshold is selected once on validation by micro-F1 and saved as
 `component_threshold.json`. Final test refuses to run without that frozen file.
