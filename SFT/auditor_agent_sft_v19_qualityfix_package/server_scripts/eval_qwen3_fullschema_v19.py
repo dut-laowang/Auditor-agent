@@ -11,6 +11,47 @@ from sklearn.metrics import accuracy_score, classification_report
 from tqdm import tqdm
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
+PINNED_REVISIONS = {
+    "Qwen/Qwen3-8B": "b968826d9c46dd6066d109eabc6255188de91218",
+    "Qwen/Qwen3-32B": "9216db5781bf21249d130ec9da846c4624c16137",
+}
+MARBLE_SHA256 = {
+    "validation": "2882c5adfe2b9c3e7820f7cf56338dec4bf59e091031763ce8ce46d6aa70609e",
+    "test": "bee77d962f66f5481e88d89b49b83b3ea9a449e48d776b669ebadd731417167f",
+}
+
+
+def sha256_file(path):
+    digest = hashlib.sha256()
+    with open(path, "rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            digest.update(block)
+    return digest.hexdigest()
+
+
+def adapter_fingerprint(path):
+    if not path:
+        return None
+    artifacts = {}
+    for name in (
+        "adapter_config.json",
+        "adapter_model.safetensors",
+        "adapter_model.bin",
+        "run_manifest.json",
+        "TRAIN_CONTRACT.json",
+        "tokenizer_config.json",
+        "tokenizer.json",
+        "vocab.json",
+        "merges.txt",
+        "chat_template.jinja",
+    ):
+        candidate = os.path.join(path, name)
+        if os.path.isfile(candidate):
+            artifacts[name] = sha256_file(candidate)
+    if not artifacts:
+        raise ValueError(f"No LoRA adapter artifacts found in {path}")
+    return artifacts
+
 
 def apply_template(tokenizer, messages):
     try:
@@ -203,6 +244,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--mode", choices=["base", "sft"], required=True)
     parser.add_argument("--model", default="Qwen/Qwen3-8B")
+    parser.add_argument("--revision")
     parser.add_argument("--adapter")
     parser.add_argument(
         "--load-in-4bit",
@@ -232,8 +274,15 @@ def main():
         help="Continue an interrupted predictions.jsonl after validating its run-id prefix.",
     )
     args = parser.parse_args()
+    revision = args.revision or PINNED_REVISIONS.get(args.model)
+    if not revision:
+        raise ValueError("Unpinned model: pass an immutable --revision commit hash")
+    if args.model in PINNED_REVISIONS and revision != PINNED_REVISIONS[args.model]:
+        raise ValueError(f"Controlled evaluation requires pinned revision for {args.model}")
     if args.batch_size < 1:
         raise ValueError("--batch-size must be at least 1")
+    if args.mode == "sft" and not args.adapter:
+        raise ValueError("--adapter is required for --mode sft")
 
     if args.dataset_role == "test" and args.sealed_test_ack != "FINAL_ONCE":
         raise ValueError("Final test requires --sealed-test-ack FINAL_ONCE")
@@ -242,7 +291,15 @@ def main():
 
     os.makedirs(args.output_dir, exist_ok=True)
     tokenizer_path = args.adapter if args.mode == "sft" and args.adapter else args.model
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer_path, trust_remote_code=True)
+    tokenizer_kwargs = {"trust_remote_code": True}
+    if tokenizer_path == args.model:
+        tokenizer_kwargs["revision"] = revision
+    tokenizer = AutoTokenizer.from_pretrained(tokenizer_path, **tokenizer_kwargs)
+    if tokenizer.model_max_length < args.max_input_len + args.max_new_tokens:
+        raise ValueError(
+            f"Tokenizer context limit {tokenizer.model_max_length} is smaller than "
+            f"input+generation budget {args.max_input_len + args.max_new_tokens}"
+        )
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     tokenizer.padding_side = "left"
@@ -274,6 +331,64 @@ def main():
         "max_input_len": args.max_input_len,
     }))
 
+    test_sha256 = sha256_file(args.test_file)
+    if args.model == "Qwen/Qwen3-32B":
+        if test_sha256 != MARBLE_SHA256[args.dataset_role]:
+            raise ValueError(
+                f"Frozen V19 MARBLE {args.dataset_role} hash mismatch: "
+                f"{test_sha256} != {MARBLE_SHA256[args.dataset_role]}"
+            )
+        manifest_path = os.path.join(args.adapter, "run_manifest.json")
+        if not os.path.isfile(manifest_path):
+            raise RuntimeError("Qwen3-32B adapter has no run_manifest.json")
+        with open(manifest_path, encoding="utf-8") as handle:
+            adapter_manifest = json.load(handle)
+        required_manifest = {
+            "model": args.model,
+            "model_revision": revision,
+            "max_length": 6144,
+            "train_sha256": "d49ec56577a80fab3be360ae9cb1b90e2d751ce686ffa0f0e2064b2d05d0a932",
+            "validation_sha256": MARBLE_SHA256["validation"],
+            "quantization": "4bit",
+        }
+        for key, expected in required_manifest.items():
+            if adapter_manifest.get(key) != expected:
+                raise RuntimeError(
+                    f"Qwen3-32B adapter manifest mismatch for {key}: "
+                    f"{adapter_manifest.get(key)} != {expected}"
+                )
+    eval_contract = {
+        "model": args.model,
+        "model_revision": revision,
+        "mode": args.mode,
+        "adapter": os.path.abspath(args.adapter) if args.adapter else None,
+        "adapter_fingerprint": adapter_fingerprint(args.adapter) if args.mode == "sft" else None,
+        "data_sha256": test_sha256,
+        "dataset_role": args.dataset_role,
+        "rows": len(rows),
+        "max_input_len": args.max_input_len,
+        "max_new_tokens": args.max_new_tokens,
+        "batch_size": args.batch_size,
+        "load_in_4bit": args.load_in_4bit,
+        "do_sample": False,
+    }
+    contract_path = os.path.join(args.output_dir, "EVAL_CONTRACT.json")
+    if os.path.isfile(contract_path):
+        with open(contract_path, encoding="utf-8") as handle:
+            existing_contract = json.load(handle)
+        if existing_contract != eval_contract:
+            raise RuntimeError(
+                "Evaluation output directory belongs to a different model, adapter, "
+                "dataset, or decoding configuration"
+            )
+    else:
+        if os.path.isfile(os.path.join(args.output_dir, "predictions.jsonl")):
+            raise RuntimeError(
+                "Existing predictions have no EVAL_CONTRACT.json; use a fresh output directory"
+            )
+        with open(contract_path, "w", encoding="utf-8") as handle:
+            json.dump(eval_contract, handle, ensure_ascii=False, indent=2)
+
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA GPU is required for V19 evaluation")
     model_dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
@@ -287,22 +402,22 @@ def main():
         )
     model = AutoModelForCausalLM.from_pretrained(
         args.model,
+        revision=revision,
         torch_dtype=model_dtype,
         quantization_config=quantization_config,
         device_map={"": 0} if args.load_in_4bit else "auto",
         trust_remote_code=True,
     )
+    model_context = getattr(model.config, "max_position_embeddings", None)
+    if model_context is not None and model_context < args.max_input_len + args.max_new_tokens:
+        raise ValueError(
+            f"Model context limit {model_context} is smaller than input+generation budget "
+            f"{args.max_input_len + args.max_new_tokens}"
+        )
     if args.mode == "sft":
-        if not args.adapter:
-            raise ValueError("--adapter is required for --mode sft")
         model = PeftModel.from_pretrained(model, args.adapter)
     model.eval()
 
-    digest = hashlib.sha256()
-    with open(args.test_file, "rb") as handle:
-        for block in iter(lambda: handle.read(1024 * 1024), b""):
-            digest.update(block)
-    test_sha256 = digest.hexdigest()
     if args.dataset_role == "test":
         seal_record = os.path.join(args.output_dir, "SEALED_TEST_CONSUMED.json")
         if os.path.exists(seal_record) and not args.resume:
@@ -312,6 +427,9 @@ def main():
             "rows": len(rows),
             "mode": args.mode,
             "batch_size": args.batch_size,
+            "eval_contract_sha256": hashlib.sha256(
+                json.dumps(eval_contract, sort_keys=True).encode("utf-8")
+            ).hexdigest(),
         }
         if os.path.exists(seal_record):
             with open(seal_record, encoding="utf-8") as handle:
@@ -519,6 +637,7 @@ def main():
         "mode": args.mode,
         "n": len(recs),
         "model": args.model,
+        "model_revision": revision,
         "adapter": args.adapter if args.mode == "sft" else None,
         "load_in_4bit": args.load_in_4bit,
         "max_input_len": args.max_input_len,

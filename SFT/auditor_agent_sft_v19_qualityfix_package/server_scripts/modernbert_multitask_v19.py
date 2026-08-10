@@ -18,6 +18,12 @@ from transformers import AutoModel, AutoTokenizer, get_cosine_schedule_with_warm
 
 VERDICTS = ["clean_safe", "attack_failed", "attack_success"]
 SCOPES = ["none", "global", "node", "edge", "tool", "multi"]
+MODERNBERT_REVISION = "8949b909ec900327062f0ebf497f51aef5e6f0c8"
+MARBLE_SHA256 = {
+    "train": "d49ec56577a80fab3be360ae9cb1b90e2d751ce686ffa0f0e2064b2d05d0a932",
+    "validation": "2882c5adfe2b9c3e7820f7cf56338dec4bf59e091031763ce8ce46d6aa70609e",
+    "test": "bee77d962f66f5481e88d89b49b83b3ea9a449e48d776b669ebadd731417167f",
+}
 
 
 def sha256(path):
@@ -175,9 +181,9 @@ class Collator:
 
 
 class ModernBertMultiTask(nn.Module):
-    def __init__(self, model_name):
+    def __init__(self, model_name, revision):
         super().__init__()
-        self.encoder = AutoModel.from_pretrained(model_name)
+        self.encoder = AutoModel.from_pretrained(model_name, revision=revision)
         hidden = self.encoder.config.hidden_size
         dropout = getattr(self.encoder.config, "classifier_dropout", None) or 0.1
         self.dropout = nn.Dropout(dropout)
@@ -359,6 +365,7 @@ def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--mode", choices=["train", "eval"], required=True)
     parser.add_argument("--model", default="answerdotai/ModernBERT-base")
+    parser.add_argument("--revision", default=MODERNBERT_REVISION)
     parser.add_argument("--data-file", required=True)
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--checkpoint")
@@ -377,20 +384,71 @@ def main():
     parser.add_argument("--threshold", type=float)
     parser.add_argument("--num-workers", type=int, default=2)
     args = parser.parse_args()
+    if args.model != "answerdotai/ModernBERT-base" or args.revision != MODERNBERT_REVISION:
+        raise ValueError("The controlled baseline requires the pinned ModernBERT-base revision")
     if args.max_len != 6144:
         raise ValueError("The controlled ModernBERT experiment requires --max-len 6144")
+    if args.candidate_max_len != 6144 or args.input_mode != "user":
+        raise ValueError(
+            "The controlled ModernBERT experiment requires candidate_max_len=6144 "
+            "and input_mode=user"
+        )
     if args.dataset_role == "test" and args.sealed_test_ack != "FINAL_ONCE":
         raise ValueError("Final test requires --sealed-test-ack FINAL_ONCE")
     if args.mode == "train" and args.dataset_role != "train":
         raise ValueError("Training requires --dataset-role train")
+    if args.mode == "eval" and not args.checkpoint:
+        raise ValueError("Evaluation requires --checkpoint")
+    data_sha256 = sha256(args.data_file)
+    if data_sha256 != MARBLE_SHA256[args.dataset_role]:
+        raise ValueError(
+            f"Frozen V19 MARBLE {args.dataset_role} hash mismatch: "
+            f"{data_sha256} != {MARBLE_SHA256[args.dataset_role]}"
+        )
     os.makedirs(args.output_dir, exist_ok=True)
+    train_contract = {
+        "model": args.model,
+        "model_revision": args.revision,
+        "train_sha256": MARBLE_SHA256["train"],
+        "validation_sha256": MARBLE_SHA256["validation"],
+        "test_sha256": MARBLE_SHA256["test"],
+        "max_length": args.max_len,
+        "candidate_max_length": args.candidate_max_len,
+        "input_mode": args.input_mode,
+        "verdict_labels": VERDICTS,
+        "scope_labels": SCOPES,
+        "lambda_scope": args.lambda_scope,
+        "lambda_component": args.lambda_component,
+    }
+    model_dir = args.output_dir if args.mode == "train" else os.path.dirname(args.checkpoint or "")
+    contract_path = os.path.join(model_dir, "TRAIN_CONTRACT.json")
+    if args.mode == "train":
+        if os.path.isfile(contract_path):
+            with open(contract_path, encoding="utf-8") as handle:
+                if json.load(handle) != train_contract:
+                    raise RuntimeError("Output directory contains a different ModernBERT training contract")
+        else:
+            with open(contract_path, "w", encoding="utf-8") as handle:
+                json.dump(train_contract, handle, ensure_ascii=False, indent=2)
+    else:
+        if not os.path.isfile(contract_path):
+            raise RuntimeError("ModernBERT checkpoint has no TRAIN_CONTRACT.json")
+        with open(contract_path, encoding="utf-8") as handle:
+            if json.load(handle) != train_contract:
+                raise RuntimeError("ModernBERT checkpoint training contract mismatch")
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
     if torch.cuda.is_available():
         torch.cuda.manual_seed_all(args.seed)
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-    tokenizer = AutoTokenizer.from_pretrained(args.model)
+    if not torch.cuda.is_available():
+        raise RuntimeError("CUDA GPU is required for the controlled ModernBERT baseline")
+    device = torch.device("cuda")
+    tokenizer = AutoTokenizer.from_pretrained(args.model, revision=args.revision)
+    if tokenizer.model_max_length < args.max_len:
+        raise ValueError(
+            f"Tokenizer context limit {tokenizer.model_max_length} < {args.max_len}"
+        )
     rows = load_rows(args.data_file)
     validate_contract(rows, args.dataset_role)
     component_positive = sum(len(parse_target(row)[2]) for row in rows)
@@ -404,6 +462,8 @@ def main():
     )
     max_document_tokens = 0
     max_candidate_tokens = 0
+    longest_rows = []
+    row_sizes = []
     for index in tqdm(range(len(dataset)), desc=f"zero_truncation_preflight_{args.dataset_role}"):
         item = dataset[index]
         max_document_tokens = max(max_document_tokens, len(item["document"]))
@@ -411,6 +471,10 @@ def main():
             max_candidate_tokens,
             max(map(len, item["candidates"])),
         )
+        row_sizes.append((
+            len(item["document"]) + sum(map(len, item["candidates"])),
+            index,
+        ))
     print(json.dumps({
         "zero_truncation_preflight": "PASS",
         "dataset_role": args.dataset_role,
@@ -428,10 +492,60 @@ def main():
         num_workers=args.num_workers,
         pin_memory=torch.cuda.is_available(),
     )
-    model = ModernBertMultiTask(args.model).to(device)
+    model = ModernBertMultiTask(args.model, args.revision).to(device)
+    model_context = getattr(model.encoder.config, "max_position_embeddings", None)
+    if model_context is not None and model_context < args.max_len:
+        raise ValueError(f"Model context limit {model_context} < {args.max_len}")
 
     if args.mode == "train":
         model.encoder.gradient_checkpointing_enable()
+        longest_rows = [index for _, index in sorted(row_sizes, reverse=True)[: args.batch]]
+        smoke_batch = move(Collator(tokenizer)([dataset[index] for index in longest_rows]), device)
+        model.train()
+        verdict_logits, scope_logits, component_logits = model(smoke_batch)
+        smoke_loss = (
+            F.cross_entropy(verdict_logits, smoke_batch["verdict_labels"])
+            + args.lambda_scope * F.cross_entropy(scope_logits, smoke_batch["scope_labels"])
+            + args.lambda_component * F.binary_cross_entropy_with_logits(
+                component_logits,
+                smoke_batch["candidate_labels"],
+                pos_weight=torch.tensor(component_pos_weight, device=device),
+            )
+        )
+        if not torch.isfinite(smoke_loss):
+            raise RuntimeError(f"Non-finite ModernBERT smoke loss: {smoke_loss.item()}")
+        smoke_loss.backward()
+        smoke_gradients = [
+            parameter.grad
+            for parameter in model.parameters()
+            if parameter.requires_grad and parameter.grad is not None
+        ]
+        if not smoke_gradients or not all(
+            torch.isfinite(gradient).all() for gradient in smoke_gradients
+        ):
+            raise RuntimeError("ModernBERT smoke backward produced missing or non-finite gradients")
+        if not any(torch.count_nonzero(gradient).item() for gradient in smoke_gradients):
+            raise RuntimeError("ModernBERT smoke backward produced only zero gradients")
+        model.zero_grad(set_to_none=True)
+        random.seed(args.seed)
+        np.random.seed(args.seed)
+        torch.manual_seed(args.seed)
+        torch.cuda.manual_seed_all(args.seed)
+        print(json.dumps({
+            "runtime_smoke": "PASS",
+            "rows": longest_rows,
+            "batch": len(longest_rows),
+            "loss": float(smoke_loss.detach().cpu()),
+        }))
+        del (
+            smoke_loss,
+            smoke_batch,
+            smoke_gradients,
+            verdict_logits,
+            scope_logits,
+            component_logits,
+        )
+        torch.cuda.empty_cache()
         optimizer = torch.optim.AdamW(model.parameters(), lr=args.lr, weight_decay=0.01)
         updates = (len(loader) + args.grad_accum - 1) // args.grad_accum * args.epochs
         scheduler = get_cosine_schedule_with_warmup(optimizer, max(1, int(updates * 0.03)), updates)
@@ -453,7 +567,13 @@ def main():
                         batch["candidate_labels"],
                         pos_weight=torch.tensor(component_pos_weight, device=device),
                     )
-                    loss = (verdict_loss + args.lambda_scope * scope_loss + args.lambda_component * component_loss) / args.grad_accum
+                    group_start = (batch_index // args.grad_accum) * args.grad_accum
+                    group_size = min(args.grad_accum, len(loader) - group_start)
+                    loss = (
+                        verdict_loss
+                        + args.lambda_scope * scope_loss
+                        + args.lambda_component * component_loss
+                    ) / group_size
                 scaler.scale(loss).backward()
                 if (batch_index + 1) % args.grad_accum == 0 or batch_index + 1 == len(loader):
                     scaler.unscale_(optimizer)
@@ -468,7 +588,7 @@ def main():
         tokenizer.save_pretrained(args.output_dir)
         config = vars(args).copy()
         config.update({
-            "train_sha256": sha256(args.data_file),
+            "train_sha256": data_sha256,
             "optimizer_updates": step,
             "component_positive": component_positive,
             "component_total_candidates": component_total,
@@ -477,38 +597,102 @@ def main():
         })
         with open(os.path.join(args.output_dir, "run_manifest.json"), "w", encoding="utf-8") as handle:
             json.dump(config, handle, ensure_ascii=False, indent=2)
+        final_checkpoint = os.path.join(args.output_dir, f"checkpoint-epoch-{args.epochs}.pt")
+        with open(os.path.join(args.output_dir, "TRAINING_COMPLETE.json"), "w", encoding="utf-8") as handle:
+            json.dump({
+                "checkpoint": os.path.basename(final_checkpoint),
+                "checkpoint_sha256": sha256(final_checkpoint),
+                "train_contract_sha256": sha256(contract_path),
+            }, handle, indent=2)
         return
 
     if not args.checkpoint:
         raise ValueError("Evaluation requires --checkpoint")
+    checkpoint_sha256 = sha256(args.checkpoint)
+    complete_path = os.path.join(os.path.dirname(args.checkpoint), "TRAINING_COMPLETE.json")
+    if not os.path.isfile(complete_path):
+        raise RuntimeError("ModernBERT checkpoint is not marked complete")
+    with open(complete_path, encoding="utf-8") as handle:
+        complete_record = json.load(handle)
+    if (
+        complete_record.get("checkpoint") != os.path.basename(args.checkpoint)
+        or complete_record.get("checkpoint_sha256") != checkpoint_sha256
+        or complete_record.get("train_contract_sha256") != sha256(contract_path)
+    ):
+        raise RuntimeError("ModernBERT TRAINING_COMPLETE.json does not match the checkpoint")
     state = torch.load(args.checkpoint, map_location="cpu", weights_only=True)
     model.load_state_dict(state)
+    if args.dataset_role == "test" and args.threshold is not None:
+        raise ValueError("Final test forbids an ad-hoc --threshold; use the frozen validation threshold")
     threshold = args.threshold
+    threshold_contract = None
     if threshold is None:
         threshold_file = os.path.join(os.path.dirname(args.checkpoint), "component_threshold.json")
         if os.path.isfile(threshold_file):
-            threshold = json.load(open(threshold_file, encoding="utf-8"))["threshold"]
+            with open(threshold_file, encoding="utf-8") as handle:
+                threshold_contract = json.load(handle)
+            threshold = threshold_contract["threshold"]
         elif args.dataset_role == "validation":
             threshold = 0.5
         else:
             raise ValueError("Test requires a frozen validation threshold")
     if args.dataset_role == "test":
+        expected_threshold_contract = {
+            "selected_on": "validation",
+            "validation_sha256": MARBLE_SHA256["validation"],
+            "checkpoint_sha256": checkpoint_sha256,
+            "model": args.model,
+            "model_revision": args.revision,
+            "max_length": args.max_len,
+            "candidate_max_length": args.candidate_max_len,
+            "input_mode": args.input_mode,
+        }
+        for key, expected in expected_threshold_contract.items():
+            if threshold_contract.get(key) != expected:
+                raise RuntimeError(
+                    f"Frozen threshold contract mismatch for {key}: "
+                    f"{threshold_contract.get(key)} != {expected}"
+                )
         seal_path = os.path.join(args.output_dir, "SEALED_TEST_CONSUMED.json")
+        final_complete_path = os.path.join(args.output_dir, "FINAL_TEST_COMPLETE.json")
+        seal_payload = {
+            "test_sha256": data_sha256,
+            "rows": len(rows),
+            "checkpoint_sha256": checkpoint_sha256,
+            "threshold": threshold,
+        }
         if os.path.exists(seal_path):
-            raise RuntimeError(f"Sealed test already consumed: {seal_path}")
-        with open(seal_path, "w", encoding="utf-8") as handle:
-            json.dump({"test_sha256": sha256(args.data_file), "rows": len(rows)}, handle, indent=2)
+            with open(seal_path, encoding="utf-8") as handle:
+                if json.load(handle) != seal_payload:
+                    raise RuntimeError("Sealed-test retry contract mismatch")
+            if os.path.exists(final_complete_path):
+                raise RuntimeError(f"Sealed test already completed: {final_complete_path}")
+        else:
+            with open(seal_path, "w", encoding="utf-8") as handle:
+                json.dump(seal_payload, handle, indent=2)
     records = predict(model, loader, device, threshold)
     if args.dataset_role == "validation" and args.threshold is None:
         threshold = tune_threshold(records)
         with open(os.path.join(os.path.dirname(args.checkpoint), "component_threshold.json"), "w", encoding="utf-8") as handle:
-            json.dump({"threshold": threshold, "selected_on": "validation", "validation_sha256": sha256(args.data_file)}, handle, indent=2)
+            json.dump({
+                "threshold": threshold,
+                "selected_on": "validation",
+                "validation_sha256": data_sha256,
+                "checkpoint_sha256": checkpoint_sha256,
+                "model": args.model,
+                "model_revision": args.revision,
+                "max_length": args.max_len,
+                "candidate_max_length": args.candidate_max_len,
+                "input_mode": args.input_mode,
+            }, handle, indent=2)
     metrics = metrics_from_records(records, threshold)
     metrics.update({
         "model": args.model,
         "checkpoint": args.checkpoint,
+        "checkpoint_sha256": checkpoint_sha256,
+        "model_revision": args.revision,
         "data_file": args.data_file,
-        "data_sha256": sha256(args.data_file),
+        "data_sha256": data_sha256,
         "dataset_role": args.dataset_role,
         "max_length": args.max_len,
         "input_mode": args.input_mode,
@@ -518,6 +702,13 @@ def main():
             handle.write(json.dumps(record, ensure_ascii=False) + "\n")
     with open(os.path.join(args.output_dir, "metrics.json"), "w", encoding="utf-8") as handle:
         json.dump(metrics, handle, ensure_ascii=False, indent=2)
+    if args.dataset_role == "test":
+        with open(os.path.join(args.output_dir, "FINAL_TEST_COMPLETE.json"), "w", encoding="utf-8") as handle:
+            json.dump({
+                "metrics_sha256": sha256(os.path.join(args.output_dir, "metrics.json")),
+                "predictions_sha256": sha256(os.path.join(args.output_dir, "predictions.jsonl")),
+                "n": len(records),
+            }, handle, indent=2)
     print(json.dumps(metrics, indent=2))
 
 

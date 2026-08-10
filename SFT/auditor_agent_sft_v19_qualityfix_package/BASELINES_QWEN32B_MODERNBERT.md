@@ -13,6 +13,19 @@ Both one-click runners restore the ZIP and verify these hashes before training.
 Neither runner reads or evaluates `test.jsonl`; final test remains a separate,
 explicit one-time action.
 
+The runners also execute three fail-fast gates before model loading: dependency
+and CUDA version checks, a deterministic parser/metric self-test, and a complete
+data-contract audit covering JSON roles, visible-field leakage markers, target
+schema, verdict/binary consistency, candidate coverage, duplicate IDs, split
+overlap, row counts, and byte hashes.
+
+After model loading but before optimizer creation, each trainer selects the
+longest/worst-memory training rows and performs a real forward and backward
+pass. It requires a finite loss plus present, finite, non-zero trainable
+gradients, then clears gradients/cache and resets every seed before the formal
+run. This catches architecture, LoRA target, tensor-shape, gradient-flow, and
+batch-memory failures without updating model weights.
+
 ## Environment
 
 Use the existing V19 environment, with recent `transformers`, `peft`,
@@ -77,6 +90,16 @@ zero-truncation preflight over the complete split before loading the model. If
 even one document, candidate, prompt, or assistant-supervised training sequence
 would exceed the ceiling, the run terminates before optimization or generation;
 no head-tail retention or silent tokenizer truncation is permitted.
+
+The upstream weights are pinned to immutable Hugging Face commits:
+
+- `Qwen/Qwen3-32B@9216db5781bf21249d130ec9da846c4624c16137`;
+- `answerdotai/ModernBERT-base@8949b909ec900327062f0ebf497f51aef5e6f0c8`.
+
+Training and evaluation directories carry machine-checked contracts. Qwen
+resume binds the dataset, model revision, quantization, adapter hashes, and
+decoding settings. ModernBERT binds the validation-selected component threshold
+to the exact checkpoint SHA-256 and refuses an ad-hoc final-test threshold.
 
 The component threshold is selected once on validation by micro-F1 and saved as
 `component_threshold.json`. Final test refuses to run without that frozen file.

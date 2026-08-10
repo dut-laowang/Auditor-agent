@@ -11,6 +11,8 @@ from peft import LoraConfig, PeftModel, get_peft_model
 from transformers import AutoModelForCausalLM, AutoTokenizer, Trainer, TrainingArguments
 from transformers.trainer_utils import get_last_checkpoint
 
+QWEN3_8B_REVISION = "b968826d9c46dd6066d109eabc6255188de91218"
+
 
 def apply_template(tokenizer, messages, add_generation_prompt):
     try:
@@ -92,6 +94,7 @@ class DataCollator:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", default="Qwen/Qwen3-8B")
+    parser.add_argument("--revision", default=QWEN3_8B_REVISION)
     parser.add_argument("--data-dir", required=True)
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--max-len", type=int, default=6144)
@@ -131,7 +134,13 @@ def main():
             if not all(isinstance(msg.get("content"), str) for msg in row["messages"]):
                 raise ValueError(f"Non-string message content in {split}:{idx}")
 
-    tokenizer = AutoTokenizer.from_pretrained(args.model, trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(
+        args.model, revision=args.revision, trust_remote_code=True
+    )
+    if tokenizer.model_max_length < args.max_len:
+        raise ValueError(
+            f"Tokenizer context limit {tokenizer.model_max_length} < {args.max_len}"
+        )
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     tokenizer.padding_side = "right"
@@ -182,10 +191,14 @@ def main():
     )
     model = AutoModelForCausalLM.from_pretrained(
         args.model,
+        revision=args.revision,
         torch_dtype=model_dtype,
         device_map="auto",
         trust_remote_code=True,
     )
+    model_context = getattr(model.config, "max_position_embeddings", None)
+    if model_context is not None and model_context < args.max_len:
+        raise ValueError(f"Model context limit {model_context} < {args.max_len}")
     model.config.use_cache = False
     model.gradient_checkpointing_enable()
     if args.init_adapter:
@@ -259,6 +272,7 @@ def main():
     run_manifest = {
         "version": "V19-qualityfix",
         "model": args.model,
+        "model_revision": args.revision,
         "seed": args.seed,
         "epochs": args.epochs,
         "learning_rate": args.lr,

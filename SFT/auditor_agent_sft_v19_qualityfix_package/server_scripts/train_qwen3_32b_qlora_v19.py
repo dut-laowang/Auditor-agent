@@ -19,6 +19,12 @@ from transformers import (
 )
 from transformers.trainer_utils import get_last_checkpoint
 
+QWEN3_32B_REVISION = "9216db5781bf21249d130ec9da846c4624c16137"
+MARBLE_SHA256 = {
+    "train": "d49ec56577a80fab3be360ae9cb1b90e2d751ce686ffa0f0e2064b2d05d0a932",
+    "validation": "2882c5adfe2b9c3e7820f7cf56338dec4bf59e091031763ce8ce46d6aa70609e",
+}
+
 
 def sha256(path):
     digest = hashlib.sha256()
@@ -89,6 +95,7 @@ class DataCollator:
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--model", default="Qwen/Qwen3-32B")
+    parser.add_argument("--revision", default=QWEN3_32B_REVISION)
     parser.add_argument("--data-dir", required=True)
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--max-len", type=int, default=6144)
@@ -101,10 +108,51 @@ def main():
     parser.add_argument("--resume", choices=["auto", "never"], default="auto")
     args = parser.parse_args()
 
+    if args.model != "Qwen/Qwen3-32B" or args.revision != QWEN3_32B_REVISION:
+        raise ValueError("The controlled baseline requires the pinned Qwen/Qwen3-32B revision")
+
     if args.max_len != 6144:
         raise ValueError("The controlled V19-32B experiment requires --max-len 6144, matching run_train_v19.sh")
     train_file = os.path.join(args.data_dir, "train.jsonl")
     validation_file = os.path.join(args.data_dir, "validation.jsonl")
+    for split, path in (("train", train_file), ("validation", validation_file)):
+        actual = sha256(path)
+        if actual != MARBLE_SHA256[split]:
+            raise ValueError(
+                f"Frozen V19 MARBLE {split} hash mismatch: {actual} != {MARBLE_SHA256[split]}"
+            )
+    os.makedirs(args.output_dir, exist_ok=True)
+    train_contract = {
+        "model": args.model,
+        "model_revision": args.revision,
+        "train_sha256": MARBLE_SHA256["train"],
+        "validation_sha256": MARBLE_SHA256["validation"],
+        "max_length": args.max_len,
+        "epochs": args.epochs,
+        "learning_rate": args.lr,
+        "batch": args.batch,
+        "gradient_accumulation": args.grad_accum,
+        "seed": args.seed,
+        "quantization": args.quantization,
+        "lora": {
+            "r": 16,
+            "alpha": 32,
+            "dropout": 0.05,
+            "targets": [
+                "q_proj", "k_proj", "v_proj", "o_proj", "gate_proj", "up_proj", "down_proj"
+            ],
+        },
+    }
+    contract_path = os.path.join(args.output_dir, "TRAIN_CONTRACT.json")
+    if os.path.isfile(contract_path):
+        with open(contract_path, encoding="utf-8") as handle:
+            if json.load(handle) != train_contract:
+                raise RuntimeError("Output directory contains a different Qwen3-32B training contract")
+    elif get_last_checkpoint(args.output_dir):
+        raise RuntimeError("Existing checkpoints have no TRAIN_CONTRACT.json; use a fresh output directory")
+    else:
+        with open(contract_path, "w", encoding="utf-8") as handle:
+            json.dump(train_contract, handle, ensure_ascii=False, indent=2)
     ds = load_dataset("json", data_files={"train": train_file, "validation": validation_file})
     leak_pattern = re.compile(
         r"ACI_[A-Z0-9_]+|\baci_[a-z0-9_]+\b|\bEND_NEGOTIATION\b|success_marker|success_markers|"
@@ -121,7 +169,13 @@ def main():
             ]:
                 raise ValueError(f"Unexpected V19 message schema in {split}:{idx}")
 
-    tokenizer = AutoTokenizer.from_pretrained(args.model, trust_remote_code=True)
+    tokenizer = AutoTokenizer.from_pretrained(
+        args.model, revision=args.revision, trust_remote_code=True
+    )
+    if tokenizer.model_max_length < args.max_len:
+        raise ValueError(
+            f"Tokenizer context limit {tokenizer.model_max_length} < {args.max_len}"
+        )
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
     tokenizer.padding_side = "right"
@@ -162,11 +216,15 @@ def main():
         )
     model = AutoModelForCausalLM.from_pretrained(
         args.model,
+        revision=args.revision,
         torch_dtype=compute_dtype,
         quantization_config=quantization_config,
         device_map={"": 0},
         trust_remote_code=True,
     )
+    model_context = getattr(model.config, "max_position_embeddings", None)
+    if model_context is not None and model_context < args.max_len:
+        raise ValueError(f"Model context limit {model_context} < {args.max_len}")
     model.config.use_cache = False
     if args.quantization == "4bit":
         model = prepare_model_for_kbit_training(model, use_gradient_checkpointing=True)
@@ -183,6 +241,41 @@ def main():
         ],
     ))
     model.print_trainable_parameters()
+
+    longest = sorted(
+        range(len(ds["train"])),
+        key=lambda index: len(ds["train"][index]["input_ids"]),
+        reverse=True,
+    )[: args.batch]
+    smoke_batch = DataCollator(tokenizer)([ds["train"][index] for index in longest])
+    smoke_batch = {key: value.to(model.device) for key, value in smoke_batch.items()}
+    model.train()
+    smoke_loss = model(**smoke_batch).loss
+    if not torch.isfinite(smoke_loss):
+        raise RuntimeError(f"Non-finite Qwen3-32B smoke loss: {smoke_loss.item()}")
+    smoke_loss.backward()
+    smoke_gradients = [
+        parameter.grad
+        for parameter in model.parameters()
+        if parameter.requires_grad and parameter.grad is not None
+    ]
+    if not smoke_gradients or not all(torch.isfinite(gradient).all() for gradient in smoke_gradients):
+        raise RuntimeError("Qwen3-32B smoke backward produced missing or non-finite LoRA gradients")
+    if not any(torch.count_nonzero(gradient).item() for gradient in smoke_gradients):
+        raise RuntimeError("Qwen3-32B smoke backward produced only zero LoRA gradients")
+    model.zero_grad(set_to_none=True)
+    random.seed(args.seed)
+    torch.manual_seed(args.seed)
+    torch.cuda.manual_seed_all(args.seed)
+    print(json.dumps({
+        "runtime_smoke": "PASS",
+        "rows": longest,
+        "batch": len(longest),
+        "max_sequence_tokens": max(len(ds["train"][index]["input_ids"]) for index in longest),
+        "loss": float(smoke_loss.detach().cpu()),
+    }))
+    del smoke_loss, smoke_batch, smoke_gradients
+    torch.cuda.empty_cache()
 
     training_args = TrainingArguments(
         output_dir=args.output_dir,
@@ -222,10 +315,18 @@ def main():
     trainer.train(resume_from_checkpoint=checkpoint)
     trainer.save_model(args.output_dir)
     tokenizer.save_pretrained(args.output_dir)
+    adapter_artifacts = {
+        name: sha256(os.path.join(args.output_dir, name))
+        for name in ("adapter_config.json", "adapter_model.safetensors", "adapter_model.bin")
+        if os.path.isfile(os.path.join(args.output_dir, name))
+    }
+    if not adapter_artifacts:
+        raise RuntimeError("Training finished without saved LoRA adapter artifacts")
     manifest = {
         "version": "V19-qualityfix-qwen3-32b",
         "controlled_against": "Qwen3-8B V19",
         "model": args.model,
+        "model_revision": args.revision,
         "quantization": args.quantization,
         "seed": args.seed,
         "epochs": args.epochs,
@@ -238,6 +339,7 @@ def main():
         "validation_sha256": sha256(validation_file),
         "test_accessed": False,
         "resume_from_checkpoint": checkpoint,
+        "adapter_artifacts": adapter_artifacts,
     }
     with open(os.path.join(args.output_dir, "run_manifest.json"), "w", encoding="utf-8") as handle:
         json.dump(manifest, handle, ensure_ascii=False, indent=2)
