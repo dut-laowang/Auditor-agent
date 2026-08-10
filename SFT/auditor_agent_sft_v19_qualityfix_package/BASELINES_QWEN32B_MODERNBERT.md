@@ -47,18 +47,19 @@ Run Qwen3-32B on one allocated GPU:
 
 ```bash
 cd /gs/bs/tgh-26IAW/hongbo/project_4_coauthor/Auditor-agent
-GPU=0 bash SFT/auditor_agent_sft_v19_qualityfix_package/server_scripts/run_qwen3_32b_marble_v19.sh
+bash SFT/auditor_agent_sft_v19_qualityfix_package/server_scripts/run_qwen3_32b_marble_v19.sh
 ```
 
 Run ModernBERT-6144 on another allocated GPU:
 
 ```bash
 cd /gs/bs/tgh-26IAW/hongbo/project_4_coauthor/Auditor-agent
-GPU=0 bash SFT/auditor_agent_sft_v19_qualityfix_package/server_scripts/run_modernbert6144_marble_v19.sh
+bash SFT/auditor_agent_sft_v19_qualityfix_package/server_scripts/run_modernbert6144_marble_v19.sh
 ```
 
-`GPU=0` is correct when each job receives one isolated GPU. If both jobs share
-one node without scheduler isolation, use different visible indices.
+Each command is intended for a separate single-GPU job. The scheduler or job
+launcher must expose only the assigned card; the scripts never rewrite
+`CUDA_VISIBLE_DEVICES` or select a physical GPU index.
 
 Qwen train and evaluation micro-batches default to 2. If the specific GPU still
 runs out of memory, set `TRAIN_BATCH=1 GRAD_ACCUM=16`; this preserves the
@@ -107,8 +108,8 @@ The component threshold is selected once on validation by micro-F1 and saved as
 ## Final test (only after validation choices are frozen)
 
 ```bash
-BASELINE=qwen32b GPU=0 bash SFT/auditor_agent_sft_v19_qualityfix_package/server_scripts/run_final_baseline_test_once_v19.sh
-BASELINE=modernbert GPU=0 bash SFT/auditor_agent_sft_v19_qualityfix_package/server_scripts/run_final_baseline_test_once_v19.sh
+BASELINE=qwen32b bash SFT/auditor_agent_sft_v19_qualityfix_package/server_scripts/run_final_baseline_test_once_v19.sh
+BASELINE=modernbert bash SFT/auditor_agent_sft_v19_qualityfix_package/server_scripts/run_final_baseline_test_once_v19.sh
 ```
 
 Each output directory receives `SEALED_TEST_CONSUMED.json` and refuses a second
