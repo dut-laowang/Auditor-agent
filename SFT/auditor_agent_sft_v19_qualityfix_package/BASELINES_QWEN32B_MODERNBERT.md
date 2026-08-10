@@ -1,0 +1,96 @@
+# V19 MARBLE controlled baselines: Qwen3-32B and ModernBERT-4096
+
+These baselines consume only the frozen `marble_only` V19 files. AutoGen and
+`mixed` are intentionally out of scope. The immutable split hashes are:
+
+| split | rows | SHA-256 |
+|---|---:|---|
+| train | 4,565 | `d49ec56577a80fab3be360ae9cb1b90e2d751ce686ffa0f0e2064b2d05d0a932` |
+| validation | 1,791 | `2882c5adfe2b9c3e7820f7cf56338dec4bf59e091031763ce8ce46d6aa70609e` |
+| test | 1,491 | `bee77d962f66f5481e88d89b49b83b3ea9a449e48d776b669ebadd731417167f` |
+
+Both one-click runners restore the ZIP and verify these hashes before training.
+Neither runner reads or evaluates `test.jsonl`; final test remains a separate,
+explicit one-time action.
+
+## Environment
+
+Use the existing V19 environment, with recent `transformers`, `peft`,
+`datasets`, `scikit-learn`, `accelerate`, and `bitsandbytes`. Qwen3-32B uses
+NF4 QLoRA on one GPU. ModernBERT requires a Transformers release that includes
+`ModernBertModel` (4.48 or newer).
+
+All downloads are forced below the existing project tree:
+
+```text
+/gs/bs/tgh-26IAW/hongbo/project_4_coauthor/sft_models/hf_cache
+```
+
+No model or cache is intentionally written under `$HOME`.
+
+## Two independent single-GPU commands
+
+Run Qwen3-32B on one allocated GPU:
+
+```bash
+cd /gs/bs/tgh-26IAW/hongbo/project_4_coauthor/Auditor-agent
+GPU=0 bash SFT/auditor_agent_sft_v19_qualityfix_package/server_scripts/run_qwen3_32b_marble_v19.sh
+```
+
+Run ModernBERT-4096 on another allocated GPU:
+
+```bash
+cd /gs/bs/tgh-26IAW/hongbo/project_4_coauthor/Auditor-agent
+GPU=0 bash SFT/auditor_agent_sft_v19_qualityfix_package/server_scripts/run_modernbert4096_marble_v19.sh
+```
+
+`GPU=0` is correct when each job receives one isolated GPU. If both jobs share
+one node without scheduler isolation, use different visible indices.
+
+Qwen train and evaluation micro-batches default to 2. If the specific GPU still
+runs out of memory, set `TRAIN_BATCH=1 GRAD_ACCUM=16`; this preserves the
+effective batch of 16 but must be recorded as a resource fallback. Do not change
+the data, seed, epochs, maximum length, prompt template, or LoRA targets.
+
+## Controlled variables
+
+| item | V19 Qwen3-8B | Qwen3-32B | ModernBERT |
+|---|---|---|---|
+| V19 MARBLE bytes/splits | identical | identical | identical |
+| visible fields | system + user | system + user | user JSON only |
+| target source | assistant JSON | assistant JSON | assistant JSON parsed into labels |
+| maximum length | 6,144 in the released runner | 6,144 | 4,096 |
+| optimization | LoRA | same LoRA targets/rank, NF4 base | full encoder multitask |
+| verdict | generated | generated | 3-class head |
+| scope | generated | generated | 6-class head |
+| components | generated IDs | generated IDs | dynamic per-candidate head |
+| evidence trace | generated | generated | not predicted |
+
+ModernBERT does not receive the SFT output instruction because it is not a
+generative model. Its document input is exactly `messages[1].content`; candidate
+texts are the unmodified `graph_candidates` objects already present in that
+same visible JSON. Metadata is used only after prediction for `run_id` bookkeeping
+and never enters the encoder.
+
+The component threshold is selected once on validation by micro-F1 and saved as
+`component_threshold.json`. Final test refuses to run without that frozen file.
+
+## Final test (only after validation choices are frozen)
+
+```bash
+BASELINE=qwen32b GPU=0 bash SFT/auditor_agent_sft_v19_qualityfix_package/server_scripts/run_final_baseline_test_once_v19.sh
+BASELINE=modernbert GPU=0 bash SFT/auditor_agent_sft_v19_qualityfix_package/server_scripts/run_final_baseline_test_once_v19.sh
+```
+
+Each output directory receives `SEALED_TEST_CONSUMED.json` and refuses a second
+fresh run. Do not invoke these commands during debugging.
+
+## Resource note
+
+Qwen3-32B BF16 weights alone require roughly 64 GB before training states,
+activations, and LoRA overhead. The default single-GPU path therefore uses
+4-bit NF4 QLoRA and `prepare_model_for_kbit_training`. This changes weight
+storage precision relative to the 8B BF16 LoRA run, but preserves the V19 data,
+loss mask, chat template, LoRA structure, optimizer schedule, effective batch,
+seed, and evaluation contract. A `--quantization none` option exists for a
+larger-memory setup, but it is not the one-click default.

@@ -9,7 +9,7 @@ import torch
 from peft import PeftModel
 from sklearn.metrics import accuracy_score, classification_report
 from tqdm import tqdm
-from transformers import AutoModelForCausalLM, AutoTokenizer
+from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
 
 def apply_template(tokenizer, messages):
@@ -204,6 +204,11 @@ def main():
     parser.add_argument("--mode", choices=["base", "sft"], required=True)
     parser.add_argument("--model", default="Qwen/Qwen3-8B")
     parser.add_argument("--adapter")
+    parser.add_argument(
+        "--load-in-4bit",
+        action="store_true",
+        help="Load the base model in NF4 for single-GPU QLoRA adapter evaluation.",
+    )
     parser.add_argument("--test-file", required=True)
     parser.add_argument("--dataset-role", choices=["validation", "test"], required=True)
     parser.add_argument(
@@ -244,10 +249,19 @@ def main():
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA GPU is required for V19 evaluation")
     model_dtype = torch.bfloat16 if torch.cuda.is_bf16_supported() else torch.float16
+    quantization_config = None
+    if args.load_in_4bit:
+        quantization_config = BitsAndBytesConfig(
+            load_in_4bit=True,
+            bnb_4bit_quant_type="nf4",
+            bnb_4bit_use_double_quant=True,
+            bnb_4bit_compute_dtype=model_dtype,
+        )
     model = AutoModelForCausalLM.from_pretrained(
         args.model,
         torch_dtype=model_dtype,
-        device_map="auto",
+        quantization_config=quantization_config,
+        device_map={"": 0} if args.load_in_4bit else "auto",
         trust_remote_code=True,
     )
     if args.mode == "sft":
@@ -479,6 +493,7 @@ def main():
         "n": len(recs),
         "model": args.model,
         "adapter": args.adapter if args.mode == "sft" else None,
+        "load_in_4bit": args.load_in_4bit,
         "test_file": args.test_file,
         "dataset_role": args.dataset_role,
         "prompt_type": "original_sft_fullschema",
