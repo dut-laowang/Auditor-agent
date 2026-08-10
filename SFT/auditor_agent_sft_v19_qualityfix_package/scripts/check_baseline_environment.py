@@ -8,7 +8,7 @@ from packaging.version import Version
 
 
 MINIMUMS = {
-    "torch": "2.1.0",
+    "torch": "2.4.0",
     "transformers": "4.51.0",
     "datasets": "2.18.0",
     "peft": "0.14.0",
@@ -23,7 +23,7 @@ def main():
     args = parser.parse_args()
     requirements = dict(MINIMUMS)
     if args.baseline == "qwen32b":
-        requirements["bitsandbytes"] = "0.43.0"
+        requirements["bitsandbytes"] = "0.46.1"
     installed = {}
     for package, minimum in requirements.items():
         try:
