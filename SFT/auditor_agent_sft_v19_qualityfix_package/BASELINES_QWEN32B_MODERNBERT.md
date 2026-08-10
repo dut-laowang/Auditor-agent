@@ -1,4 +1,4 @@
-# V19 MARBLE controlled baselines: Qwen3-32B and ModernBERT-6144
+# V19 MARBLE zero-truncation baselines: Qwen3-32B and ModernBERT-8192
 
 These baselines consume only the frozen `marble_only` V19 files. AutoGen and
 `mixed` are intentionally out of scope. The immutable split hashes are:
@@ -50,11 +50,11 @@ cd /gs/bs/tgh-26IAW/hongbo/project_4_coauthor/Auditor-agent
 bash SFT/auditor_agent_sft_v19_qualityfix_package/server_scripts/run_qwen3_32b_marble_v19.sh
 ```
 
-Run ModernBERT-6144 on another allocated GPU:
+Run ModernBERT-8192 on another allocated GPU:
 
 ```bash
 cd /gs/bs/tgh-26IAW/hongbo/project_4_coauthor/Auditor-agent
-bash SFT/auditor_agent_sft_v19_qualityfix_package/server_scripts/run_modernbert6144_marble_v19.sh
+bash SFT/auditor_agent_sft_v19_qualityfix_package/server_scripts/run_modernbert8192_marble_v19.sh
 ```
 
 Each command is intended for a separate single-GPU job. The scheduler or job
@@ -73,7 +73,7 @@ the data, seed, epochs, maximum length, prompt template, or LoRA targets.
 | V19 MARBLE bytes/splits | identical | identical | identical |
 | visible fields | system + user | system + user | user JSON only |
 | target source | assistant JSON | assistant JSON | assistant JSON parsed into labels |
-| maximum length | 6,144 in the released runner | 6,144 | 6,144 |
+| maximum length | 8,192 in the corrected zero-truncation runner | 8,192 | 8,192 |
 | optimization | LoRA | same LoRA targets/rank, NF4 base | full encoder multitask |
 | verdict | generated | generated | 3-class head |
 | scope | generated | generated | 6-class head |
@@ -86,7 +86,9 @@ texts are the unmodified `graph_candidates` objects already present in that
 same visible JSON. Metadata is used only after prediction for `run_id` bookkeeping
 and never enters the encoder.
 
-All three paths use the same 6,144-token ceiling. The new runners enforce a
+All three paths use the same 8,192-token ceiling. This correction is required
+because a real V19 MARBLE training sequence was measured at 6,527 Qwen tokens,
+which proves that the former 6,144 ceiling was not zero-truncation. The runners enforce a
 zero-truncation preflight over the complete split before loading the model. If
 even one document, candidate, prompt, or assistant-supervised training sequence
 would exceed the ceiling, the run terminates before optimization or generation;

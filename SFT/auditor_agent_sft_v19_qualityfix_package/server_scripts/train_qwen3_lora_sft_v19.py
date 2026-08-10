@@ -97,7 +97,7 @@ def main():
     parser.add_argument("--revision", default=QWEN3_8B_REVISION)
     parser.add_argument("--data-dir", required=True)
     parser.add_argument("--output-dir", required=True)
-    parser.add_argument("--max-len", type=int, default=6144)
+    parser.add_argument("--max-len", type=int, default=8192)
     parser.add_argument("--epochs", type=float, default=2)
     parser.add_argument("--lr", type=float, default=2e-4)
     parser.add_argument("--batch", type=int, default=1)
@@ -111,8 +111,8 @@ def main():
         help="Automatically resume from the newest checkpoint in output-dir.",
     )
     args = parser.parse_args()
-    if args.max_len != 6144:
-        raise ValueError("The controlled V19 experiment requires --max-len 6144")
+    if args.max_len != 8192:
+        raise ValueError("The zero-truncation V19 experiment requires --max-len 8192")
 
     train_file = os.path.join(args.data_dir, "train.jsonl")
     validation_file = os.path.join(args.data_dir, "validation.jsonl")

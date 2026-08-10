@@ -27,7 +27,7 @@ else
     --model Qwen/Qwen3-8B \
     --data-dir "$DATA" \
     --output-dir "$OUT" \
-    --max-len 6144 \
+    --max-len 8192 \
     --epochs 2 \
     --lr 2e-4 \
     --batch 2 \

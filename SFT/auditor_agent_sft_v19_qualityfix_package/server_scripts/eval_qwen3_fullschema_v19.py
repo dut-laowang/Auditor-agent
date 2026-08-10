@@ -259,7 +259,7 @@ def main():
         help="Required guard acknowledging that this consumes the sealed final test.",
     )
     parser.add_argument("--output-dir", required=True)
-    parser.add_argument("--max-input-len", type=int, default=6144)
+    parser.add_argument("--max-input-len", type=int, default=8192)
     parser.add_argument("--max-new-tokens", type=int, default=1024)
     parser.add_argument(
         "--batch-size",
@@ -346,7 +346,7 @@ def main():
         required_manifest = {
             "model": args.model,
             "model_revision": revision,
-            "max_length": 6144,
+            "max_length": 8192,
             "train_sha256": "d49ec56577a80fab3be360ae9cb1b90e2d751ce686ffa0f0e2064b2d05d0a932",
             "validation_sha256": MARBLE_SHA256["validation"],
             "quantization": "4bit",

@@ -1,4 +1,4 @@
-"""ModernBERT-6144 multi-task baseline for the frozen V19 MARBLE split."""
+"""ModernBERT-8192 multi-task baseline for the frozen V19 MARBLE split."""
 
 import argparse
 import hashlib
@@ -371,8 +371,8 @@ def main():
     parser.add_argument("--checkpoint")
     parser.add_argument("--dataset-role", choices=["train", "validation", "test"], required=True)
     parser.add_argument("--sealed-test-ack", choices=["FINAL_ONCE"])
-    parser.add_argument("--max-len", type=int, default=6144)
-    parser.add_argument("--candidate-max-len", type=int, default=6144)
+    parser.add_argument("--max-len", type=int, default=8192)
+    parser.add_argument("--candidate-max-len", type=int, default=8192)
     parser.add_argument("--input-mode", choices=["user", "system_user"], default="user")
     parser.add_argument("--epochs", type=int, default=3)
     parser.add_argument("--lr", type=float, default=2e-5)
@@ -386,11 +386,11 @@ def main():
     args = parser.parse_args()
     if args.model != "answerdotai/ModernBERT-base" or args.revision != MODERNBERT_REVISION:
         raise ValueError("The controlled baseline requires the pinned ModernBERT-base revision")
-    if args.max_len != 6144:
-        raise ValueError("The controlled ModernBERT experiment requires --max-len 6144")
-    if args.candidate_max_len != 6144 or args.input_mode != "user":
+    if args.max_len != 8192:
+        raise ValueError("The zero-truncation ModernBERT experiment requires --max-len 8192")
+    if args.candidate_max_len != 8192 or args.input_mode != "user":
         raise ValueError(
-            "The controlled ModernBERT experiment requires candidate_max_len=6144 "
+            "The controlled ModernBERT experiment requires candidate_max_len=8192 "
             "and input_mode=user"
         )
     if args.dataset_role == "test" and args.sealed_test_ack != "FINAL_ONCE":

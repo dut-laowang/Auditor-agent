@@ -6,8 +6,8 @@ REPO="${REPO:-$BASE/Auditor-agent}"
 PKG="$REPO/SFT/auditor_agent_sft_v19_qualityfix_package"
 DATA="$PKG/three_track_datasets/marble_only"
 MODEL="answerdotai/ModernBERT-base"
-OUT="${OUT:-$BASE/sft_models/modernbert-base-6144-multitask-v19-marble}"
-RESULTS="${RESULTS:-$BASE/modernbert6144_v19_marble_validation}"
+OUT="${OUT:-$BASE/sft_models/modernbert-base-8192-multitask-v19-marble}"
+RESULTS="${RESULTS:-$BASE/modernbert8192_v19_marble_validation}"
 EPOCHS="${EPOCHS:-3}"
 
 export HF_HOME="${HF_HOME:-$BASE/sft_models/hf_cache}"
@@ -29,7 +29,7 @@ if [[ ! -f "$OUT/TRAINING_COMPLETE.json" ]]; then
   python "$PKG/server_scripts/modernbert_multitask_v19.py" \
     --mode train --model "$MODEL" --revision 8949b909ec900327062f0ebf497f51aef5e6f0c8 \
     --data-file "$DATA/train.jsonl" \
-    --dataset-role train --output-dir "$OUT" --max-len 6144 \
+    --dataset-role train --output-dir "$OUT" --max-len 8192 \
     --input-mode user --epochs "$EPOCHS" --lr "${LR:-2e-5}" \
     --batch "${TRAIN_BATCH:-2}" --grad-accum "${GRAD_ACCUM:-8}" \
     --lambda-scope 1.0 --lambda-component 1.0 --seed 42 2>&1 | tee "$OUT/training.log"
@@ -39,7 +39,7 @@ python "$PKG/server_scripts/modernbert_multitask_v19.py" \
   --mode eval --model "$MODEL" --revision 8949b909ec900327062f0ebf497f51aef5e6f0c8 \
   --checkpoint "$CHECKPOINT" \
   --data-file "$DATA/validation.jsonl" --dataset-role validation \
-  --output-dir "$RESULTS" --max-len 6144 --input-mode user \
+  --output-dir "$RESULTS" --max-len 8192 --input-mode user \
   --batch "${EVAL_BATCH_SIZE:-2}" --seed 42 2>&1 | tee "$RESULTS/evaluation.log"
 
-echo "ModernBERT-6144 V19 MARBLE training and validation complete. Final test remains sealed."
+echo "ModernBERT-8192 V19 MARBLE training and validation complete. Final test remains sealed."

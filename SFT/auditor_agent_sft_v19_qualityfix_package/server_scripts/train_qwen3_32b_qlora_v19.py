@@ -98,7 +98,7 @@ def main():
     parser.add_argument("--revision", default=QWEN3_32B_REVISION)
     parser.add_argument("--data-dir", required=True)
     parser.add_argument("--output-dir", required=True)
-    parser.add_argument("--max-len", type=int, default=6144)
+    parser.add_argument("--max-len", type=int, default=8192)
     parser.add_argument("--epochs", type=float, default=2)
     parser.add_argument("--lr", type=float, default=2e-4)
     parser.add_argument("--batch", type=int, default=2)
@@ -111,8 +111,8 @@ def main():
     if args.model != "Qwen/Qwen3-32B" or args.revision != QWEN3_32B_REVISION:
         raise ValueError("The controlled baseline requires the pinned Qwen/Qwen3-32B revision")
 
-    if args.max_len != 6144:
-        raise ValueError("The controlled V19-32B experiment requires --max-len 6144, matching run_train_v19.sh")
+    if args.max_len != 8192:
+        raise ValueError("The zero-truncation V19-32B experiment requires --max-len 8192")
     train_file = os.path.join(args.data_dir, "train.jsonl")
     validation_file = os.path.join(args.data_dir, "validation.jsonl")
     for split, path in (("train", train_file), ("validation", validation_file)):
