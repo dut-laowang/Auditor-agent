@@ -17,6 +17,11 @@ import torch.nn.functional as F
 from sklearn.metrics import accuracy_score, classification_report
 from tqdm import tqdm
 
+# Keep the sibling import valid both for direct execution and for the dynamic
+# import used by the package preflight self-test.
+SCRIPT_DIR = Path(__file__).resolve().parent
+if str(SCRIPT_DIR) not in sys.path:
+    sys.path.insert(0, str(SCRIPT_DIR))
 import v19_component_gnn_multitask as common
 
 
