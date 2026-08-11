@@ -78,7 +78,9 @@ def main():
     assert UNSUPERVISED.verdict_from_score(0.9, 0.2, 0.8) == "attack_success"
     fused = UNSUPERVISED.XGGuardModel.fuse(torch.tensor([1.0, 2.0, 4.0]), torch.tensor([4.0, 2.0, 1.0]))
     assert fused.shape == (3,) and torch.isfinite(fused).all()
-    print({"status": "PASS", "tests": 16})
+    restored_states = MODULE.cpu_cuda_rng_states([torch.arange(8, dtype=torch.uint8)])
+    assert restored_states[0].device.type == "cpu" and restored_states[0].dtype == torch.uint8
+    print({"status": "PASS", "tests": 17})
 
 
 if __name__ == "__main__":

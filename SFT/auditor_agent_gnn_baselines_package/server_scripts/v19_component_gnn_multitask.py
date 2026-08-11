@@ -55,6 +55,14 @@ def json_dump(path: Path, payload) -> None:
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
 
 
+def cpu_cuda_rng_states(states) -> list[torch.Tensor]:
+    """PyTorch requires CUDA RNG restore states to be CPU uint8 tensors."""
+    converted = [state.detach().to(device="cpu", dtype=torch.uint8) for state in states]
+    if any(state.device.type != "cpu" or state.dtype != torch.uint8 for state in converted):
+        raise RuntimeError("Invalid CUDA RNG checkpoint state")
+    return converted
+
+
 def official_commit(path: Path) -> str:
     result = subprocess.run(
         ["git", "-C", str(path), "rev-parse", "HEAD"],
@@ -579,7 +587,7 @@ def train(args) -> None:
         best_epoch = int(state["best_epoch"])
         best_score = float(state["best_score"])
         torch.set_rng_state(state["torch_rng_state"].cpu())
-        torch.cuda.set_rng_state_all(state["cuda_rng_state_all"])
+        torch.cuda.set_rng_state_all(cpu_cuda_rng_states(state["cuda_rng_state_all"]))
     history = list(state.get("history", [])) if last_path.is_file() else []
     for epoch in range(start_epoch, args.epochs + 1):
         order = list(range(len(encoded["train"])))
