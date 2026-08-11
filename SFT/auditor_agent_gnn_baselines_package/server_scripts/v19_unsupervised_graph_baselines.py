@@ -467,6 +467,56 @@ def final_test(args) -> None:
     json_dump(output / "metrics.json", result); save_predictions(output / "predictions.jsonl", records)
 
 
+def runtime_smoke(args) -> None:
+    if not torch.cuda.is_available():
+        raise RuntimeError("Runtime smoke requires one CUDA GPU")
+    official_commit(Path(args.blindguard_dir), "blindguard")
+    official_commit(Path(args.xgguard_dir), "xgguard")
+    device = torch.device("cuda")
+    dim, nodes = 384, 5
+    edge = np.asarray([
+        [0, 1, 1, 2, 2, 3, 3, 4, 0, 1, 2, 3, 4],
+        [1, 0, 2, 1, 3, 2, 4, 3, 0, 1, 2, 3, 4],
+    ], dtype=np.int64)
+
+    def toy(offset: float) -> dict:
+        generator = torch.Generator().manual_seed(100 + int(offset * 10))
+        sentence = F.normalize(torch.randn(nodes, dim, generator=generator) + offset, p=2, dim=1)
+        return {
+            "x_sentence": sentence,
+            "x_tokens": [
+                {"vectors": F.normalize(torch.randn(3, dim, generator=generator) + offset, p=2, dim=1),
+                 "weights": torch.tensor([10.0, 10.0, 7.0]),
+                 "span_texts": ["a", "b", "c"]}
+                for _ in range(nodes)
+            ],
+            "edge_index": edge,
+            "candidate_ids": [f"N::agent{i}" for i in range(nodes)],
+        }
+
+    cuda_generator = torch.Generator(device=device).manual_seed(3701)
+    blind = BlindGuardModel(Path(args.blindguard_dir), dim, 512, 256).to(device)
+    blind_loss = blind.training_loss(toy(0.0), device, cuda_generator)
+    if not torch.isfinite(blind_loss):
+        raise RuntimeError("BlindGuard smoke loss is non-finite")
+    blind_loss.backward()
+    blind_scores, _ = blind.scores(toy(0.1), device)
+    if blind_scores.shape != (nodes,) or not torch.isfinite(blind_scores).all():
+        raise RuntimeError("BlindGuard smoke scores are invalid")
+
+    xg = XGGuardModel(dim).to(device)
+    xg_loss = xg.training_loss([toy(0.0), toy(0.2)], device, 1e-4, cuda_generator)
+    if not torch.isfinite(xg_loss):
+        raise RuntimeError("XG-Guard smoke loss is non-finite")
+    xg_loss.backward()
+    xg_scores, details = xg.scores(toy(0.1), device)
+    if xg_scores.shape != (nodes,) or len(details) != nodes or not torch.isfinite(xg_scores).all():
+        raise RuntimeError("XG-Guard smoke scores are invalid")
+    print(json.dumps({"status": "PASS", "runtime_smoke": ["BlindGuard", "XG-Guard"],
+                      "blindguard_loss": float(blind_loss.detach().cpu()),
+                      "xgguard_loss": float(xg_loss.detach().cpu())}))
+
+
 def main() -> None:
     parser = argparse.ArgumentParser(); sub = parser.add_subparsers(dest="command", required=True)
     train_p = sub.add_parser("train-validation")
@@ -484,8 +534,15 @@ def main() -> None:
     test_p.add_argument("--checkpoint-dir", required=True); test_p.add_argument("--official-dir", required=True)
     test_p.add_argument("--data-dir", required=True); test_p.add_argument("--cache-dir", required=True)
     test_p.add_argument("--output-dir", required=True); test_p.add_argument("--sealed-test-ack", choices=["FINAL_ONCE"], required=True)
+    smoke_p = sub.add_parser("runtime-smoke")
+    smoke_p.add_argument("--blindguard-dir", required=True); smoke_p.add_argument("--xgguard-dir", required=True)
     args = parser.parse_args()
-    train(args) if args.command == "train-validation" else final_test(args)
+    if args.command == "train-validation":
+        train(args)
+    elif args.command == "final-test":
+        final_test(args)
+    else:
+        runtime_smoke(args)
 
 
 if __name__ == "__main__":

@@ -96,6 +96,8 @@ print(environment)
 PY
 
 python "$PKG/scripts/selftest_v19_gnn_logic.py"
+python "$PKG/server_scripts/v19_unsupervised_graph_baselines.py" runtime-smoke \
+  --blindguard-dir "$BLIND/MA" --xgguard-dir "$XGGUARD"
 
 python "$PKG/server_scripts/v19_component_gnn_multitask.py" train-validation \
   --model-kind gat --official-dir "$GSAFE/TA" --data-dir "$DATA" \
