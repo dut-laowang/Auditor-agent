@@ -1,6 +1,9 @@
 import importlib.util
 from pathlib import Path
 
+import numpy as np
+import torch
+
 
 SCRIPT = Path(__file__).resolve().parents[1] / "server_scripts" / "v19_component_gnn_multitask.py"
 SPEC = importlib.util.spec_from_file_location("v19_gnn", SCRIPT)
@@ -53,7 +56,20 @@ def main():
     result = MODULE.localization_summary(records, lambda row: True)
     assert result["component_micro_f1"] == 1.0
     assert result["component_exact_match"] == 1.0
-    print({"status": "PASS", "tests": 8})
+    assert result["by_gold_scope"]["node"]["scope_accuracy"] == 1.0
+    tensor_row = {
+        "x": np.zeros((1, 389), dtype=np.float32),
+        "edge_index": np.asarray([[0], [0]], dtype=np.int64),
+        "gold_verdict": "attack_success",
+        "gold_scope": "node",
+        "gold_components": ["N::agent1"],
+        "candidate_ids": ["N::agent1"],
+    }
+    _, _, verdict, scope, components = MODULE.graph_tensors(tensor_row, torch.device("cpu"))
+    assert verdict.item() == MODULE.VERDICT_TO_ID["attack_success"]
+    assert scope.item() == MODULE.SCOPE_TO_ID["node"]
+    assert components.tolist() == [1.0]
+    print({"status": "PASS", "tests": 12})
 
 
 if __name__ == "__main__":

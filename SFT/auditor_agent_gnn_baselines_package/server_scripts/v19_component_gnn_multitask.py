@@ -7,6 +7,7 @@ import math
 import os
 import random
 import re
+import subprocess
 import sys
 from collections import Counter
 from pathlib import Path
@@ -21,6 +22,8 @@ from tqdm import tqdm
 
 VERDICTS = ("clean_safe", "attack_failed", "attack_success")
 VERDICT_TO_ID = {name: idx for idx, name in enumerate(VERDICTS)}
+SCOPES = ("none", "global", "node", "edge", "tool", "multi")
+SCOPE_TO_ID = {name: idx for idx, name in enumerate(SCOPES)}
 TYPE_ORDER = ("global", "node", "edge", "tool", "unknown")
 MARBLE_SHA256 = {
     "train": "d49ec56577a80fab3be360ae9cb1b90e2d751ce686ffa0f0e2064b2d05d0a932",
@@ -29,6 +32,10 @@ MARBLE_SHA256 = {
 }
 ENCODER_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 ENCODER_REVISION = "1110a243fdf4706b3f48f1d95db1a4f5529b4d41"
+OFFICIAL_COMMITS = {
+    "gat": "890c99f1cbc864e9ff0c85859619a14f42bc9cab",
+    "tam": "1889c20a326ba9ba9a6982744d473626e74f9986",
+}
 FORBIDDEN_USER_TEXT = re.compile(
     r"success_markers?|attack_metadata|source_final_label|semantic_consensus|"
     r"judge_conclusion|gold_label|\battack_id\b|\bpayload_id\b",
@@ -47,6 +54,18 @@ def sha256_file(path: Path) -> str:
 def json_dump(path: Path, payload) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2), encoding="utf-8")
+
+
+def official_commit(path: Path) -> str:
+    result = subprocess.run(
+        ["git", "-C", str(path), "rev-parse", "HEAD"],
+        check=True,
+        capture_output=True,
+        text=True,
+    ).stdout.strip()
+    if not re.fullmatch(r"[0-9a-f]{40}", result):
+        raise RuntimeError(f"Could not resolve official baseline commit: {path}")
+    return result
 
 
 def load_jsonl(path: Path) -> list[dict]:
@@ -101,7 +120,7 @@ def candidate_pieces(user: dict, candidate: dict, events_by_id: dict[str, dict])
             continue
         header = " ".join(
             f"{key}={event[key]}"
-            for key in ("type", "agent", "tool", "source_agent", "target_agent")
+            for key in ("source", "type", "agent", "tool", "source_agent", "target_agent")
             if event.get(key) is not None
         )
         text = str(event.get("text") or "")
@@ -118,10 +137,24 @@ def candidate_pieces(user: dict, candidate: dict, events_by_id: dict[str, dict])
                 continue
             header = " ".join(
                 f"{key}={event[key]}"
-                for key in ("type", "agent", "tool", "source_agent", "target_agent")
+                for key in ("source", "type", "agent", "tool", "source_agent", "target_agent")
                 if event.get(key) is not None
             )
             pieces.append((header + " " + str(event.get("text") or "")).strip())
+        graph = user.get("graph", {})
+        coverage = user.get("run_evidence", {}).get("coverage", {})
+        pieces.append(
+            "graph_context="
+            + json.dumps(
+                {
+                    "topology": graph.get("topology"),
+                    "audit_mode": user.get("audit_request", {}).get("mode"),
+                    "coverage": coverage,
+                },
+                ensure_ascii=False,
+                sort_keys=True,
+            )
+        )
     return [piece for piece in pieces if piece.strip()]
 
 
@@ -197,13 +230,56 @@ def encode_graphs(raw_graphs: list[dict], cache_path: Path, cache_contract: dict
     unique_pieces = list(
         dict.fromkeys(piece for graph in raw_graphs for pieces in graph["pieces"] for piece in pieces)
     )
-    embeddings = encoder.encode(
-        unique_pieces,
-        batch_size=256,
-        normalize_embeddings=True,
-        show_progress_bar=True,
-        convert_to_numpy=True,
-    )
+    tokenizer = encoder.tokenizer
+    token_capacity = int(encoder.max_seq_length) - int(tokenizer.num_special_tokens_to_add(pair=False))
+    if token_capacity <= 0:
+        raise RuntimeError("Invalid sentence-encoder token capacity")
+    chunk_ids = []
+    chunk_owners = []
+    chunk_weights = []
+    max_piece_tokens = 0
+    chunked_pieces = 0
+    tokenizer_limit = tokenizer.model_max_length
+    tokenizer.model_max_length = int(1e30)
+    for owner, piece in enumerate(tqdm(unique_pieces, desc="zero_truncation_tokenize")):
+        ids = tokenizer.encode(piece, add_special_tokens=False, truncation=False)
+        max_piece_tokens = max(max_piece_tokens, len(ids))
+        chunks = [ids[offset : offset + token_capacity] for offset in range(0, len(ids), token_capacity)] or [[]]
+        chunked_pieces += len(chunks) > 1
+        for chunk in chunks:
+            chunk_ids.append(chunk)
+            chunk_owners.append(owner)
+            chunk_weights.append(max(len(chunk), 1))
+    tokenizer.model_max_length = tokenizer_limit
+    embedding_dim = int(encoder.get_embedding_dimension())
+    weighted_sums = np.zeros((len(unique_pieces), embedding_dim), dtype=np.float64)
+    weight_sums = np.zeros(len(unique_pieces), dtype=np.float64)
+    encoder.eval()
+    for start in tqdm(range(0, len(chunk_ids), 256), desc="zero_truncation_encode"):
+        stop = min(start + 256, len(chunk_ids))
+        prepared = []
+        for ids in chunk_ids[start:stop]:
+            input_ids = [tokenizer.cls_token_id, *ids, tokenizer.sep_token_id]
+            prepared.append(
+                {
+                    "input_ids": input_ids,
+                    "attention_mask": [1] * len(input_ids),
+                    "token_type_ids": [0] * len(input_ids),
+                }
+            )
+        features = tokenizer.pad(prepared, padding=True, return_tensors="pt")
+        features = {key: value.to(encoder.device) for key, value in features.items()}
+        with torch.no_grad():
+            batch_embeddings = F.normalize(encoder(features)["sentence_embedding"], p=2, dim=1)
+        for local_index, vector in enumerate(batch_embeddings.cpu().numpy()):
+            chunk_index = start + local_index
+            owner = chunk_owners[chunk_index]
+            weight = chunk_weights[chunk_index]
+            weighted_sums[owner] += vector.astype(np.float64) * weight
+            weight_sums[owner] += weight
+    embeddings = weighted_sums / weight_sums[:, None]
+    embeddings /= np.maximum(np.linalg.norm(embeddings, axis=1, keepdims=True), 1e-12)
+    embeddings = embeddings.astype(np.float32)
     lookup = {piece: embeddings[idx] for idx, piece in enumerate(unique_pieces)}
     encoded = []
     for graph in raw_graphs:
@@ -219,6 +295,18 @@ def encode_graphs(raw_graphs: list[dict], cache_path: Path, cache_contract: dict
     cache_path.parent.mkdir(parents=True, exist_ok=True)
     torch.save(encoded, cache_path)
     json_dump(contract_path, cache_contract)
+    json_dump(
+        cache_path.with_suffix(".encoding_audit.json"),
+        {
+            "status": "PASS",
+            "zero_truncation": True,
+            "unique_pieces": len(unique_pieces),
+            "encoded_chunks": len(chunk_ids),
+            "chunked_pieces": chunked_pieces,
+            "max_piece_tokens": max_piece_tokens,
+            "token_capacity_per_chunk": token_capacity,
+        },
+    )
     return encoded
 
 
@@ -226,13 +314,16 @@ def graph_tensors(row: dict, device: torch.device) -> tuple[torch.Tensor, ...]:
     x = torch.tensor(row["x"], dtype=torch.float32, device=device)
     edge_index = torch.tensor(row["edge_index"], dtype=torch.long, device=device)
     verdict = torch.tensor(VERDICT_TO_ID[row["gold_verdict"]], dtype=torch.long, device=device)
+    if row["gold_scope"] not in SCOPE_TO_ID:
+        raise ValueError(f"Unknown localization scope: {row['gold_scope']}")
+    scope = torch.tensor(SCOPE_TO_ID[row["gold_scope"]], dtype=torch.long, device=device)
     gold = set(row["gold_components"])
     components = torch.tensor(
         [1.0 if cid in gold else 0.0 for cid in row["candidate_ids"]],
         dtype=torch.float32,
         device=device,
     )
-    return x, edge_index, verdict, components
+    return x, edge_index, verdict, scope, components
 
 
 class OfficialGATEncoder(nn.Module):
@@ -279,6 +370,7 @@ class V19MultiTaskGNN(nn.Module):
         else:
             raise ValueError(kind)
         self.loc_head = nn.Linear(latent_dim, 1)
+        self.scope_head = nn.Linear(latent_dim * 2, len(SCOPES))
         self.verdict_head = nn.Sequential(
             nn.Linear(latent_dim * 2, hidden_dim), nn.ReLU(), nn.Dropout(0.2), nn.Linear(hidden_dim, 3)
         )
@@ -286,7 +378,11 @@ class V19MultiTaskGNN(nn.Module):
     def forward(self, x: torch.Tensor, edge_index: torch.Tensor):
         node_embeddings = self.encoder(x, edge_index)
         pooled = torch.cat([node_embeddings.mean(dim=0), node_embeddings.max(dim=0).values])
-        return self.verdict_head(pooled), self.loc_head(node_embeddings).squeeze(-1)
+        return (
+            self.verdict_head(pooled),
+            self.scope_head(pooled),
+            self.loc_head(node_embeddings).squeeze(-1),
+        )
 
 
 def predicted_scope(candidate_ids: list[str]) -> str:
@@ -318,6 +414,26 @@ def localization_summary(records: list[dict], selector) -> dict:
     precision = safe_div(tp, tp + fp)
     recall = safe_div(tp, tp + fn)
     f1 = safe_div(2 * precision * recall, precision + recall)
+    by_scope = {}
+    for gold_scope in ("global", "node", "edge", "tool", "multi"):
+        scoped = [row for row in rows if row["gold_scope"] == gold_scope]
+        if not scoped:
+            continue
+        by_scope[gold_scope] = {
+            "n": len(scoped),
+            "component_hit_rate": safe_div(
+                sum(bool(set(row["gold_components"]) & set(row["pred_components"])) for row in scoped),
+                len(scoped),
+            ),
+            "component_exact_match": safe_div(
+                sum(set(row["gold_components"]) == set(row["pred_components"]) for row in scoped),
+                len(scoped),
+            ),
+            "scope_accuracy": safe_div(
+                sum(row["gold_scope"] == row["pred_scope"] for row in scoped), len(scoped)
+            ),
+            "predicted_scope_distribution": dict(Counter(row["pred_scope"] for row in scoped)),
+        }
     return {
         "n": len(rows),
         "component_micro_precision": precision,
@@ -326,6 +442,7 @@ def localization_summary(records: list[dict], selector) -> dict:
         "component_hit_rate": safe_div(hit, len(rows)),
         "component_exact_match": safe_div(exact, len(rows)),
         "scope_accuracy": safe_div(scope, len(rows)),
+        "by_gold_scope": by_scope,
     }
 
 
@@ -334,9 +451,10 @@ def evaluate(model, rows: list[dict], device: torch.device, threshold: float) ->
     model.eval()
     with torch.no_grad():
         for row in tqdm(rows, desc="evaluate"):
-            x, edge_index, _, _ = graph_tensors(row, device)
-            verdict_logits, component_logits = model(x, edge_index)
+            x, edge_index, _, _, _ = graph_tensors(row, device)
+            verdict_logits, scope_logits, component_logits = model(x, edge_index)
             pred_verdict = VERDICTS[int(verdict_logits.argmax().item())]
+            pred_scope = SCOPES[int(scope_logits.argmax().item())]
             probabilities = torch.sigmoid(component_logits).cpu().tolist()
             pred_components = [
                 cid for cid, probability in zip(row["candidate_ids"], probabilities) if probability >= threshold
@@ -347,7 +465,7 @@ def evaluate(model, rows: list[dict], device: torch.device, threshold: float) ->
                     "gold": row["gold_verdict"],
                     "pred": pred_verdict,
                     "gold_scope": row["gold_scope"],
-                    "pred_scope": predicted_scope(pred_components),
+                    "pred_scope": pred_scope,
                     "gold_components": row["gold_components"],
                     "pred_components": pred_components,
                     "component_ids": row["candidate_ids"],
@@ -422,6 +540,12 @@ def train(args) -> None:
     data_dir = Path(args.data_dir)
     output_dir = Path(args.output_dir)
     cache_dir = Path(args.cache_dir)
+    resolved_official_commit = official_commit(Path(args.official_dir))
+    if resolved_official_commit != OFFICIAL_COMMITS[args.model_kind]:
+        raise RuntimeError(
+            f"Wrong official {args.model_kind} commit: {resolved_official_commit} != "
+            f"{OFFICIAL_COMMITS[args.model_kind]}"
+        )
     output_dir.mkdir(parents=True, exist_ok=True)
     hashes = {}
     encoded = {}
@@ -436,7 +560,7 @@ def train(args) -> None:
             "data_sha256": actual,
             "encoder_model": ENCODER_MODEL,
             "encoder_revision": ENCODER_REVISION,
-            "candidate_graph_schema": "v19-component-graph-v1",
+            "candidate_graph_schema": "v19-component-graph-v2-zero-truncation",
         }
         encoded[split] = encode_graphs(raw, cache_dir / f"{split}.pt", contract)
     if not torch.cuda.is_available():
@@ -470,6 +594,8 @@ def train(args) -> None:
         start_epoch = int(state["epoch"]) + 1
         best_epoch = int(state["best_epoch"])
         best_score = float(state["best_score"])
+        torch.set_rng_state(state["torch_rng_state"].cpu())
+        torch.cuda.set_rng_state_all(state["cuda_rng_state_all"])
     history = list(state.get("history", [])) if last_path.is_file() else []
     for epoch in range(start_epoch, args.epochs + 1):
         order = list(range(len(encoded["train"])))
@@ -478,11 +604,16 @@ def train(args) -> None:
         total_loss = 0.0
         optimizer.zero_grad(set_to_none=True)
         for step, index in enumerate(tqdm(order, desc=f"{args.model_kind}_epoch_{epoch}"), 1):
-            x, edge_index, verdict, components = graph_tensors(encoded["train"][index], device)
-            verdict_logits, component_logits = model(x, edge_index)
+            x, edge_index, verdict, scope, components = graph_tensors(encoded["train"][index], device)
+            verdict_logits, scope_logits, component_logits = model(x, edge_index)
             verdict_loss = F.cross_entropy(verdict_logits.unsqueeze(0), verdict.unsqueeze(0), weight=class_weights)
+            scope_loss = F.cross_entropy(scope_logits.unsqueeze(0), scope.unsqueeze(0))
             component_loss = F.binary_cross_entropy_with_logits(component_logits, components, pos_weight=pos_weight)
-            loss = (verdict_loss + args.localization_loss_weight * component_loss) / args.grad_accum
+            loss = (
+                verdict_loss
+                + args.scope_loss_weight * scope_loss
+                + args.localization_loss_weight * component_loss
+            ) / args.grad_accum
             loss.backward()
             if step % args.grad_accum == 0 or step == len(order):
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)
@@ -513,21 +644,21 @@ def train(args) -> None:
                 "best_epoch": best_epoch,
                 "best_score": best_score,
                 "history": history,
+                "torch_rng_state": torch.get_rng_state(),
+                "cuda_rng_state_all": torch.cuda.get_rng_state_all(),
             },
             last_path,
         )
     model.load_state_dict(torch.load(output_dir / "best_model.pt", map_location=device, weights_only=True))
     threshold = select_threshold(model, encoded["validation"], device)
     metrics, records = evaluate(model, encoded["validation"], device, threshold)
-    official_commit = os.popen(f'git -C "{Path(args.official_dir)}" rev-parse HEAD').read().strip()
-    if not re.fullmatch(r"[0-9a-f]{40}", official_commit):
-        raise RuntimeError(f"Could not resolve official baseline commit: {args.official_dir}")
+    official_commit_hash = resolved_official_commit
     metrics.update(
         {
             "mode": "v19_component_multitask_gnn",
             "method": "G-Safeguard-style GAT" if args.model_kind == "gat" else "BlindGuard-style TAM",
             "model_kind": args.model_kind,
-            "official_commit": official_commit,
+            "official_commit": official_commit_hash,
             "encoder_model": ENCODER_MODEL,
             "encoder_revision": ENCODER_REVISION,
             "data_file": str((data_dir / "validation.jsonl").resolve()),
@@ -543,7 +674,7 @@ def train(args) -> None:
     save_predictions(output_dir / "predictions.jsonl", records)
     contract = {
         "model_kind": args.model_kind,
-        "official_commit": official_commit,
+        "official_commit": official_commit_hash,
         "encoder_model": ENCODER_MODEL,
         "encoder_revision": ENCODER_REVISION,
         "train_sha256": hashes["train"],
@@ -557,6 +688,7 @@ def train(args) -> None:
         "hidden_dim": args.hidden_dim,
         "latent_dim": args.latent_dim,
         "localization_loss_weight": args.localization_loss_weight,
+        "scope_loss_weight": args.scope_loss_weight,
         "best_epoch": best_epoch,
         "component_threshold": threshold,
         "history": history,
@@ -577,10 +709,16 @@ def final_test(args) -> None:
     contract = json.loads((checkpoint_dir / "TRAIN_CONTRACT.json").read_text(encoding="utf-8"))
     if contract["test_accessed"] is not False:
         raise RuntimeError("Invalid training contract")
-    actual_commit = os.popen(f'git -C "{Path(args.official_dir).parent}" rev-parse HEAD').read().strip()
+    actual_commit = official_commit(Path(args.official_dir))
     if actual_commit != contract["official_commit"]:
         raise RuntimeError(
             f"Official baseline commit mismatch: {actual_commit} != {contract['official_commit']}"
+        )
+    checkpoint_path = checkpoint_dir / "best_model.pt"
+    checkpoint_hash = sha256_file(checkpoint_path)
+    if checkpoint_hash != contract["best_model_sha256"]:
+        raise RuntimeError(
+            f"Best-model hash mismatch: {checkpoint_hash} != {contract['best_model_sha256']}"
         )
     test_path = Path(args.test_file)
     actual_hash = sha256_file(test_path)
@@ -591,7 +729,7 @@ def final_test(args) -> None:
         "data_sha256": actual_hash,
         "encoder_model": ENCODER_MODEL,
         "encoder_revision": ENCODER_REVISION,
-        "candidate_graph_schema": "v19-component-graph-v1",
+        "candidate_graph_schema": "v19-component-graph-v2-zero-truncation",
     }
     rows = encode_graphs(raw, Path(args.cache_dir) / "test.pt", cache_contract)
     if not torch.cuda.is_available():
@@ -601,7 +739,7 @@ def final_test(args) -> None:
     args.hidden_dim = contract["hidden_dim"]
     args.latent_dim = contract["latent_dim"]
     model = make_model(args, int(rows[0]["x"].shape[1]), device)
-    model.load_state_dict(torch.load(checkpoint_dir / "best_model.pt", map_location=device, weights_only=True))
+    model.load_state_dict(torch.load(checkpoint_path, map_location=device, weights_only=True))
     metrics, records = evaluate(model, rows, device, float(contract["component_threshold"]))
     metrics.update(
         {
@@ -615,6 +753,7 @@ def final_test(args) -> None:
             "data_sha256": actual_hash,
             "dataset_role": "test",
             "component_threshold": contract["component_threshold"],
+            "checkpoint_sha256": checkpoint_hash,
         }
     )
     json_dump(output_dir / "SEALED_TEST_CONSUMED.json", {"test_sha256": actual_hash, "rows": len(rows)})
@@ -638,6 +777,7 @@ def main() -> None:
     train_parser.add_argument("--hidden-dim", type=int, default=512)
     train_parser.add_argument("--latent-dim", type=int, default=256)
     train_parser.add_argument("--localization-loss-weight", type=float, default=1.0)
+    train_parser.add_argument("--scope-loss-weight", type=float, default=1.0)
     train_parser.add_argument("--grad-accum", type=int, default=16)
     train_parser.add_argument("--seed", type=int, default=42)
     test_parser = subparsers.add_parser("final-test")

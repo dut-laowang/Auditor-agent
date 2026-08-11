@@ -19,7 +19,9 @@ native V19 task contract.
 Each graph node is one native V19 candidate. Candidate features average pinned
 MiniLM embeddings of the candidate description and every referenced observable
 event; the global node additionally collects any observable event not referenced
-by a candidate, guaranteeing complete user-input coverage. Graph edges connect the global candidate, topology-linked node
+by a candidate, guaranteeing complete semantic user-input coverage. Long pieces
+are tokenized without truncation, split into encoder-sized windows, fully encoded,
+and token-count-weighted before candidate aggregation. Graph edges connect the global candidate, topology-linked node
 candidates, edge candidates to their endpoint nodes, and tool candidates to
 their owner nodes. No source placement or label field enters a feature.
 
@@ -27,8 +29,9 @@ The G-Safeguard-style row uses the official `MyGAT` encoder at commit
 `890c99f1cbc864e9ff0c85859619a14f42bc9cab`. The BlindGuard-style row uses the
 official `TAMModel` encoder at commit
 `1889c20a326ba9ba9a6982744d473626e74f9986`. Both receive identical supervised
-V19 verdict and localization heads because the original binary/agent-only heads
-cannot express the V19 task.
+V19 verdict, scope, and candidate-localization heads because the original
+binary/agent-only heads cannot express the V19 task. Scope is therefore learned
+from the same gold field as ModernBERT rather than inferred after thresholding.
 
 ## One-click validation
 
@@ -45,6 +48,10 @@ The result archive is written outside the home directory:
 ```text
 /gs/bs/tgh-26IAW/hongbo/project_4_coauthor/v19_gnn_marble_validation.tar.gz
 ```
+
+`main_table_rows.tsv` contains the two publication-table-ready Clean rows. Its
+accuracy delta is computed against the frozen V19 SFT (Qwen3-8B) accuracy of
+75.60%, matching the existing main table.
 
 Do not run `run_gnn_v19_final_test_once.sh` until both validation rows and all
 thresholds are frozen.

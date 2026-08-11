@@ -9,7 +9,7 @@ DATA="$V19/three_track_datasets/marble_only"
 REFS="$BASE/gnn_refs"
 CHECKPOINTS="$BASE/v19_gnn_marble_validation"
 OUTPUT="$BASE/v19_gnn_marble_final_test"
-CACHE="$BASE/sft_models/v19_gnn_component_cache"
+CACHE="$BASE/sft_models/v19_gnn_component_cache_v2_zero_truncation"
 
 export HF_HOME="${HF_HOME:-$BASE/sft_models/hf_cache}"
 export HF_HUB_CACHE="${HF_HUB_CACHE:-$HF_HOME/hub}"
@@ -23,14 +23,14 @@ if [[ -e "$OUTPUT" ]]; then
 fi
 
 python "$PKG/server_scripts/v19_component_gnn_multitask.py" final-test \
-  --checkpoint-dir "$CHECKPOINTS/gsafeguard_gat" --official-dir "$REFS/G-safeguard/TA" \
+  --checkpoint-dir "$CHECKPOINTS/gsafeguard_gat_v2_zero_truncation" --official-dir "$REFS/G-safeguard/TA" \
   --test-file "$DATA/test.jsonl" --cache-dir "$CACHE" \
-  --output-dir "$OUTPUT/gsafeguard_gat" --sealed-test-ack FINAL_ONCE
+  --output-dir "$OUTPUT/gsafeguard_gat_v2_zero_truncation" --sealed-test-ack FINAL_ONCE
 
 python "$PKG/server_scripts/v19_component_gnn_multitask.py" final-test \
-  --checkpoint-dir "$CHECKPOINTS/blindguard_tam" --official-dir "$REFS/BlindGuard/TA" \
+  --checkpoint-dir "$CHECKPOINTS/blindguard_tam_v2_zero_truncation" --official-dir "$REFS/BlindGuard/TA" \
   --test-file "$DATA/test.jsonl" --cache-dir "$CACHE" \
-  --output-dir "$OUTPUT/blindguard_tam" --sealed-test-ack FINAL_ONCE
+  --output-dir "$OUTPUT/blindguard_tam_v2_zero_truncation" --sealed-test-ack FINAL_ONCE
 
 python "$V19/scripts/write_sha256_manifest.py" "$OUTPUT"
 tar -czf "$BASE/v19_gnn_marble_final_test.tar.gz" -C "$BASE" "$(basename "$OUTPUT")"
