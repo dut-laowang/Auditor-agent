@@ -50,10 +50,11 @@ def table_row(result):
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument("--gat", required=True, type=Path)
-    parser.add_argument("--tam", required=True, type=Path)
+    parser.add_argument("--blindguard", required=True, type=Path)
+    parser.add_argument("--xgguard", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
     args = parser.parse_args()
-    result_rows = [row(args.gat), row(args.tam)]
+    result_rows = [row(args.gat), row(args.blindguard), row(args.xgguard)]
     payload = {
         "comparison_contract": "V19 MARBLE validation; identical 1,791 rows and native G/N/E/T candidate space",
         "reference_accuracy_for_delta": {

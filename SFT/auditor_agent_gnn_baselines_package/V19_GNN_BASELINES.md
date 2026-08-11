@@ -25,13 +25,29 @@ and token-count-weighted before candidate aggregation. Graph edges connect the g
 candidates, edge candidates to their endpoint nodes, and tool candidates to
 their owner nodes. No source placement or label field enters a feature.
 
-The G-Safeguard-style row uses the official `MyGAT` encoder at commit
-`890c99f1cbc864e9ff0c85859619a14f42bc9cab`. The BlindGuard-style row uses the
-official `TAMModel` encoder at commit
-`1889c20a326ba9ba9a6982744d473626e74f9986`. Both receive identical supervised
-V19 verdict, scope, and candidate-localization heads because the original
-binary/agent-only heads cannot express the V19 task. Scope is therefore learned
-from the same gold field as ModernBERT rather than inferred after thresholding.
+The package now contains three deliberately different learning contracts:
+
+- **G-Safeguard (V19-adapted)** uses official `MyGAT` at commit
+  `890c99f1cbc864e9ff0c85859619a14f42bc9cab` with supervised V19 verdict,
+  scope, and component heads.
+- **BlindGuard (V19-adapted)** uses official `GATSCL` at commit
+  `1889c20a326ba9ba9a6982744d473626e74f9986`. It trains only on V19
+  `clean_safe` rows and preserves directional synthetic corruption,
+  self-supervised contrastive loss, and similarity-based anomaly scoring.
+- **XG-Guard (V19-adapted)** follows official commit
+  `86e1121512f76800f80d4687e492c7f99f049929`, preserving its sentence/token
+  bi-level GCN, discussion-theme contexts, negative context permutation, and
+  score fusion. Long V19 records are chunked without truncation. Chunk means
+  plus token counts are retained; this is an exact sufficient statistic for
+  the released model's mean token anomaly score.
+
+BlindGuard and XG-Guard never optimize or calibrate against V19 attack labels.
+Two V19 three-way cutoffs (normal-score quantiles 0.95/0.99) and the component
+cutoff (0.90) are frozen solely from the `clean_safe` training-score
+distribution. Validation labels are used only for metrics. Their scope is derived
+from selected G/N/E/T candidates. This projection is an adaptation, not a claim
+that either original method natively predicts the V19 schema. TAM is not part
+of this package or table.
 
 ## One-click validation
 
@@ -49,7 +65,7 @@ The result archive is written outside the home directory:
 /gs/bs/tgh-26IAW/hongbo/project_4_coauthor/v19_gnn_marble_validation.tar.gz
 ```
 
-`main_table_rows.tsv` contains the two publication-table-ready Clean rows. Its
+`main_table_rows.tsv` contains the three publication-table-ready Clean rows. Its
 accuracy delta is computed against the frozen V19 SFT (Qwen3-8B) accuracy of
 75.60%, matching the existing main table.
 

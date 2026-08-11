@@ -9,8 +9,9 @@ DATA="$V19/three_track_datasets/marble_only"
 REFS="$BASE/gnn_refs"
 GSAFE="$REFS/G-safeguard"
 BLIND="$REFS/BlindGuard"
+XGGUARD="$REFS/XG-Guard"
 RESULTS="$BASE/v19_gnn_marble_validation"
-CACHE="$BASE/sft_models/v19_gnn_component_cache_v2_zero_truncation"
+CACHE="$BASE/sft_models/v19_gnn_component_cache_v3"
 
 export HF_HOME="${HF_HOME:-$BASE/sft_models/hf_cache}"
 export HF_HUB_CACHE="${HF_HUB_CACHE:-$HF_HOME/hub}"
@@ -20,6 +21,9 @@ export GNN_RESULTS_DIR="$RESULTS"
 
 cd "$REPO"
 mkdir -p "$REFS" "$RESULTS" "$CACHE"
+# Remove only the obsolete, incorrectly named TAM artifacts from the previous package.
+rm -rf "$RESULTS/blindguard_tam_v2_zero_truncation"
+rm -f "$RESULTS/blindguard_tam.log"
 python "$V19/scripts/restore_track_data.py" "$DATA"
 python "$V19/scripts/audit_v19_integrity.py" \
   --data-dir "$DATA" --output "$RESULTS/data_integrity.json"
@@ -30,8 +34,15 @@ fi
 if [[ ! -d "$BLIND/.git" ]]; then
   git clone https://github.com/MR9812/BlindGuard.git "$BLIND"
 fi
+if [[ ! -d "$XGGUARD/.git" ]]; then
+  git clone https://github.com/CampanulaBells/XG-Guard.git "$XGGUARD"
+fi
+git -C "$GSAFE" fetch --prune origin
+git -C "$BLIND" fetch --prune origin
+git -C "$XGGUARD" fetch --prune origin
 git -C "$GSAFE" checkout --detach 890c99f1cbc864e9ff0c85859619a14f42bc9cab
 git -C "$BLIND" checkout --detach 1889c20a326ba9ba9a6982744d473626e74f9986
+git -C "$XGGUARD" checkout --detach 86e1121512f76800f80d4687e492c7f99f049929
 
 python - <<'PY'
 import importlib.util
@@ -84,21 +95,32 @@ with open(os.path.join(os.environ["GNN_RESULTS_DIR"], "environment.json"), "w", 
 print(environment)
 PY
 
+python "$PKG/scripts/selftest_v19_gnn_logic.py"
+
 python "$PKG/server_scripts/v19_component_gnn_multitask.py" train-validation \
   --model-kind gat --official-dir "$GSAFE/TA" --data-dir "$DATA" \
   --cache-dir "$CACHE" --output-dir "$RESULTS/gsafeguard_gat_v2_zero_truncation" \
   --epochs 20 --lr 0.001 --hidden-dim 512 --latent-dim 256 \
   2>&1 | tee "$RESULTS/gsafeguard_gat.log"
 
-python "$PKG/server_scripts/v19_component_gnn_multitask.py" train-validation \
-  --model-kind tam --official-dir "$BLIND/TA" --data-dir "$DATA" \
-  --cache-dir "$CACHE" --output-dir "$RESULTS/blindguard_tam_v2_zero_truncation" \
-  --epochs 20 --lr 0.001 --hidden-dim 512 --latent-dim 256 \
-  2>&1 | tee "$RESULTS/blindguard_tam.log"
+python "$PKG/server_scripts/v19_unsupervised_graph_baselines.py" train-validation \
+  --model-kind blindguard --official-dir "$BLIND/MA" --data-dir "$DATA" \
+  --cache-dir "$CACHE/bilevel" --output-dir "$RESULTS/blindguard_scl_v19" \
+  --epochs 50 --batch-size 8 --lr 0.001 --weight-decay 0.0001 \
+  --hidden-dim 512 --latent-dim 256 --seed 3701 \
+  2>&1 | tee "$RESULTS/blindguard_scl.log"
+
+python "$PKG/server_scripts/v19_unsupervised_graph_baselines.py" train-validation \
+  --model-kind xgguard --official-dir "$XGGUARD" --data-dir "$DATA" \
+  --cache-dir "$CACHE/bilevel" --output-dir "$RESULTS/xgguard_bilevel_v19" \
+  --epochs 50 --batch-size 8 --lr 0.00001 --weight-decay 0.0 \
+  --alpha 0.0001 --seed 3701 \
+  2>&1 | tee "$RESULTS/xgguard_bilevel.log"
 
 python "$PKG/scripts/summarize_v19_gnn_results.py" \
   --gat "$RESULTS/gsafeguard_gat_v2_zero_truncation/metrics.json" \
-  --tam "$RESULTS/blindguard_tam_v2_zero_truncation/metrics.json" \
+  --blindguard "$RESULTS/blindguard_scl_v19/metrics.json" \
+  --xgguard "$RESULTS/xgguard_bilevel_v19/metrics.json" \
   --output "$RESULTS/comparison_rows.json"
 
 python "$V19/scripts/write_sha256_manifest.py" "$RESULTS"

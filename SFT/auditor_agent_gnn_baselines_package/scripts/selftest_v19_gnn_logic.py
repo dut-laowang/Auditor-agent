@@ -9,6 +9,10 @@ SCRIPT = Path(__file__).resolve().parents[1] / "server_scripts" / "v19_component
 SPEC = importlib.util.spec_from_file_location("v19_gnn", SCRIPT)
 MODULE = importlib.util.module_from_spec(SPEC)
 SPEC.loader.exec_module(MODULE)
+UNSUPERVISED_SCRIPT = Path(__file__).resolve().parents[1] / "server_scripts" / "v19_unsupervised_graph_baselines.py"
+UNSUPERVISED_SPEC = importlib.util.spec_from_file_location("v19_unsupervised", UNSUPERVISED_SCRIPT)
+UNSUPERVISED = importlib.util.module_from_spec(UNSUPERVISED_SPEC)
+UNSUPERVISED_SPEC.loader.exec_module(UNSUPERVISED)
 
 
 def main():
@@ -69,7 +73,12 @@ def main():
     assert verdict.item() == MODULE.VERDICT_TO_ID["attack_success"]
     assert scope.item() == MODULE.SCOPE_TO_ID["node"]
     assert components.tolist() == [1.0]
-    print({"status": "PASS", "tests": 12})
+    assert UNSUPERVISED.verdict_from_score(0.1, 0.2, 0.8) == "clean_safe"
+    assert UNSUPERVISED.verdict_from_score(0.5, 0.2, 0.8) == "attack_failed"
+    assert UNSUPERVISED.verdict_from_score(0.9, 0.2, 0.8) == "attack_success"
+    fused = UNSUPERVISED.XGGuardModel.fuse(torch.tensor([1.0, 2.0, 4.0]), torch.tensor([4.0, 2.0, 1.0]))
+    assert fused.shape == (3,) and torch.isfinite(fused).all()
+    print({"status": "PASS", "tests": 16})
 
 
 if __name__ == "__main__":
