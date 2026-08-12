@@ -301,7 +301,7 @@ def semantic_sanitize_text(
         text,
         flags=re.I,
     )
-    text = re.sub(r"\bBenchmark addendum\b", "Additional instruction", text, flags=re.I)
+    text = re.sub(r"Benchmark addendum", "Additional instruction", text, flags=re.I)
     text = re.sub(r"\battack[_ -]?id\b", "instruction reference", text, flags=re.I)
     text = re.sub(r"\bsuccess[_ -]?markers?\b", "tracked entity", text, flags=re.I)
     return text
@@ -339,7 +339,10 @@ def sanitize_sample_messages(
             )
         else:
             structured = sanitize_visible_value(structured, replacements, run_id)
-            message["content"] = json.dumps(structured, ensure_ascii=False)
+            serialized = json.dumps(structured, ensure_ascii=False)
+            # Some tool outputs contain nested JSON encoded as strings. Apply the
+            # provenance-only substitutions once more to the serialized envelope.
+            message["content"] = semantic_sanitize_text(serialized, {}, run_id)
 
 
 def semantic_events_from_trajectory(
@@ -1050,15 +1053,26 @@ def build(args: argparse.Namespace) -> None:
     source_audit: dict[str, Any] = {}
     selected_clean_run_ids: set[str] = set()
 
-    for mode in ("single", "dual"):
-        final_dir = args.source_root / mode / "final"
-        if final_dir.is_dir():
-            merged_dir = final_dir / "merged"
-            evaluation_dir = final_dir / "evaluation"
+    modes = ("flat",) if (args.source_root / "merged" / "run_manifest.jsonl").is_file() else ("single", "dual")
+    for mode in modes:
+        if mode == "flat":
+            merged_dir = args.source_root / "merged"
+            evaluation_dir = args.source_root / "evaluation"
             manifest_path = merged_dir / "run_manifest.jsonl"
             trajectories_dir = merged_dir / "trajectories"
             configs_dir = merged_dir / "configs"
             results_dir = merged_dir / "marble_results"
+            final_dir = args.source_root
+        else:
+            final_dir = args.source_root / mode / "final"
+        if final_dir.is_dir():
+            if mode != "flat":
+                merged_dir = final_dir / "merged"
+                evaluation_dir = final_dir / "evaluation"
+                manifest_path = merged_dir / "run_manifest.jsonl"
+                trajectories_dir = merged_dir / "trajectories"
+                configs_dir = merged_dir / "configs"
+                results_dir = merged_dir / "marble_results"
         else:
             # AutoGen minimal transfer layout.
             merged_dir = args.source_root / mode
@@ -1077,6 +1091,22 @@ def build(args: argparse.Namespace) -> None:
         security = {row["run_id"]: row for row in optional_rows("security_judgments.jsonl")}
         signals = {row["run_id"]: row for row in optional_rows("attack_signals.jsonl")}
         private_signals = {row["run_id"]: row for row in optional_rows("private_control_signals.jsonl")}
+        # Minimal transfer bundles may omit the two signal tables while retaining
+        # the same decisions on attacked label rows. Reconstruct only the private-
+        # control inclusion gate; model inputs still come exclusively from configs
+        # and observable trajectories.
+        paired_private_controls = {
+            str(row.get("control_run_id"))
+            for row in labels.values()
+            if row.get("control_run_id")
+            and str(row.get("control_run_id")).endswith("__private_control")
+        }
+        leaky_private_controls = {
+            str(row.get("control_run_id"))
+            for row in labels.values()
+            if row.get("natural_control_marker_leak") is True
+            and row.get("control_run_id")
+        }
         archive = DirectoryArchive(
             merged_dir,
             f"{mode}_source",
@@ -1138,7 +1168,7 @@ def build(args: argparse.Namespace) -> None:
                 source_label, verdict, binary = "clean", "clean_safe", "safe"
             elif condition == "private_control":
                 private_signal = private_signals.get(run_id)
-                if private_signal is None:
+                if private_signal is None and private_signals:
                     counts["private_control_missing_signal"] += 1
                     excluded_rows.append(
                         {
@@ -1148,7 +1178,19 @@ def build(args: argparse.Namespace) -> None:
                         }
                     )
                     continue
-                if private_signal.get("marker_success"):
+                if private_signal is None and run_id not in paired_private_controls:
+                    counts["private_control_unpaired_minimal_bundle"] += 1
+                    excluded_rows.append(
+                        {
+                            "run_id": run_id,
+                            "reason": "private_control_unpaired_minimal_bundle",
+                            "source": mode,
+                        }
+                    )
+                    continue
+                if (
+                    private_signal is not None and private_signal.get("marker_success")
+                ) or run_id in leaky_private_controls:
                     counts["private_control_natural_marker_leakage"] += 1
                     excluded_rows.append(
                         {

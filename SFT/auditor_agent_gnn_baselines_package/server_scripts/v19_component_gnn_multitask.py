@@ -34,6 +34,7 @@ ENCODER_MODEL = "sentence-transformers/all-MiniLM-L6-v2"
 ENCODER_REVISION = "1110a243fdf4706b3f48f1d95db1a4f5529b4d41"
 OFFICIAL_COMMITS = {
     "gat": "890c99f1cbc864e9ff0c85859619a14f42bc9cab",
+    "tam": "1889c20a326ba9ba9a6982744d473626e74f9986",
 }
 FORBIDDEN_USER_TEXT = re.compile(
     r"success_markers?|attack_metadata|source_final_label|semantic_consensus|"
@@ -354,11 +355,28 @@ class OfficialGATEncoder(nn.Module):
         return F.relu(self.model(x, edge_index, edge_attr))
 
 
+class OfficialTAMEncoder(nn.Module):
+    """TAM encoder used only as a supervised V20 adaptation, not BlindGuard."""
+
+    def __init__(self, official_dir: Path, in_dim: int, hidden_dim: int, latent_dim: int):
+        super().__init__()
+        sys.path.insert(0, str(official_dir.resolve()))
+        from TAM import TAMModel  # type: ignore
+
+        self.model = TAMModel(in_dim, hidden_dim, latent_dim, dropout=0.1)
+
+    def forward(self, x: torch.Tensor, edge_index: torch.Tensor) -> torch.Tensor:
+        embeddings, _, _ = self.model(x, edge_index)
+        return F.relu(embeddings)
+
+
 class V19MultiTaskGNN(nn.Module):
     def __init__(self, kind: str, official_dir: Path, in_dim: int, hidden_dim: int, latent_dim: int):
         super().__init__()
         if kind == "gat":
             self.encoder = OfficialGATEncoder(official_dir, in_dim, hidden_dim, latent_dim)
+        elif kind == "tam":
+            self.encoder = OfficialTAMEncoder(official_dir, in_dim, hidden_dim, latent_dim)
         else:
             raise ValueError(kind)
         self.loc_head = nn.Linear(latent_dim, 1)
@@ -648,7 +666,7 @@ def train(args) -> None:
     metrics.update(
         {
             "mode": "v19_component_multitask_gnn",
-            "method": "G-Safeguard",
+            "method": "G-Safeguard" if args.model_kind == "gat" else "TAM encoder (supervised adaptation)",
             "model_kind": args.model_kind,
             "official_commit": official_commit_hash,
             "encoder_model": ENCODER_MODEL,
@@ -736,7 +754,7 @@ def final_test(args) -> None:
     metrics.update(
         {
             "mode": "v19_component_multitask_gnn",
-            "method": "G-Safeguard",
+            "method": "G-Safeguard" if args.model_kind == "gat" else "TAM encoder (supervised adaptation)",
             "model_kind": args.model_kind,
             "official_commit": contract["official_commit"],
             "encoder_model": ENCODER_MODEL,
@@ -758,7 +776,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     subparsers = parser.add_subparsers(dest="command", required=True)
     train_parser = subparsers.add_parser("train-validation")
-    train_parser.add_argument("--model-kind", choices=["gat"], required=True)
+    train_parser.add_argument("--model-kind", choices=["gat", "tam"], required=True)
     train_parser.add_argument("--official-dir", required=True)
     train_parser.add_argument("--data-dir", required=True)
     train_parser.add_argument("--cache-dir", required=True)
