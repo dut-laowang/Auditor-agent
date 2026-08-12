@@ -19,7 +19,7 @@ The runner executes validation only: TF-IDF, Qwen3-8B SFT, Qwen3-8B lexical-
 shortcut masking, ModernBERT-8192, G-Safeguard supervised adaptation, and TAM
 encoder supervised adaptation. It never reads the sealed test split.
 
-Qwen keeps the V19 8192-token context and full assistant supervision. For the
-few V20 trajectories that exceed this limit, only the middle of the input
-prompt is deterministically removed, preserving its task/schema prefix and
-final-evidence suffix; the training log records the affected row count.
+Before any method runs, complete Qwen chat sequences exceeding the V19
+8192-token limit are deleted from both train and validation. TF-IDF, Qwen,
+ModernBERT, G-Safeguard, and TAM therefore consume the same filtered rows. The
+exact removals and hashes are recorded in `context_filter_report.json`.

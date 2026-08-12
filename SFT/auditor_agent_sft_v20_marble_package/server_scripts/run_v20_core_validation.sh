@@ -6,8 +6,9 @@ REPO="${REPO:-$BASE/Auditor-agent}"
 V20="$REPO/SFT/auditor_agent_sft_v20_marble_package"
 V19="$REPO/SFT/auditor_agent_sft_v19_qualityfix_package"
 GNN="$REPO/SFT/auditor_agent_gnn_baselines_package"
-DATA="${V20_DATA:-$V20/dataset_bundle}"
+RAW_DATA="${V20_DATA:-$V20/dataset_bundle}"
 RESULTS="${RESULTS:-$BASE/v20_marble_core_validation}"
+DATA="$RESULTS/context_filtered_dataset"
 MODEL_ROOT="${MODEL_ROOT:-$BASE/sft_models}"
 GPU="${GPU:-0}"
 
@@ -19,9 +20,12 @@ export TOKENIZERS_PARALLELISM=false
 export OMP_NUM_THREADS="${OMP_NUM_THREADS:-1}"
 export MKL_NUM_THREADS="${MKL_NUM_THREADS:-1}"
 
-python "$V19/scripts/restore_track_data.py" "$DATA"
+python "$V19/scripts/restore_track_data.py" "$RAW_DATA"
 
-python "$V19/scripts/audit_v19_integrity.py" --data-dir "$DATA" --output "$RESULTS/data_integrity.json"
+python "$V19/scripts/audit_v19_integrity.py" --data-dir "$RAW_DATA" --output "$RESULTS/data_integrity.json"
+python "$V20/scripts/filter_qwen_context_v20.py" \
+  --input-dir "$RAW_DATA" --output-dir "$DATA" --model Qwen/Qwen3-8B \
+  --revision b968826d9c46dd6066d109eabc6255188de91218 --max-len 8192
 python "$V19/scripts/audit_lexical_shortcuts.py" \
   --train-file "$DATA/train.jsonl" --validation-file "$DATA/validation.jsonl" \
   --output "$RESULTS/lexical_shortcut_validation.json"
@@ -34,7 +38,7 @@ QWEN_ADAPTER="$MODEL_ROOT/qwen3-8b-mas-auditor-lora-v20-marble"
 if [[ ! -f "$QWEN_ADAPTER/TRAINING_COMPLETE" ]]; then
   CUDA_VISIBLE_DEVICES="$GPU" python "$V19/server_scripts/train_qwen3_lora_sft_v19.py" \
     --model Qwen/Qwen3-8B --data-dir "$DATA" --output-dir "$QWEN_ADAPTER" \
-    --max-len 8192 --prompt-overflow middle \
+    --max-len 8192 \
     --epochs 2 --lr 2e-4 --batch 2 --grad-accum 8 --seed 42 --resume auto \
     2>&1 | tee "$RESULTS/qwen3_8b_training.log"
   touch "$QWEN_ADAPTER/TRAINING_COMPLETE"
