@@ -30,7 +30,7 @@ def apply_template(tokenizer, messages, add_generation_prompt):
         )
 
 
-def preprocess(example, tokenizer, max_len):
+def preprocess(example, tokenizer, max_len, prompt_overflow="error"):
     messages = example["messages"]
     full_text = apply_template(tokenizer, messages, add_generation_prompt=False)
     prompt_text = apply_template(tokenizer, messages[:2], add_generation_prompt=True)
@@ -58,10 +58,20 @@ def preprocess(example, tokenizer, max_len):
 
     total_tokens = len(prefix_ids) + len(target_ids)
     if total_tokens > max_len:
-        raise ValueError(
-            f"Zero-truncation V19 gate failed: sequence has {total_tokens} tokens, "
-            f"exceeding max_len={max_len}"
-        )
+        if prompt_overflow == "error":
+            raise ValueError(
+                f"Zero-truncation V19 gate failed: sequence has {total_tokens} tokens, "
+                f"exceeding max_len={max_len}"
+            )
+        # V20 contains a small number of substantially longer trajectories than
+        # V19. Preserve the complete assistant target plus both ends of the
+        # prompt: the task/schema at the front and final outcome evidence at the
+        # back. Only the middle of an overlength prompt is removed.
+        keep_prefix = max_len - len(target_ids)
+        keep_head = (keep_prefix + 1) // 2
+        keep_tail = keep_prefix - keep_head
+        prefix_ids = prefix_ids[:keep_head] + (prefix_ids[-keep_tail:] if keep_tail else [])
+        total_tokens = len(prefix_ids) + len(target_ids)
     input_ids = prefix_ids + target_ids
     attention_mask = [1] * len(input_ids)
     labels = [-100] * len(prefix_ids) + target_ids
@@ -73,6 +83,7 @@ def preprocess(example, tokenizer, max_len):
         "labels": labels,
         "supervised_tokens": len(target_ids),
         "sequence_tokens": total_tokens,
+        "prompt_truncated": int(len(full_ids) > max_len),
     }
 
 
@@ -98,6 +109,12 @@ def main():
     parser.add_argument("--data-dir", required=True)
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--max-len", type=int, default=8192)
+    parser.add_argument(
+        "--prompt-overflow",
+        choices=["error", "middle"],
+        default="error",
+        help="Keep V19 strict by default; V20 may middle-truncate only an overlength prompt.",
+    )
     parser.add_argument("--epochs", type=float, default=2)
     parser.add_argument("--lr", type=float, default=2e-4)
     parser.add_argument("--batch", type=int, default=1)
@@ -146,12 +163,13 @@ def main():
     tokenizer.padding_side = "right"
 
     ds = ds.map(
-        lambda row: preprocess(row, tokenizer, args.max_len),
+        lambda row: preprocess(row, tokenizer, args.max_len, args.prompt_overflow),
         remove_columns=ds["train"].column_names,
     )
     for split in ("train", "validation"):
         supervised = ds[split]["supervised_tokens"]
         sequence_tokens = ds[split]["sequence_tokens"]
+        prompt_truncated = ds[split]["prompt_truncated"]
         if not supervised or min(supervised) < 16:
             raise ValueError(
                 f"Invalid assistant supervision in {split}: "
@@ -166,11 +184,11 @@ def main():
                     "max_supervised_tokens": max(supervised),
                     "min_sequence_tokens": min(sequence_tokens),
                     "max_sequence_tokens": max(sequence_tokens),
-                    "prompt_truncated_rows": 0,
+                    "prompt_truncated_rows": sum(prompt_truncated),
                 }
             )
         )
-    ds = ds.remove_columns(["supervised_tokens", "sequence_tokens"])
+    ds = ds.remove_columns(["supervised_tokens", "sequence_tokens", "prompt_truncated"])
 
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA GPU is required for V19 training")
@@ -279,6 +297,7 @@ def main():
         "batch": args.batch,
         "gradient_accumulation": args.grad_accum,
         "max_length": args.max_len,
+        "prompt_overflow": args.prompt_overflow,
         "train_sha256": sha256(train_file),
         "validation_sha256": sha256(validation_file),
         "test_accessed": False,

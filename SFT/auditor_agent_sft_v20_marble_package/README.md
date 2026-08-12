@@ -18,3 +18,8 @@ bash SFT/auditor_agent_sft_v20_marble_package/server_scripts/run_v20_core_valida
 The runner executes validation only: TF-IDF, Qwen3-8B SFT, Qwen3-8B lexical-
 shortcut masking, ModernBERT-8192, G-Safeguard supervised adaptation, and TAM
 encoder supervised adaptation. It never reads the sealed test split.
+
+Qwen keeps the V19 8192-token context and full assistant supervision. For the
+few V20 trajectories that exceed this limit, only the middle of the input
+prompt is deterministically removed, preserving its task/schema prefix and
+final-evidence suffix; the training log records the affected row count.

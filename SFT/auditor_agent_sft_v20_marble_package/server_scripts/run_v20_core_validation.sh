@@ -34,7 +34,8 @@ QWEN_ADAPTER="$MODEL_ROOT/qwen3-8b-mas-auditor-lora-v20-marble"
 if [[ ! -f "$QWEN_ADAPTER/TRAINING_COMPLETE" ]]; then
   CUDA_VISIBLE_DEVICES="$GPU" python "$V19/server_scripts/train_qwen3_lora_sft_v19.py" \
     --model Qwen/Qwen3-8B --data-dir "$DATA" --output-dir "$QWEN_ADAPTER" \
-    --max-len 8192 --epochs 2 --lr 2e-4 --batch 2 --grad-accum 8 --seed 42 --resume auto \
+    --max-len 8192 --prompt-overflow middle \
+    --epochs 2 --lr 2e-4 --batch 2 --grad-accum 8 --seed 42 --resume auto \
     2>&1 | tee "$RESULTS/qwen3_8b_training.log"
   touch "$QWEN_ADAPTER/TRAINING_COMPLETE"
 fi
