@@ -1,0 +1,182 @@
+{
+  "schema": "Graph-grounded-Candidate-SFT/v13",
+  "allowed_source_types": [
+    "marble_random_10665_v20"
+  ],
+  "split_assignment": "V19 seed-42 grouping by (scenario, sample_id), scaled to 18 validation and 16 sealed-test task IDs per scenario for the larger V20 task universe",
+  "stats": {
+    "train": {
+      "total": 5421,
+      "by_verdict": {
+        "attack_failed": 2068,
+        "clean_safe": 2219,
+        "attack_success": 1134
+      },
+      "by_source_final_label": {
+        "failure": 2068,
+        "private_control": 1331,
+        "clean": 888,
+        "success": 1134
+      },
+      "by_label_quality": {
+        "gold": 2942,
+        "control": 2219,
+        "silver": 260
+      },
+      "by_condition": {
+        "attacked": 3202,
+        "private_control": 1331,
+        "clean": 888
+      },
+      "by_scenario": {
+        "coding": 1960,
+        "minecraft": 1104,
+        "bargaining": 1440,
+        "research": 917
+      },
+      "by_topology": {
+        "graph": 1502,
+        "chain": 1297,
+        "tree": 1273,
+        "star": 1349
+      },
+      "by_surface": {
+        "message": 577,
+        "tool": 522,
+        "profile": 847,
+        "none": 888,
+        "dual": 1041,
+        "memory": 735,
+        "input": 811
+      },
+      "by_objective": {
+        "disruption": 1055,
+        "disclosure": 2416,
+        "none": 888,
+        "hijacking": 1062
+      },
+      "by_attack_mode": {
+        "single_site": 3492,
+        "none": 888,
+        "dual_site": 1041
+      }
+    },
+    "validation": {
+      "total": 1756,
+      "by_verdict": {
+        "attack_success": 369,
+        "clean_safe": 720,
+        "attack_failed": 667
+      },
+      "by_source_final_label": {
+        "success": 369,
+        "clean": 287,
+        "failure": 667,
+        "private_control": 433
+      },
+      "by_label_quality": {
+        "silver": 79,
+        "gold": 957,
+        "control": 720
+      },
+      "by_condition": {
+        "attacked": 1036,
+        "clean": 287,
+        "private_control": 433
+      },
+      "by_scenario": {
+        "coding": 644,
+        "bargaining": 445,
+        "research": 310,
+        "minecraft": 357
+      },
+      "by_topology": {
+        "star": 420,
+        "tree": 423,
+        "chain": 433,
+        "graph": 480
+      },
+      "by_surface": {
+        "input": 269,
+        "profile": 249,
+        "none": 287,
+        "message": 167,
+        "dual": 370,
+        "tool": 167,
+        "memory": 247
+      },
+      "by_objective": {
+        "disruption": 330,
+        "hijacking": 367,
+        "none": 287,
+        "disclosure": 772
+      },
+      "by_attack_mode": {
+        "single_site": 1099,
+        "none": 287,
+        "dual_site": 370
+      }
+    },
+    "test": {
+      "total": 1522,
+      "by_verdict": {
+        "attack_success": 332,
+        "attack_failed": 570,
+        "clean_safe": 620
+      },
+      "by_source_final_label": {
+        "success": 332,
+        "failure": 570,
+        "clean": 255,
+        "private_control": 365
+      },
+      "by_label_quality": {
+        "silver": 84,
+        "gold": 818,
+        "control": 620
+      },
+      "by_condition": {
+        "attacked": 902,
+        "clean": 255,
+        "private_control": 365
+      },
+      "by_scenario": {
+        "minecraft": 309,
+        "coding": 522,
+        "bargaining": 448,
+        "research": 243
+      },
+      "by_topology": {
+        "graph": 441,
+        "tree": 374,
+        "chain": 356,
+        "star": 351
+      },
+      "by_surface": {
+        "dual": 285,
+        "tool": 139,
+        "profile": 234,
+        "input": 247,
+        "none": 255,
+        "message": 151,
+        "memory": 211
+      },
+      "by_objective": {
+        "disruption": 318,
+        "disclosure": 653,
+        "hijacking": 296,
+        "none": 255
+      },
+      "by_attack_mode": {
+        "dual_site": 285,
+        "single_site": 982,
+        "none": 255
+      }
+    }
+  },
+  "sha256": {
+    "train.jsonl": "efaf91a9ae927326063eabf1730435d288a1200c17376ce823daf4375831b770",
+    "validation.jsonl": "3283f6632550b72d236c821c33c9e7467a2febfe2f310762e373e3f7410c108b",
+    "test.jsonl": "513f4da998d5f595f85375a1587cb5c988e0985e5e5517edb04f376e9c40454a"
+  }
+}

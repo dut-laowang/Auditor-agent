@@ -6,15 +6,12 @@ REPO="${REPO:-$BASE/Auditor-agent}"
 V20="$REPO/SFT/auditor_agent_sft_v20_marble_package"
 V19="$REPO/SFT/auditor_agent_sft_v19_qualityfix_package"
 GNN="$REPO/SFT/auditor_agent_gnn_baselines_package"
-ARCHIVE="${V20_ARCHIVE:-$BASE/data-812/marble_random_10665_trajectories_configs_labels.tar.zst}"
-SOURCE="${V20_SOURCE:-$BASE/v20_marble_random_10665_source}"
-DATA="${V20_DATA:-$BASE/v20_marble_random_10665_dataset}"
+DATA="${V20_DATA:-$V20/dataset_bundle}"
 RESULTS="${RESULTS:-$BASE/v20_marble_core_validation}"
 MODEL_ROOT="${MODEL_ROOT:-$BASE/sft_models}"
 GPU="${GPU:-0}"
 
-test -f "$ARCHIVE"
-mkdir -p "$SOURCE" "$DATA" "$RESULTS" "$MODEL_ROOT"
+mkdir -p "$RESULTS" "$MODEL_ROOT"
 export HF_HOME="${HF_HOME:-$MODEL_ROOT/hf_cache}"
 export HF_HUB_CACHE="${HF_HUB_CACHE:-$HF_HOME/hub}"
 export TRANSFORMERS_CACHE="${TRANSFORMERS_CACHE:-$HF_HOME/transformers}"
@@ -22,16 +19,7 @@ export TOKENIZERS_PARALLELISM=false
 export OMP_NUM_THREADS="${OMP_NUM_THREADS:-1}"
 export MKL_NUM_THREADS="${MKL_NUM_THREADS:-1}"
 
-if [[ ! -f "$SOURCE/EXTRACTION_COMPLETE" ]]; then
-  test -z "$(find "$SOURCE" -mindepth 1 -maxdepth 1 -print -quit)"
-  tar -xf "$ARCHIVE" -C "$SOURCE"
-  touch "$SOURCE/EXTRACTION_COMPLETE"
-fi
-if [[ ! -f "$DATA/BUILD_COMPLETE" ]]; then
-  test -z "$(find "$DATA" -mindepth 1 -maxdepth 1 -print -quit)"
-  python "$V20/scripts/assemble_v20_marble.py" --source-root "$SOURCE" --output-dir "$DATA" --seed 42
-  touch "$DATA/BUILD_COMPLETE"
-fi
+python "$V19/scripts/restore_track_data.py" "$DATA"
 
 python "$V19/scripts/audit_v19_integrity.py" --data-dir "$DATA" --output "$RESULTS/data_integrity.json"
 python "$V19/scripts/audit_lexical_shortcuts.py" \

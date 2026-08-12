@@ -1284,10 +1284,23 @@ def build(args: argparse.Namespace) -> None:
                     )
                     continue
             meta = sample["metadata"]
+            if mode == "flat":
+                placement = row_for_build.get("placement") or {}
+                source_attack_mode = (
+                    "none"
+                    if condition == "clean"
+                    else (
+                        "dual_site"
+                        if placement.get("type") == "dual"
+                        else "single_site"
+                    )
+                )
+            else:
+                source_attack_mode = "single_site" if mode == "single" else "dual_site"
             meta.update(
                 {
                     "source_type": args.source_type,
-                    "attack_mode": "single_site" if mode == "single" else "dual_site",
+                    "attack_mode": source_attack_mode,
                     "source_final_label": source_label,
                     "label_quality": label_quality,
                     "label_policy": "stage6_final_label_preserved",

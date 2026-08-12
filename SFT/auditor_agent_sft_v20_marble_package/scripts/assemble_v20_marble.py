@@ -3,6 +3,7 @@ from __future__ import annotations
 import argparse
 import importlib.util
 import json
+import random
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -20,6 +21,47 @@ def write_jsonl(path: Path, rows: list[dict]) -> None:
     with path.open("w", encoding="utf-8") as handle:
         for row in rows:
             handle.write(json.dumps(row, ensure_ascii=False) + "\n")
+
+
+def group_split_v20(rows: list[dict], seed: int):
+    """V19 grouped split scaled to the larger 90-task-per-scenario source.
+
+    Keep the same no-leakage unit, (scenario, sample_id), while assigning 18
+    validation and 16 sealed-test task IDs per scenario. This preserves roughly
+    the V19 validation/test proportions instead of shrinking each split to ~2%.
+    """
+    rng = random.Random(seed)
+    held_out = {}
+    for scenario in sorted({str(r["metadata"]["scenario"]) for r in rows}):
+        ids = sorted(
+            {
+                int(r["metadata"]["sample_id"])
+                for r in rows
+                if r["metadata"]["scenario"] == scenario
+            }
+        )
+        if len(ids) < 40:
+            raise ValueError(f"Insufficient task groups for V20 split: {scenario}={len(ids)}")
+        rng.shuffle(ids)
+        held_out[scenario] = {
+            "test": sorted(ids[:16]),
+            "validation": sorted(ids[16:34]),
+        }
+    train, validation, test = [], [], []
+    for row in rows:
+        meta = row["metadata"]
+        sid = int(meta["sample_id"])
+        assignment = held_out[str(meta["scenario"])]
+        if sid in assignment["test"]:
+            test.append(row)
+        elif sid in assignment["validation"]:
+            validation.append(row)
+        else:
+            train.append(row)
+    rng.shuffle(train)
+    rng.shuffle(validation)
+    rng.shuffle(test)
+    return train, validation, test, held_out
 
 
 def main() -> None:
@@ -66,7 +108,7 @@ def main() -> None:
     errors = builder.validate_samples(rows, builder.load_v15_builder(v15_path))
     if errors:
         raise RuntimeError(f"V20 validation failed: {errors}")
-    train, validation, test, held_out = builder.group_split(rows, args.seed)
+    train, validation, test, held_out = group_split_v20(rows, args.seed)
     for name, split in (("all", rows), ("train", train), ("validation", validation), ("test", test)):
         write_jsonl(args.output_dir / f"{name}.jsonl", split)
     stats = {
@@ -74,7 +116,7 @@ def main() -> None:
         "version": "V20-marble-random-10665",
         "source_archive": "marble_random_10665_trajectories_configs_labels.tar.zst",
         "source_policy": "MARBLE only; all four native topologies; V19 observable-input and label policy unchanged",
-        "split_policy": "V19 seed-42 grouping by (scenario, sample_id); two validation and two sealed-test task IDs per scenario",
+        "split_policy": "V19 seed-42 grouping by (scenario, sample_id), scaled to 18 validation and 16 sealed-test task IDs per scenario for the larger V20 task universe",
         "held_out_tasks": held_out,
         "files": {name: builder.sample_stats(split) for name, split in (("all", rows), ("train", train), ("validation", validation), ("test", test))},
     }
