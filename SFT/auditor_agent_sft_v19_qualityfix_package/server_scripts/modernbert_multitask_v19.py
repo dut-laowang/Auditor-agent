@@ -388,6 +388,9 @@ def main():
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--threshold", type=float)
     parser.add_argument("--num-workers", type=int, default=2)
+    parser.add_argument("--expected-train-sha256", default=MARBLE_SHA256["train"])
+    parser.add_argument("--expected-validation-sha256", default=MARBLE_SHA256["validation"])
+    parser.add_argument("--expected-test-sha256", default=MARBLE_SHA256["test"])
     args = parser.parse_args()
     if args.model != "answerdotai/ModernBERT-base" or args.revision != MODERNBERT_REVISION:
         raise ValueError("The controlled baseline requires the pinned ModernBERT-base revision")
@@ -405,18 +408,23 @@ def main():
     if args.mode == "eval" and not args.checkpoint:
         raise ValueError("Evaluation requires --checkpoint")
     data_sha256 = sha256(args.data_file)
-    if data_sha256 != MARBLE_SHA256[args.dataset_role]:
+    expected_sha256 = {
+        "train": args.expected_train_sha256,
+        "validation": args.expected_validation_sha256,
+        "test": args.expected_test_sha256,
+    }
+    if data_sha256 != expected_sha256[args.dataset_role]:
         raise ValueError(
-            f"Frozen V19 MARBLE {args.dataset_role} hash mismatch: "
-            f"{data_sha256} != {MARBLE_SHA256[args.dataset_role]}"
+            f"Frozen dataset {args.dataset_role} hash mismatch: "
+            f"{data_sha256} != {expected_sha256[args.dataset_role]}"
         )
     os.makedirs(args.output_dir, exist_ok=True)
     train_contract = {
         "model": args.model,
         "model_revision": args.revision,
-        "train_sha256": MARBLE_SHA256["train"],
-        "validation_sha256": MARBLE_SHA256["validation"],
-        "test_sha256": MARBLE_SHA256["test"],
+        "train_sha256": expected_sha256["train"],
+        "validation_sha256": expected_sha256["validation"],
+        "test_sha256": expected_sha256["test"],
         "max_length": args.max_len,
         "candidate_max_length": args.candidate_max_len,
         "input_mode": args.input_mode,
@@ -660,7 +668,7 @@ def main():
     if args.dataset_role == "test":
         expected_threshold_contract = {
             "selected_on": "validation",
-            "validation_sha256": MARBLE_SHA256["validation"],
+            "validation_sha256": expected_sha256["validation"],
             "checkpoint_sha256": checkpoint_sha256,
             "model": args.model,
             "model_revision": args.revision,
