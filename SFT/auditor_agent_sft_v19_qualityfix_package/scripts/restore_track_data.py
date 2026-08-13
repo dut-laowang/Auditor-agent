@@ -31,7 +31,10 @@ def main() -> None:
             raise RuntimeError(f"Unexpected ZIP members: {handle.namelist()}")
         for name in expected:
             path = args.track_dir / name
-            if not path.is_file():
+            # Restored JSONL files are generated transport artifacts and may be
+            # left behind by an older Git revision. Replace a stale copy from the
+            # newly verified ZIP instead of failing before it can be refreshed.
+            if not path.is_file() or sha256(path) != expected[name]:
                 handle.extract(name, args.track_dir)
             actual = sha256(path)
             if actual != expected[name]:
