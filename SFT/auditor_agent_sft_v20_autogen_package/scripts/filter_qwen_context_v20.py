@@ -34,6 +34,10 @@ def main() -> None:
     parser.add_argument("--model", default="Qwen/Qwen3-8B")
     parser.add_argument("--revision", required=True)
     parser.add_argument("--max-len", type=int, default=8192)
+    parser.add_argument(
+        "--input-mode", choices=("chat", "user"), default="chat",
+        help="Tokenize the complete chat (Qwen SFT) or only the user document (ModernBERT).",
+    )
     args = parser.parse_args()
 
     args.output_dir.mkdir(parents=True, exist_ok=True)
@@ -41,7 +45,7 @@ def main() -> None:
         args.model, revision=args.revision, trust_remote_code=True
     )
     report = {
-        "policy": "drop_complete_chat_sequences_exceeding_qwen_context",
+        "policy": f"drop_complete_{args.input_mode}_sequences_exceeding_model_context",
         "model": args.model,
         "revision": args.revision,
         "max_len": args.max_len,
@@ -55,11 +59,18 @@ def main() -> None:
         with source.open(encoding="utf-8") as handle:
             for index, line in enumerate(handle):
                 row = json.loads(line)
-                length = len(
-                    tokenizer(
-                        render(tokenizer, row["messages"]), add_special_tokens=False
-                    )["input_ids"]
-                )
+                if args.input_mode == "user":
+                    text = next(
+                        message["content"] for message in row["messages"]
+                        if message.get("role") == "user"
+                    )
+                    length = len(tokenizer(text, add_special_tokens=True)["input_ids"])
+                else:
+                    length = len(
+                        tokenizer(
+                            render(tokenizer, row["messages"]), add_special_tokens=False
+                        )["input_ids"]
+                    )
                 if length <= args.max_len:
                     kept.append(row)
                 else:

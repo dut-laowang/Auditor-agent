@@ -9,6 +9,7 @@ GNN="$REPO/SFT/auditor_agent_gnn_baselines_package"
 RAW_DATA="${V20_DATA:-$V20/dataset_bundle}"
 RESULTS="${RESULTS:-$BASE/v20_autogen_core_validation_v2}"
 DATA="$RESULTS/context_filtered_dataset"
+MODERN_DATA="$RESULTS/modernbert_context_filtered_dataset"
 MODEL_ROOT="${MODEL_ROOT:-$BASE/sft_models}"
 GPU="${GPU:-0}"
 
@@ -53,14 +54,19 @@ CUDA_VISIBLE_DEVICES="$GPU" python "$V19/server_scripts/eval_qwen3_fullschema_v1
 
 # ModernBERT-8192, same revision and V19 hyperparameters; model downloads reuse HF_HOME.
 MODERN_OUT="$MODEL_ROOT/modernbert-base-8192-sdpa-fp32-multitask-v20-autogen-observable-v2"
+python "$V20/scripts/filter_qwen_context_v20.py" \
+  --input-dir "$DATA" --output-dir "$MODERN_DATA" --model answerdotai/ModernBERT-base \
+  --revision 8949b909ec900327062f0ebf497f51aef5e6f0c8 --max-len 8192 --input-mode user
 V20_TRAIN_SHA="$(sha256sum "$DATA/train.jsonl" | awk '{print $1}')"
 V20_VALIDATION_SHA="$(sha256sum "$DATA/validation.jsonl" | awk '{print $1}')"
+MODERN_TRAIN_SHA="$(sha256sum "$MODERN_DATA/train.jsonl" | awk '{print $1}')"
+MODERN_VALIDATION_SHA="$(sha256sum "$MODERN_DATA/validation.jsonl" | awk '{print $1}')"
 mkdir -p "$MODERN_OUT" "$RESULTS/modernbert"
 if [[ ! -f "$MODERN_OUT/TRAINING_COMPLETE.json" ]]; then
   python "$V19/server_scripts/modernbert_multitask_v19.py" \
     --mode train --model answerdotai/ModernBERT-base --revision 8949b909ec900327062f0ebf497f51aef5e6f0c8 \
-    --data-file "$DATA/train.jsonl" --dataset-role train --output-dir "$MODERN_OUT" \
-    --expected-train-sha256 "$V20_TRAIN_SHA" --expected-validation-sha256 "$V20_VALIDATION_SHA" \
+    --data-file "$MODERN_DATA/train.jsonl" --dataset-role train --output-dir "$MODERN_OUT" \
+    --expected-train-sha256 "$MODERN_TRAIN_SHA" --expected-validation-sha256 "$MODERN_VALIDATION_SHA" \
     --max-len 8192 --attn-implementation sdpa --input-mode user --epochs 3 --lr 2e-5 \
     --batch "${MODERN_TRAIN_BATCH:-2}" --grad-accum "${MODERN_GRAD_ACCUM:-8}" \
     --lambda-scope 1.0 --lambda-component 1.0 --seed 42 \
@@ -69,8 +75,8 @@ fi
 python "$V19/server_scripts/modernbert_multitask_v19.py" \
   --mode eval --model answerdotai/ModernBERT-base --revision 8949b909ec900327062f0ebf497f51aef5e6f0c8 \
   --checkpoint "$MODERN_OUT/checkpoint-epoch-3.pt" \
-  --data-file "$DATA/validation.jsonl" --dataset-role validation \
-  --expected-train-sha256 "$V20_TRAIN_SHA" --expected-validation-sha256 "$V20_VALIDATION_SHA" \
+  --data-file "$MODERN_DATA/validation.jsonl" --dataset-role validation \
+  --expected-train-sha256 "$MODERN_TRAIN_SHA" --expected-validation-sha256 "$MODERN_VALIDATION_SHA" \
   --output-dir "$RESULTS/modernbert" --max-len 8192 --attn-implementation sdpa \
   --input-mode user --batch "${MODERN_EVAL_BATCH:-4}" --seed 42 \
   2>&1 | tee "$RESULTS/modernbert/evaluation.log"
