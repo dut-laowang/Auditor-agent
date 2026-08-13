@@ -98,11 +98,13 @@ git -C "$BLIND" checkout --detach 1889c20a326ba9ba9a6982744d473626e74f9986
 GNN_CACHE="$MODEL_ROOT/v20_gnn_component_cache"
 python "$GNN/server_scripts/v19_component_gnn_multitask.py" train-validation \
   --model-kind gat --official-dir "$GSAFE/TA" --data-dir "$DATA" \
+  --expected-train-sha256 "$V20_TRAIN_SHA" --expected-validation-sha256 "$V20_VALIDATION_SHA" \
   --cache-dir "$GNN_CACHE" --output-dir "$RESULTS/gsafeguard" \
   --epochs 20 --lr 0.001 --hidden-dim 512 --latent-dim 256 \
   2>&1 | tee "$RESULTS/gsafeguard.log"
 python "$GNN/server_scripts/v19_component_gnn_multitask.py" train-validation \
   --model-kind tam --official-dir "$BLIND/MA" --data-dir "$DATA" \
+  --expected-train-sha256 "$V20_TRAIN_SHA" --expected-validation-sha256 "$V20_VALIDATION_SHA" \
   --cache-dir "$GNN_CACHE" --output-dir "$RESULTS/tam_encoder" \
   --epochs 20 --lr 0.001 --hidden-dim 512 --latent-dim 256 \
   2>&1 | tee "$RESULTS/tam_encoder.log"

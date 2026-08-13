@@ -559,11 +559,17 @@ def train(args) -> None:
     output_dir.mkdir(parents=True, exist_ok=True)
     hashes = {}
     encoded = {}
+    expected_hashes = {
+        "train": args.expected_train_sha256,
+        "validation": args.expected_validation_sha256,
+    }
     for split in ("train", "validation"):
         path = data_dir / f"{split}.jsonl"
         actual = sha256_file(path)
-        if actual != MARBLE_SHA256[split]:
-            raise RuntimeError(f"Frozen MARBLE {split} hash mismatch: {actual}")
+        if actual != expected_hashes[split]:
+            raise RuntimeError(
+                f"Frozen dataset {split} hash mismatch: {actual} != {expected_hashes[split]}"
+            )
         hashes[split] = actual
         raw = build_raw_graphs(path)
         contract = {
@@ -790,6 +796,10 @@ def main() -> None:
     train_parser.add_argument("--scope-loss-weight", type=float, default=1.0)
     train_parser.add_argument("--grad-accum", type=int, default=16)
     train_parser.add_argument("--seed", type=int, default=42)
+    train_parser.add_argument("--expected-train-sha256", default=MARBLE_SHA256["train"])
+    train_parser.add_argument(
+        "--expected-validation-sha256", default=MARBLE_SHA256["validation"]
+    )
     test_parser = subparsers.add_parser("final-test")
     test_parser.add_argument("--checkpoint-dir", required=True)
     test_parser.add_argument("--official-dir", required=True)
