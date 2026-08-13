@@ -1,0 +1,173 @@
+{
+  "schema": "Graph-grounded-Candidate-SFT/v13",
+  "allowed_source_types": [
+    "autogen_native_v20_complete"
+  ],
+  "split_assignment": "V19 seed-42 grouping by (scenario, sample_id): 2 validation and 2 sealed-test task IDs per scenario",
+  "stats": {
+    "train": {
+      "total": 1814,
+      "by_verdict": {
+        "attack_failed": 707,
+        "clean_safe": 839,
+        "attack_success": 268
+      },
+      "by_source_final_label": {
+        "failure": 707,
+        "private_control": 791,
+        "success": 268,
+        "clean": 48
+      },
+      "by_label_quality": {
+        "gold": 901,
+        "control": 839,
+        "silver": 74
+      },
+      "by_condition": {
+        "attacked": 975,
+        "private_control": 791,
+        "clean": 48
+      },
+      "by_scenario": {
+        "coding": 512,
+        "research": 373,
+        "bargaining": 568,
+        "minecraft": 361
+      },
+      "by_topology": {
+        "swarm": 747,
+        "selector_group_chat": 1067
+      },
+      "by_surface": {
+        "message": 293,
+        "profile": 287,
+        "dual": 325,
+        "memory": 290,
+        "tool": 209,
+        "input": 362,
+        "none": 48
+      },
+      "by_objective": {
+        "hijacking": 303,
+        "disruption": 402,
+        "disclosure": 1061,
+        "none": 48
+      },
+      "by_attack_mode": {
+        "single_site": 1489,
+        "dual_site": 325
+      }
+    },
+    "validation": {
+      "total": 721,
+      "by_verdict": {
+        "clean_safe": 312,
+        "attack_failed": 304,
+        "attack_success": 105
+      },
+      "by_source_final_label": {
+        "private_control": 296,
+        "failure": 304,
+        "success": 105,
+        "clean": 16
+      },
+      "by_label_quality": {
+        "control": 312,
+        "gold": 377,
+        "silver": 32
+      },
+      "by_condition": {
+        "private_control": 296,
+        "attacked": 409,
+        "clean": 16
+      },
+      "by_scenario": {
+        "bargaining": 197,
+        "minecraft": 136,
+        "coding": 231,
+        "research": 157
+      },
+      "by_topology": {
+        "selector_group_chat": 420,
+        "swarm": 301
+      },
+      "by_surface": {
+        "memory": 96,
+        "input": 125,
+        "dual": 198,
+        "tool": 74,
+        "profile": 114,
+        "message": 98,
+        "none": 16
+      },
+      "by_objective": {
+        "disclosure": 406,
+        "disruption": 178,
+        "hijacking": 121,
+        "none": 16
+      },
+      "by_attack_mode": {
+        "single_site": 523,
+        "dual_site": 198
+      }
+    },
+    "test": {
+      "total": 589,
+      "by_verdict": {
+        "attack_failed": 246,
+        "clean_safe": 268,
+        "attack_success": 75
+      },
+      "by_source_final_label": {
+        "failure": 246,
+        "private_control": 252,
+        "success": 75,
+        "clean": 16
+      },
+      "by_label_quality": {
+        "gold": 307,
+        "control": 268,
+        "silver": 14
+      },
+      "by_condition": {
+        "attacked": 321,
+        "private_control": 252,
+        "clean": 16
+      },
+      "by_scenario": {
+        "bargaining": 202,
+        "coding": 179,
+        "research": 100,
+        "minecraft": 108
+      },
+      "by_topology": {
+        "swarm": 235,
+        "selector_group_chat": 354
+      },
+      "by_surface": {
+        "profile": 101,
+        "message": 99,
+        "input": 127,
+        "dual": 78,
+        "tool": 72,
+        "memory": 96,
+        "none": 16
+      },
+      "by_objective": {
+        "disclosure": 339,
+        "disruption": 129,
+        "hijacking": 105,
+        "none": 16
+      },
+      "by_attack_mode": {
+        "single_site": 511,
+        "dual_site": 78
+      }
+    }
+  },
+  "sha256": {
+    "train.jsonl": "85f83721b341c9047e7be8d9cebc60239a25866001aa7abb9426d655727d9979",
+    "validation.jsonl": "77dcd04d1a5c56e4d59bfff26acfdf4052f91f594d75abfd1dadfac31fe7a802",
+    "test.jsonl": "eb4b4374de8b35358cb2addabba461a172a775ce52879e54a98be34addc981ae"
+  }
+}
