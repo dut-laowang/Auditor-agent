@@ -53,7 +53,10 @@ CUDA_VISIBLE_DEVICES="$GPU" python "$V19/server_scripts/eval_qwen3_fullschema_v1
   --batch-size "${QWEN_EVAL_BATCH:-4}" --resume
 
 # ModernBERT-8192, same revision and V19 hyperparameters; model downloads reuse HF_HOME.
-MODERN_OUT="$MODEL_ROOT/modernbert-base-8192-sdpa-fp32-multitask-v20-autogen-observable-v2"
+# Use a distinct directory for the ModernBERT-tokenizer-filtered contract.  The
+# earlier failed preflight may have already persisted an incompatible contract
+# in the original v2 directory; preserve it rather than deleting user data.
+MODERN_OUT="$MODEL_ROOT/modernbert-base-8192-sdpa-fp32-multitask-v20-autogen-observable-v2-bertfiltered"
 python "$V20/scripts/filter_qwen_context_v20.py" \
   --input-dir "$DATA" --output-dir "$MODERN_DATA" --model answerdotai/ModernBERT-base \
   --revision 8949b909ec900327062f0ebf497f51aef5e6f0c8 --max-len 8192 --input-mode user
