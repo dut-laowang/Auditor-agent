@@ -29,7 +29,7 @@ def main() -> None:
     with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED, compresslevel=9) as zf:
         for name in FILES:
             zf.write(args.data_dir / name, arcname=name)
-    for name in ("stats.json", "quality_audit.json"):
+    for name in ("stats.json", "quality_audit.json", "autogen_observable_quality.json"):
         shutil.copy2(args.data_dir / name, args.bundle_dir / name)
     stats = json.loads((args.data_dir / "stats.json").read_text(encoding="utf-8"))
     track_manifest = {
@@ -48,7 +48,7 @@ def main() -> None:
     lines = [f"{sha256(args.data_dir / name)}  {name}" for name in FILES]
     lines.extend(
         f"{sha256(args.bundle_dir / name)}  {name}"
-        for name in ("stats.json", "quality_audit.json", "track_manifest.json")
+        for name in ("stats.json", "quality_audit.json", "autogen_observable_quality.json", "track_manifest.json")
     )
     (args.bundle_dir / "SHA256SUMS").write_text("\n".join(sorted(lines)) + "\n", encoding="ascii")
     (args.bundle_dir / "TRANSPORT_SHA256").write_text(

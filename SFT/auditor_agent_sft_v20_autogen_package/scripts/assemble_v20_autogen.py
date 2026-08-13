@@ -34,6 +34,8 @@ def main() -> None:
     builder_path = v19 / "scripts" / "build_v19_qualityfix_dataset.py"
     v15_path = repo_sft / "auditor_agent_sft_v15_hq_current_package" / "scripts" / "build_v15_hq_current_dataset.py"
     builder = load(builder_path, "v20_autogen_v19_builder")
+    adapter = load(Path(__file__).with_name("autogen_observable_adapter.py"), "v20_autogen_observable_adapter")
+    adapter.install(builder)
 
     if args.output_dir.exists() and any(args.output_dir.iterdir()):
         raise RuntimeError(f"Refusing to overwrite non-empty output: {args.output_dir}")
@@ -70,9 +72,9 @@ def main() -> None:
         write_jsonl(args.output_dir / f"{name}.jsonl", split)
     stats = {
         "schema": builder.SCHEMA,
-        "version": "V20-autogen-native-complete-20260813",
+        "version": "V20-autogen-native-complete-20260813-observable-v2",
         "source_archive": "autogen_native_complete_with_configs_20260813.tar.zst",
-        "source_policy": "AutoGen single+dual; native configs, final labels, and private-control signals; V19/V20 observable-input and label policy unchanged",
+        "source_policy": "AutoGen single+dual; actual delivered_content from original trajectory logs only; privileged attack instrumentation excluded; strict source-grounded observable-evidence gate; V20 output schema unchanged",
         "split_policy": "V19 seed-42 grouping by (scenario, sample_id): 2 validation and 2 sealed-test task IDs per scenario",
         "held_out_tasks": held_out,
         "files": {name: builder.sample_stats(split) for name, split in (("all", rows), ("train", train), ("validation", validation), ("test", test))},

@@ -1,0 +1,37 @@
+{
+  "status": "PASS",
+  "policy": "original AutoGen delivered_content only; no attack instrumentation or config payload is visible",
+  "splits": {
+    "train": 1938,
+    "validation": 792,
+    "test": 624
+  },
+  "attack_success_rows": 381,
+  "problems": {
+    "privileged::attack_exposed": 0,
+    "privileged::attack_injected": 0,
+    "privileged::attack_active": 0,
+    "privileged::attack_payload_template": 0,
+    "privileged::source_final_label": 0,
+    "privileged::marker_success": 0,
+    "privileged::success_markers": 0,
+    "privileged::security_judgment": 0,
+    "missing_gold_candidate": 0,
+    "invalid_evidence_ref": 0,
+    "empty_final_output": 0,
+    "completed_only_final_output": 0
+  },
+  "stratified_quality_sample": {
+    "seed": 20260813,
+    "n": 50,
+    "surface_distribution": {
+      "dual": 12,
+      "input": 6,
+      "memory": 9,
+      "message": 13,
+      "profile": 5,
+      "tool": 5
+    },
+    "substantive_final_output": 50
+  }
+}

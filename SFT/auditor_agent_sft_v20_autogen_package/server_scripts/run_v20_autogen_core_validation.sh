@@ -7,7 +7,7 @@ V20="$REPO/SFT/auditor_agent_sft_v20_autogen_package"
 V19="$REPO/SFT/auditor_agent_sft_v19_qualityfix_package"
 GNN="$REPO/SFT/auditor_agent_gnn_baselines_package"
 RAW_DATA="${V20_DATA:-$V20/dataset_bundle}"
-RESULTS="${RESULTS:-$BASE/v20_autogen_core_validation}"
+RESULTS="${RESULTS:-$BASE/v20_autogen_core_validation_v2}"
 DATA="$RESULTS/context_filtered_dataset"
 MODEL_ROOT="${MODEL_ROOT:-$BASE/sft_models}"
 GPU="${GPU:-0}"
@@ -23,6 +23,8 @@ export MKL_NUM_THREADS="${MKL_NUM_THREADS:-1}"
 python "$V19/scripts/restore_track_data.py" "$RAW_DATA"
 
 python "$V19/scripts/audit_v19_integrity.py" --data-dir "$RAW_DATA" --output "$RESULTS/data_integrity.json"
+python "$V20/scripts/audit_autogen_observable_v2.py" \
+  --data-dir "$RAW_DATA" --output "$RESULTS/autogen_observable_quality.json"
 python "$V20/scripts/filter_qwen_context_v20.py" \
   --input-dir "$RAW_DATA" --output-dir "$DATA" --model Qwen/Qwen3-8B \
   --revision b968826d9c46dd6066d109eabc6255188de91218 --max-len 8192
@@ -34,7 +36,7 @@ python "$V19/scripts/audit_lexical_shortcuts.py" \
 python "$V20/scripts/tfidf_v20.py" --data-dir "$DATA" --output "$RESULTS/tfidf/metrics.json"
 
 # Core Qwen3-8B SFT, with the exact V19 training settings and cached base model.
-QWEN_ADAPTER="$MODEL_ROOT/qwen3-8b-mas-auditor-lora-v20-autogen"
+QWEN_ADAPTER="$MODEL_ROOT/qwen3-8b-mas-auditor-lora-v20-autogen-observable-v2"
 if [[ ! -f "$QWEN_ADAPTER/TRAINING_COMPLETE" ]]; then
   CUDA_VISIBLE_DEVICES="$GPU" python "$V19/server_scripts/train_qwen3_lora_sft_v19.py" \
     --model Qwen/Qwen3-8B --data-dir "$DATA" --output-dir "$QWEN_ADAPTER" \
@@ -50,7 +52,7 @@ CUDA_VISIBLE_DEVICES="$GPU" python "$V19/server_scripts/eval_qwen3_fullschema_v1
   --batch-size "${QWEN_EVAL_BATCH:-4}" --resume
 
 # ModernBERT-8192, same revision and V19 hyperparameters; model downloads reuse HF_HOME.
-MODERN_OUT="$MODEL_ROOT/modernbert-base-8192-sdpa-fp32-multitask-v20-autogen"
+MODERN_OUT="$MODEL_ROOT/modernbert-base-8192-sdpa-fp32-multitask-v20-autogen-observable-v2"
 V20_TRAIN_SHA="$(sha256sum "$DATA/train.jsonl" | awk '{print $1}')"
 V20_VALIDATION_SHA="$(sha256sum "$DATA/validation.jsonl" | awk '{print $1}')"
 mkdir -p "$MODERN_OUT" "$RESULTS/modernbert"
@@ -81,7 +83,7 @@ test -d "$GSAFE/.git"
 test -d "$BLIND/.git"
 git -C "$GSAFE" checkout --detach 890c99f1cbc864e9ff0c85859619a14f42bc9cab
 git -C "$BLIND" checkout --detach 1889c20a326ba9ba9a6982744d473626e74f9986
-GNN_CACHE="$MODEL_ROOT/v20_autogen_gnn_component_cache"
+GNN_CACHE="$MODEL_ROOT/v20_autogen_observable_v2_gnn_component_cache"
 python "$GNN/server_scripts/v19_component_gnn_multitask.py" train-validation \
   --model-kind gat --official-dir "$GSAFE/TA" --data-dir "$DATA" \
   --expected-train-sha256 "$V20_TRAIN_SHA" --expected-validation-sha256 "$V20_VALIDATION_SHA" \

@@ -2,9 +2,9 @@
   "status": "PASS",
   "test_model_evaluation_performed": false,
   "splits": {
-    "train": 1814,
-    "validation": 721,
-    "test": 589
+    "train": 1938,
+    "validation": 792,
+    "test": 624
   },
   "overlaps": {
     "train_validation": {
@@ -28,16 +28,18 @@
   },
   "problems": {},
   "dual_projection": {
-    "test|edge|2": 8,
-    "test|multi|2": 33,
-    "test|node|2": 12,
-    "test|tool|2": 1,
-    "train|edge|2": 23,
-    "train|multi|2": 151,
-    "train|node|2": 43,
-    "validation|edge|2": 15,
-    "validation|multi|2": 86,
-    "validation|node|2": 29
+    "test|edge|2": 10,
+    "test|multi|2": 39,
+    "test|node|2": 6,
+    "test|tool|2": 2,
+    "train|edge|2": 30,
+    "train|multi|2": 178,
+    "train|node|2": 24,
+    "train|tool|2": 9,
+    "validation|edge|2": 19,
+    "validation|multi|2": 119,
+    "validation|node|2": 18,
+    "validation|tool|2": 8
   },
   "sealed_test_consumption_record_present": false
 }

@@ -6,168 +6,168 @@
   "split_assignment": "V19 seed-42 grouping by (scenario, sample_id): 2 validation and 2 sealed-test task IDs per scenario",
   "stats": {
     "train": {
-      "total": 1814,
+      "total": 1938,
       "by_verdict": {
-        "attack_failed": 707,
+        "attack_success": 224,
         "clean_safe": 839,
-        "attack_success": 268
+        "attack_failed": 875
       },
       "by_source_final_label": {
-        "failure": 707,
+        "success": 224,
         "private_control": 791,
-        "success": 268,
+        "failure": 875,
         "clean": 48
       },
       "by_label_quality": {
-        "gold": 901,
+        "gold": 1034,
         "control": 839,
-        "silver": 74
+        "silver": 65
       },
       "by_condition": {
-        "attacked": 975,
+        "attacked": 1099,
         "private_control": 791,
         "clean": 48
       },
       "by_scenario": {
-        "coding": 512,
-        "research": 373,
-        "bargaining": 568,
-        "minecraft": 361
+        "bargaining": 535,
+        "research": 516,
+        "minecraft": 372,
+        "coding": 515
       },
       "by_topology": {
-        "swarm": 747,
-        "selector_group_chat": 1067
+        "swarm": 956,
+        "selector_group_chat": 982
       },
       "by_surface": {
-        "message": 293,
-        "profile": 287,
-        "dual": 325,
-        "memory": 290,
-        "tool": 209,
-        "input": 362,
+        "input": 253,
+        "dual": 349,
+        "message": 530,
+        "memory": 232,
+        "tool": 337,
+        "profile": 189,
         "none": 48
       },
       "by_objective": {
-        "hijacking": 303,
-        "disruption": 402,
-        "disclosure": 1061,
+        "disclosure": 1137,
+        "disruption": 407,
+        "hijacking": 346,
         "none": 48
       },
       "by_attack_mode": {
-        "single_site": 1489,
-        "dual_site": 325
+        "single_site": 1589,
+        "dual_site": 349
       }
     },
     "validation": {
-      "total": 721,
+      "total": 792,
       "by_verdict": {
         "clean_safe": 312,
-        "attack_failed": 304,
-        "attack_success": 105
+        "attack_failed": 384,
+        "attack_success": 96
       },
       "by_source_final_label": {
         "private_control": 296,
-        "failure": 304,
-        "success": 105,
+        "failure": 384,
+        "success": 96,
         "clean": 16
       },
       "by_label_quality": {
         "control": 312,
-        "gold": 377,
-        "silver": 32
+        "gold": 445,
+        "silver": 35
       },
       "by_condition": {
         "private_control": 296,
-        "attacked": 409,
+        "attacked": 480,
         "clean": 16
       },
       "by_scenario": {
-        "bargaining": 197,
-        "minecraft": 136,
-        "coding": 231,
-        "research": 157
+        "bargaining": 199,
+        "research": 223,
+        "coding": 232,
+        "minecraft": 138
       },
       "by_topology": {
-        "selector_group_chat": 420,
-        "swarm": 301
+        "selector_group_chat": 404,
+        "swarm": 388
       },
       "by_surface": {
-        "memory": 96,
-        "input": 125,
-        "dual": 198,
-        "tool": 74,
-        "profile": 114,
-        "message": 98,
+        "memory": 82,
+        "message": 182,
+        "dual": 232,
+        "profile": 65,
+        "tool": 127,
+        "input": 88,
         "none": 16
       },
       "by_objective": {
-        "disclosure": 406,
-        "disruption": 178,
-        "hijacking": 121,
+        "disclosure": 440,
+        "disruption": 182,
+        "hijacking": 154,
         "none": 16
       },
       "by_attack_mode": {
-        "single_site": 523,
-        "dual_site": 198
+        "single_site": 560,
+        "dual_site": 232
       }
     },
     "test": {
-      "total": 589,
+      "total": 624,
       "by_verdict": {
-        "attack_failed": 246,
-        "clean_safe": 268,
-        "attack_success": 75
+        "attack_success": 61,
+        "attack_failed": 295,
+        "clean_safe": 268
       },
       "by_source_final_label": {
-        "failure": 246,
+        "success": 61,
+        "failure": 295,
         "private_control": 252,
-        "success": 75,
         "clean": 16
       },
       "by_label_quality": {
-        "gold": 307,
+        "gold": 342,
         "control": 268,
         "silver": 14
       },
       "by_condition": {
-        "attacked": 321,
+        "attacked": 356,
         "private_control": 252,
         "clean": 16
       },
       "by_scenario": {
-        "bargaining": 202,
-        "coding": 179,
-        "research": 100,
-        "minecraft": 108
+        "bargaining": 191,
+        "research": 129,
+        "coding": 188,
+        "minecraft": 116
       },
       "by_topology": {
-        "swarm": 235,
-        "selector_group_chat": 354
+        "selector_group_chat": 313,
+        "swarm": 311
       },
       "by_surface": {
-        "profile": 101,
-        "message": 99,
-        "input": 127,
-        "dual": 78,
-        "tool": 72,
-        "memory": 96,
-        "none": 16
+        "dual": 81,
+        "tool": 118,
+        "message": 180,
+        "none": 16,
+        "input": 90,
+        "profile": 60,
+        "memory": 79
       },
       "by_objective": {
-        "disclosure": 339,
-        "disruption": 129,
-        "hijacking": 105,
+        "hijacking": 120,
+        "disruption": 132,
+        "disclosure": 356,
         "none": 16
       },
       "by_attack_mode": {
-        "single_site": 511,
-        "dual_site": 78
+        "dual_site": 81,
+        "single_site": 543
       }
     }
   },
   "sha256": {
-    "train.jsonl": "85f83721b341c9047e7be8d9cebc60239a25866001aa7abb9426d655727d9979",
-    "validation.jsonl": "77dcd04d1a5c56e4d59bfff26acfdf4052f91f594d75abfd1dadfac31fe7a802",
-    "test.jsonl": "eb4b4374de8b35358cb2addabba461a172a775ce52879e54a98be34addc981ae"
+    "train.jsonl": "0d3bac5e08398a340b3697d2831a362135f76dfa87edc40a14fc9a82a6106987",
+    "validation.jsonl": "1b815dbd4c8007e1eed2b03312717330fc93d6c1d89ba2335da4b09104da0281",
+    "test.jsonl": "550aa306d7ec4f0d49c520afa0233e65a502f03499f89ae79f515e3a3a1ec96d"
   }
 }

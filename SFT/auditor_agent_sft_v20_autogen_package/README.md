@@ -3,7 +3,10 @@
 This track uses only `autogen_native_complete_with_configs_20260813.tar.zst`.
 It applies the V19/V20 observable-input schema, label mapping, G/N/E/T
 projection, seed-42 task-grouped split, model revisions, and hyperparameters.
-Native configs, final labels, and private-control signals are all present.
+The V2 observable adapter reads actual `delivered_content` from original AutoGen
+trajectory logs, excludes privileged attack instrumentation, restores substantive
+final outcomes, and rejects attacked rows whose gold source lacks visible semantic
+evidence. The final SFT schema remains identical to V20 MARBLE.
 
 Run after activating the existing CUDA environment:
 
