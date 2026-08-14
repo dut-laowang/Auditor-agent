@@ -64,8 +64,27 @@ def final_state(model, tokenizer, texts, max_len, batch_size, desc):
     return vectors
 
 
-def build_cache(data_file, cache_file, model_name, revision, adapter, max_len, candidate_batch):
+def atomic_torch_save(payload, path: Path):
+    temporary = path.with_suffix(path.suffix + ".tmp")
+    torch.save(payload, temporary)
+    os.replace(temporary, path)
+
+
+def build_cache(data_file, cache_file, model_name, revision, adapter, max_len, candidate_batch, save_every):
     rows = read(data_file)
+    data_digest = sha256(data_file)
+    adapter_digest = sha256(Path(adapter) / "run_manifest.json")
+    partial_file = cache_file.with_suffix(cache_file.suffix + ".partial")
+    cached_rows = []
+    if partial_file.is_file():
+        partial = torch.load(partial_file, map_location="cpu", weights_only=False)
+        if partial.get("data_sha256") != data_digest or partial.get("adapter_manifest_sha256") != adapter_digest:
+            raise RuntimeError(f"Stale partial feature cache: {partial_file}")
+        cached_rows = partial.get("rows", [])
+        expected_prefix = [row["run_id"] for row in rows[:len(cached_rows)]]
+        if [row["run_id"] for row in cached_rows] != expected_prefix:
+            raise RuntimeError(f"Partial feature-cache run-id prefix mismatch: {partial_file}")
+        print(json.dumps({"feature_cache_resume": str(partial_file), "completed_rows": len(cached_rows)}))
     tokenizer = AutoTokenizer.from_pretrained(adapter, trust_remote_code=True)
     if tokenizer.pad_token is None:
         tokenizer.pad_token = tokenizer.eos_token
@@ -79,10 +98,11 @@ def build_cache(data_file, cache_file, model_name, revision, adapter, max_len, c
     for parameter in model.parameters():
         parameter.requires_grad_(False)
 
-    prompts = [apply_template(tokenizer, row["messages"]) for row in rows]
-    document_vectors = final_state(model, tokenizer, prompts, max_len, 1, "qwen_document_features")
-    cached_rows = []
-    for index, row in enumerate(tqdm(rows, desc="qwen_candidate_features")):
+    progress = tqdm(range(len(cached_rows), len(rows)), initial=len(cached_rows), total=len(rows), desc="qwen_feature_cache")
+    for index in progress:
+        row = rows[index]
+        prompt = apply_template(tokenizer, row["messages"])
+        document_vector = final_state(model, tokenizer, [prompt], max_len, 1, "document_batch")[0]
         candidates = row["graph_candidates"]
         texts = [
             apply_template(tokenizer, [{"role": "user", "content": "Graph candidate:\n" + json.dumps(item, ensure_ascii=False, sort_keys=True)}])
@@ -95,7 +115,7 @@ def build_cache(data_file, cache_file, model_name, revision, adapter, max_len, c
         ids = [str(item["id"]) for item in candidates]
         cached_rows.append({
             "run_id": row["run_id"],
-            "document": document_vectors[index],
+            "document": document_vector,
             "candidates": torch.stack(candidate_vectors),
             "candidate_ids": ids,
             "candidate_labels": torch.tensor(
@@ -104,12 +124,21 @@ def build_cache(data_file, cache_file, model_name, revision, adapter, max_len, c
             "verdict": VERDICTS.index(gold["verdict"]),
             "scope": SCOPES.index(gold["scope"]),
         })
+        if len(cached_rows) % save_every == 0 or len(cached_rows) == len(rows):
+            atomic_torch_save({
+                "data_sha256": data_digest,
+                "adapter_manifest_sha256": adapter_digest,
+                "hidden_size": int(cached_rows[0]["document"].numel()),
+                "rows": cached_rows,
+                "complete": False,
+            }, partial_file)
     cache_file.parent.mkdir(parents=True, exist_ok=True)
-    torch.save({
-        "data_sha256": sha256(data_file),
-        "adapter_manifest_sha256": sha256(Path(adapter) / "run_manifest.json"),
+    atomic_torch_save({
+        "data_sha256": data_digest,
+        "adapter_manifest_sha256": adapter_digest,
         "hidden_size": int(cached_rows[0]["document"].numel()),
         "rows": cached_rows,
+        "complete": True,
     }, cache_file)
     del model, base
     torch.cuda.empty_cache()
@@ -257,15 +286,18 @@ def main():
     parser.add_argument("--lr", type=float, default=3e-4)
     parser.add_argument("--seed", type=int, default=42)
     parser.add_argument("--candidate-batch", type=int, default=32)
+    parser.add_argument("--cache-save-every", type=int, default=100)
     args = parser.parse_args()
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA required")
+    if args.cache_save_every < 1:
+        raise ValueError("--cache-save-every must be positive")
     args.output_dir.mkdir(parents=True, exist_ok=True); args.cache_dir.mkdir(parents=True, exist_ok=True)
     caches = {}
     for split, path in (("train", args.train_file), ("validation", args.validation_file)):
         cache = args.cache_dir / f"{split}.pt"; caches[split] = cache
         if not cache.is_file():
-            build_cache(path, cache, args.model, args.revision, args.audit_adapter, args.max_len, args.candidate_batch)
+            build_cache(path, cache, args.model, args.revision, args.audit_adapter, args.max_len, args.candidate_batch, args.cache_save_every)
         payload = torch.load(cache, map_location="cpu", weights_only=False)
         if payload["data_sha256"] != sha256(path):
             raise RuntimeError(f"Stale {split} feature cache")
@@ -289,7 +321,27 @@ def main():
     total = sum(len(row["candidate_labels"]) for row in train.rows)
     pos_weight = torch.tensor((total - positives) / max(positives, 1.0), device=device)
     best = None
-    for epoch in range(1, args.epochs + 1):
+    start_epoch = 1
+    checkpoint = args.output_dir / "last_checkpoint.pt"
+    training_contract = {
+        "train_sha256": sha256(args.train_file),
+        "validation_sha256": sha256(args.validation_file),
+        "audit_adapter_manifest_sha256": sha256(Path(args.audit_adapter) / "run_manifest.json"),
+        "epochs": args.epochs, "batch": args.batch, "lr": args.lr, "seed": args.seed,
+    }
+    if checkpoint.is_file():
+        state = torch.load(checkpoint, map_location=device, weights_only=False)
+        if state.get("contract") != training_contract:
+            raise RuntimeError("Head checkpoint belongs to a different training contract")
+        model.load_state_dict(state["model"])
+        optimizer.load_state_dict(state["optimizer"])
+        best = state["best"]
+        start_epoch = int(state["epoch"]) + 1
+        torch.set_rng_state(state["torch_rng_state"].cpu())
+        np.random.set_state(state["numpy_rng_state"])
+        random.setstate(state["python_rng_state"])
+        print(json.dumps({"head_training_resume": str(checkpoint), "next_epoch": start_epoch}))
+    for epoch in range(start_epoch, args.epochs + 1):
         model.train()
         for batch in tqdm(train_loader, desc=f"v21_heads_epoch_{epoch}"):
             batch = move(batch, device); optimizer.zero_grad(set_to_none=True)
@@ -306,7 +358,17 @@ def main():
         score = report["three_class_report"]["macro avg"]["f1-score"] + report["localization"]["component_micro_f1"]
         if best is None or score > best[0]:
             best = (score, epoch, cutoff, report)
-            torch.save(model.state_dict(), args.output_dir / "heads.pt")
+            atomic_torch_save(model.state_dict(), args.output_dir / "heads.pt")
+        atomic_torch_save({
+            "contract": training_contract,
+            "epoch": epoch,
+            "model": model.state_dict(),
+            "optimizer": optimizer.state_dict(),
+            "best": best,
+            "torch_rng_state": torch.get_rng_state(),
+            "numpy_rng_state": np.random.get_state(),
+            "python_rng_state": random.getstate(),
+        }, checkpoint)
     model.load_state_dict(torch.load(args.output_dir / "heads.pt", map_location=device, weights_only=True))
     validation_rows = records(model, validation_loader, device)
     cutoff = best[2]; report = metrics(validation_rows, cutoff)

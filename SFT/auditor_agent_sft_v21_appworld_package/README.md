@@ -17,6 +17,8 @@ git pull --ff-only origin main && \
 bash SFT/auditor_agent_sft_v21_appworld_package/server_scripts/run_v21_appworld_validation.sh
 ```
 
-The script is resumable. Results are written to
+The script is resumable: feature extraction is checkpointed every 100 rows,
+head training after every epoch, Audit LoRA every 100 optimizer steps, and
+evaluation after every generated batch. Results are written to
 `/gs/bs/tgh-26IAW/hongbo/project_4_coauthor/v21_appworld_marble_validation` and packed as
 `v21_appworld_marble_validation.tar.gz`.
