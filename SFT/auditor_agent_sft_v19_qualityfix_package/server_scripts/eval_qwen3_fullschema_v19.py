@@ -257,6 +257,12 @@ def main():
         help="Use the head as a generation prefix or merge it into a complete generated JSON report.",
     )
     parser.add_argument(
+        "--structured-controls",
+        help=("Optional JSONL keyed by run_id with pred, pred_scope, and pred_components. "
+              "The complete LM report is generated first, then only decision/localization "
+              "are replaced by these upstream predictions."),
+    )
+    parser.add_argument(
         "--load-in-4bit",
         action="store_true",
         help="Load the base model in NF4 for single-GPU QLoRA adapter evaluation.",
@@ -295,6 +301,10 @@ def main():
         raise ValueError("--adapter is required for --mode sft")
     if args.verdict_head and args.mode != "sft":
         raise ValueError("--verdict-head requires --mode sft")
+    if args.structured_controls and args.mode != "sft":
+        raise ValueError("--structured-controls requires --mode sft")
+    if args.structured_controls and args.verdict_head:
+        raise ValueError("Use either --structured-controls or --verdict-head, not both")
 
     if args.dataset_role == "test" and args.sealed_test_ack != "FINAL_ONCE":
         raise ValueError("Final test requires --sealed-test-ack FINAL_ONCE")
@@ -321,6 +331,19 @@ def main():
         if args.limit < 1:
             raise ValueError("--limit must be positive")
         rows = rows[: args.limit]
+    structured_controls = None
+    if args.structured_controls:
+        control_rows = [
+            json.loads(line)
+            for line in open(args.structured_controls, encoding="utf-8")
+            if line.strip()
+        ]
+        structured_controls = {row["run_id"]: row for row in control_rows}
+        row_ids = [row.get("metadata", {}).get("run_id") for row in rows]
+        if len(structured_controls) != len(control_rows):
+            raise ValueError("Duplicate run_id in structured controls")
+        if set(row_ids) != set(structured_controls) or len(row_ids) != len(set(row_ids)):
+            raise ValueError("Structured controls must exactly cover evaluated run_ids")
     max_prompt_tokens = 0
     for index, row in enumerate(tqdm(rows, desc="zero_truncation_preflight")):
         prompt_tokens = len(
@@ -389,6 +412,12 @@ def main():
             "verdict_head": os.path.abspath(args.verdict_head),
             "verdict_head_sha256": sha256_file(args.verdict_head),
             "verdict_conditioning": args.verdict_conditioning,
+        })
+    if args.structured_controls:
+        eval_contract.update({
+            "structured_controls": os.path.abspath(args.structured_controls),
+            "structured_controls_sha256": sha256_file(args.structured_controls),
+            "structured_control_merge": "posthoc_decision_and_localization_only",
         })
     contract_path = os.path.join(args.output_dir, "EVAL_CONTRACT.json")
     if os.path.isfile(contract_path):
@@ -548,6 +577,7 @@ def main():
             generations = [prefix + suffix for prefix, suffix in zip(verdict_prefixes, suffixes)]
             for row, generation, head_pred in zip(batch_rows, generations, head_predictions):
                 lm_verdict_pred = extract_verdict(generation)
+                lm_scope_pred, lm_components_pred = extract_localization(generation)
                 if args.verdict_head and args.verdict_conditioning == "posthoc":
                     try:
                         report = json.loads(generation)
@@ -561,6 +591,27 @@ def main():
                     except (json.JSONDecodeError, TypeError, ValueError):
                         # Preserve the raw generation so the strict schema gate
                         # reports the failure rather than silently repairing it.
+                        pass
+                control = None
+                if structured_controls is not None:
+                    run_id = row.get("metadata", {}).get("run_id")
+                    control = structured_controls[run_id]
+                    try:
+                        report = json.loads(generation)
+                        if set(report) != {"decision", "attack", "localization", "audit_trace"}:
+                            raise ValueError("Generated report does not preserve the full schema")
+                        if not isinstance(report["decision"], dict) or not isinstance(report["localization"], dict):
+                            raise ValueError("Generated decision/localization is not an object")
+                        report["decision"]["verdict"] = control["pred"]
+                        report["decision"]["binary_label"] = (
+                            "unsafe" if control["pred"] == "attack_success" else "safe"
+                        )
+                        report["localization"]["scope"] = control["pred_scope"]
+                        report["localization"]["component_ids"] = list(control["pred_components"])
+                        generation = json.dumps(report, ensure_ascii=False)
+                    except (json.JSONDecodeError, KeyError, TypeError, ValueError):
+                        # Never synthesize missing report sections; malformed generations
+                        # remain malformed and fail the strict schema-quality gate.
                         pass
                 gold = extract_verdict(row["messages"][2]["content"])
                 pred = extract_verdict(generation)
@@ -577,6 +628,16 @@ def main():
                             "pred": pred,
                             **({"verdict_head_pred": head_pred} if args.verdict_head else {}),
                             **({"lm_verdict_pred": lm_verdict_pred} if args.verdict_head else {}),
+                            **({
+                                "structured_control": {
+                                    "verdict": control["pred"],
+                                    "scope": control["pred_scope"],
+                                    "component_ids": list(control["pred_components"]),
+                                },
+                                "lm_verdict_pred_before_merge": lm_verdict_pred,
+                                "lm_scope_pred_before_merge": lm_scope_pred,
+                                "lm_components_pred_before_merge": sorted(lm_components_pred),
+                            } if control is not None else {}),
                             "gold_binary": to_binary(gold),
                             "pred_binary": to_binary(pred),
                             "gold_scope": gold_scope,
@@ -795,6 +856,44 @@ def main():
                 row["verdict_head_pred"] == row["lm_verdict_pred"] for row in recs
             ) / len(recs),
             "unchanged_full_schema_rate": sum(schema_checks) / len(schema_checks),
+        }
+    if args.structured_controls:
+        schema_checks = []
+        for row in recs:
+            control = row["structured_control"]
+            try:
+                report = json.loads(row["generation"])
+                schema_checks.append(
+                    set(report) == {"decision", "attack", "localization", "audit_trace"}
+                    and report["decision"].get("verdict") == control["verdict"]
+                    and report["decision"].get("binary_label")
+                    == ("unsafe" if control["verdict"] == "attack_success" else "safe")
+                    and report["localization"].get("scope") == control["scope"]
+                    and set(map(str, report["localization"].get("component_ids", [])))
+                    == set(map(str, control["component_ids"]))
+                    and isinstance(report["attack"], dict)
+                    and isinstance(report["audit_trace"], list)
+                )
+            except (json.JSONDecodeError, KeyError, TypeError):
+                schema_checks.append(False)
+        metrics["structured_controls"] = {
+            "enabled": True,
+            "source_sha256": sha256_file(args.structured_controls),
+            "report_agreement_rate": sum(schema_checks) / len(schema_checks),
+            "unchanged_full_schema_rate": sum(schema_checks) / len(schema_checks),
+            "lm_control_verdict_agreement_before_merge": sum(
+                row["lm_verdict_pred_before_merge"] == row["structured_control"]["verdict"]
+                for row in recs
+            ) / len(recs),
+            "lm_control_scope_agreement_before_merge": sum(
+                row["lm_scope_pred_before_merge"] == row["structured_control"]["scope"]
+                for row in recs
+            ) / len(recs),
+            "lm_control_components_exact_before_merge": sum(
+                set(row["lm_components_pred_before_merge"])
+                == set(row["structured_control"]["component_ids"])
+                for row in recs
+            ) / len(recs),
         }
     json.dump(metrics, open(os.path.join(args.output_dir, "metrics.json"), "w"), indent=2)
     print(json.dumps(metrics, indent=2))

@@ -302,6 +302,7 @@ def main():
         "validation_sha256": sha256(validation_file),
         "test_accessed": False,
         "resume_from_checkpoint": resume_checkpoint,
+        "init_adapter": os.path.abspath(args.init_adapter) if args.init_adapter else None,
         "adapter_artifacts": {
             name: sha256(os.path.join(args.output_dir, name))
             for name in sorted(os.listdir(args.output_dir))
