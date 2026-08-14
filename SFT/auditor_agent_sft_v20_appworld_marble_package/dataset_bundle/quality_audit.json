@@ -1,0 +1,39 @@
+{
+  "status": "PASS",
+  "test_model_evaluation_performed": false,
+  "splits": {
+    "train": 3122,
+    "validation": 406,
+    "test": 393
+  },
+  "overlaps": {
+    "train_validation": {
+      "source_run": 0,
+      "task": 0,
+      "input": 0,
+      "normalized_input": 0
+    },
+    "train_test": {
+      "source_run": 0,
+      "task": 0,
+      "input": 0,
+      "normalized_input": 0
+    },
+    "validation_test": {
+      "source_run": 0,
+      "task": 0,
+      "input": 0,
+      "normalized_input": 0
+    }
+  },
+  "problems": {},
+  "dual_projection": {
+    "test|multi|2": 46,
+    "test|node|2": 4,
+    "train|multi|2": 429,
+    "train|node|2": 32,
+    "validation|multi|2": 43,
+    "validation|node|2": 6
+  },
+  "sealed_test_consumption_record_present": false
+}

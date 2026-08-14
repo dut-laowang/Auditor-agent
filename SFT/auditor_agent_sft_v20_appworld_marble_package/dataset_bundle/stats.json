@@ -1,0 +1,263 @@
+{
+  "schema": "Graph-grounded-Candidate-SFT/v13",
+  "version": "V20-appworld-marble-random-3000-observable-v1",
+  "source_archive": "appworld_marble_random_3000_complete_20260814.tar.zst",
+  "source_policy": "AppWorld×MARBLE; actual delivered_content for tool/message; MARBLE agent inputs and results; privileged instrumentation excluded",
+  "split_policy": "seed-42 grouped by (scenario, sample_id): 18 validation and 16 sealed-test task IDs",
+  "held_out_tasks": {
+    "appworld": {
+      "test": [
+        3,
+        12,
+        14,
+        19,
+        39,
+        43,
+        45,
+        53,
+        75,
+        79,
+        114,
+        137,
+        142,
+        147,
+        148,
+        150
+      ],
+      "validation": [
+        1,
+        18,
+        20,
+        31,
+        34,
+        37,
+        44,
+        50,
+        65,
+        100,
+        102,
+        106,
+        110,
+        118,
+        135,
+        151,
+        159,
+        163
+      ]
+    }
+  },
+  "files": {
+    "all": {
+      "total": 3921,
+      "by_verdict": {
+        "clean_safe": 1670,
+        "attack_failed": 1643,
+        "attack_success": 608
+      },
+      "by_source_final_label": {
+        "clean": 672,
+        "failure": 1643,
+        "private_control": 998,
+        "success": 608
+      },
+      "by_label_quality": {
+        "control": 1670,
+        "gold": 1826,
+        "silver": 425
+      },
+      "by_condition": {
+        "clean": 672,
+        "attacked": 2251,
+        "private_control": 998
+      },
+      "by_scenario": {
+        "appworld": 3921
+      },
+      "by_topology": {
+        "chain": 963,
+        "graph": 963,
+        "star": 977,
+        "tree": 1018
+      },
+      "by_surface": {
+        "none": 672,
+        "memory": 520,
+        "tool": 640,
+        "profile": 522,
+        "message": 163,
+        "input": 641,
+        "dual": 763
+      },
+      "by_objective": {
+        "none": 672,
+        "disruption": 669,
+        "hijacking": 746,
+        "disclosure": 1834
+      },
+      "by_attack_mode": {
+        "none": 672,
+        "single_site": 2486,
+        "dual_site": 763
+      }
+    },
+    "train": {
+      "total": 3122,
+      "by_verdict": {
+        "attack_failed": 1312,
+        "clean_safe": 1337,
+        "attack_success": 473
+      },
+      "by_source_final_label": {
+        "failure": 1312,
+        "private_control": 801,
+        "clean": 536,
+        "success": 473
+      },
+      "by_label_quality": {
+        "gold": 1450,
+        "control": 1337,
+        "silver": 335
+      },
+      "by_condition": {
+        "attacked": 1785,
+        "private_control": 801,
+        "clean": 536
+      },
+      "by_scenario": {
+        "appworld": 3122
+      },
+      "by_topology": {
+        "graph": 765,
+        "tree": 802,
+        "star": 778,
+        "chain": 777
+      },
+      "by_surface": {
+        "memory": 413,
+        "tool": 503,
+        "none": 536,
+        "input": 517,
+        "dual": 632,
+        "profile": 384,
+        "message": 137
+      },
+      "by_objective": {
+        "disclosure": 1466,
+        "disruption": 524,
+        "none": 536,
+        "hijacking": 596
+      },
+      "by_attack_mode": {
+        "single_site": 1954,
+        "none": 536,
+        "dual_site": 632
+      }
+    },
+    "validation": {
+      "total": 406,
+      "by_verdict": {
+        "clean_safe": 173,
+        "attack_success": 72,
+        "attack_failed": 161
+      },
+      "by_source_final_label": {
+        "private_control": 101,
+        "clean": 72,
+        "success": 72,
+        "failure": 161
+      },
+      "by_label_quality": {
+        "control": 173,
+        "silver": 54,
+        "gold": 179
+      },
+      "by_condition": {
+        "private_control": 101,
+        "clean": 72,
+        "attacked": 233
+      },
+      "by_scenario": {
+        "appworld": 406
+      },
+      "by_topology": {
+        "star": 99,
+        "graph": 100,
+        "chain": 96,
+        "tree": 111
+      },
+      "by_surface": {
+        "memory": 62,
+        "none": 72,
+        "input": 53,
+        "tool": 77,
+        "dual": 65,
+        "message": 13,
+        "profile": 64
+      },
+      "by_objective": {
+        "disclosure": 189,
+        "none": 72,
+        "disruption": 76,
+        "hijacking": 69
+      },
+      "by_attack_mode": {
+        "single_site": 269,
+        "none": 72,
+        "dual_site": 65
+      }
+    },
+    "test": {
+      "total": 393,
+      "by_verdict": {
+        "clean_safe": 160,
+        "attack_success": 63,
+        "attack_failed": 170
+      },
+      "by_source_final_label": {
+        "clean": 64,
+        "success": 63,
+        "private_control": 96,
+        "failure": 170
+      },
+      "by_label_quality": {
+        "control": 160,
+        "silver": 36,
+        "gold": 197
+      },
+      "by_condition": {
+        "clean": 64,
+        "attacked": 233,
+        "private_control": 96
+      },
+      "by_scenario": {
+        "appworld": 393
+      },
+      "by_topology": {
+        "tree": 105,
+        "star": 100,
+        "chain": 90,
+        "graph": 98
+      },
+      "by_surface": {
+        "none": 64,
+        "tool": 60,
+        "profile": 74,
+        "memory": 45,
+        "input": 71,
+        "dual": 66,
+        "message": 13
+      },
+      "by_objective": {
+        "none": 64,
+        "disruption": 69,
+        "disclosure": 179,
+        "hijacking": 81
+      },
+      "by_attack_mode": {
+        "none": 64,
+        "single_site": 263,
+        "dual_site": 66
+      }
+    }
+  }
+}
