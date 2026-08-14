@@ -22,3 +22,16 @@ head training after every epoch, Audit LoRA every 100 optimizer steps, and
 evaluation after every generated batch. Results are written to
 `/gs/bs/tgh-26IAW/hongbo/project_4_coauthor/v21_appworld_marble_validation` and packed as
 `v21_appworld_marble_validation.tar.gz`.
+
+## ModernBERT → Qwen audit cascade
+
+This reuses the frozen V20 ModernBERT predictions and the trained V21 conditional
+Audit LoRA. Validation controls are predictions—not gold labels—and the final gate
+requires all classification/localization metrics to exactly equal ModernBERT while
+retaining a complete Qwen-generated audit report.
+
+```bash
+cd /gs/bs/tgh-26IAW/hongbo/project_4_coauthor/Auditor-agent && \
+git pull --ff-only origin main && \
+bash SFT/auditor_agent_sft_v21_appworld_package/server_scripts/run_modernbert_qwen_audit_cascade.sh
+```
