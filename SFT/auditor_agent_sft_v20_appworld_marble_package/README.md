@@ -28,9 +28,10 @@ dataset, prompt, LoRA settings, decoder, evaluator, and full JSON output.  It
 adds only an assistant-boundary three-way verdict loss and a higher token loss
 weight for the existing `localization` field.  Gold targets are read only from
 the assistant message after the model-visible prompt has been constructed.
-The auxiliary verdict head is not used during validation decoding, so the
-comparison measures whether joint supervision improves the same end-to-end
-generated report.
+During validation, the auxiliary verdict head supplies the unchanged JSON
+`decision.verdict` prefix and the LM head generates every remaining field. The
+evaluator records head accuracy and head/report agreement in addition to the
+same end-to-end metrics.
 
 ```bash
 cd /gs/bs/tgh-26IAW/hongbo/project_4_coauthor/Auditor-agent && \

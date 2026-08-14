@@ -341,7 +341,8 @@ def main():
         "max_length": args.max_len,
         "lambda_classification": args.lambda_cls,
         "lambda_localization_token_weight": args.lambda_loc,
-        "classification_head_inference": False,
+        "classification_head_inference": True,
+        "classification_head_policy": "condition unchanged JSON decision.verdict prefix",
         "localization_head_forced": False,
     }
     with open(os.path.join(args.output_dir, "run_manifest.json"), "w", encoding="utf-8") as handle:

@@ -247,6 +247,10 @@ def main():
     parser.add_argument("--revision")
     parser.add_argument("--adapter")
     parser.add_argument(
+        "--verdict-head",
+        help="Optional jointly trained three-way head. Its prediction is used as the JSON verdict prefix.",
+    )
+    parser.add_argument(
         "--load-in-4bit",
         action="store_true",
         help="Load the base model in NF4 for single-GPU QLoRA adapter evaluation.",
@@ -283,6 +287,8 @@ def main():
         raise ValueError("--batch-size must be at least 1")
     if args.mode == "sft" and not args.adapter:
         raise ValueError("--adapter is required for --mode sft")
+    if args.verdict_head and args.mode != "sft":
+        raise ValueError("--verdict-head requires --mode sft")
 
     if args.dataset_role == "test" and args.sealed_test_ack != "FINAL_ONCE":
         raise ValueError("Final test requires --sealed-test-ack FINAL_ONCE")
@@ -372,6 +378,12 @@ def main():
         "load_in_4bit": args.load_in_4bit,
         "do_sample": False,
     }
+    if args.verdict_head:
+        eval_contract.update({
+            "verdict_head": os.path.abspath(args.verdict_head),
+            "verdict_head_sha256": sha256_file(args.verdict_head),
+            "verdict_conditioning": "assistant_json_prefix",
+        })
     contract_path = os.path.join(args.output_dir, "EVAL_CONTRACT.json")
     if os.path.isfile(contract_path):
         with open(contract_path, encoding="utf-8") as handle:
@@ -416,6 +428,13 @@ def main():
         )
     if args.mode == "sft":
         model = PeftModel.from_pretrained(model, args.adapter)
+    if args.verdict_head:
+        hidden_size = model.get_base_model().config.hidden_size
+        model.add_module("verdict_head", torch.nn.Linear(hidden_size, 3, dtype=torch.float32))
+        model.verdict_head.load_state_dict(
+            torch.load(args.verdict_head, map_location="cpu", weights_only=True)
+        )
+        model.verdict_head.to(model.device)
     model.eval()
 
     if args.dataset_role == "test":
@@ -482,18 +501,43 @@ def main():
             batch_rows = remaining_rows[start : start + args.batch_size]
             prompts = [apply_template(tokenizer, row["messages"]) for row in batch_rows]
             inputs = tokenizer(prompts, padding=True, return_tensors="pt").to(model.device)
+            head_predictions = [None] * len(batch_rows)
+            generation_inputs = inputs
+            verdict_prefixes = [""] * len(batch_rows)
             with torch.no_grad():
+                if args.verdict_head:
+                    causal_lm = model.get_base_model()
+                    decoder_output = causal_lm.model(
+                        input_ids=inputs["input_ids"],
+                        attention_mask=inputs["attention_mask"],
+                        use_cache=False,
+                        return_dict=True,
+                    )
+                    logits = model.verdict_head(decoder_output.last_hidden_state[:, -1, :].float())
+                    names = ("clean_safe", "attack_failed", "attack_success")
+                    head_predictions = [names[index] for index in logits.argmax(-1).cpu().tolist()]
+                    verdict_prefixes = [
+                        '{"decision": {"verdict": "' + verdict + '"'
+                        for verdict in head_predictions
+                    ]
+                    conditioned = [prompt + prefix for prompt, prefix in zip(prompts, verdict_prefixes)]
+                    generation_inputs = tokenizer(
+                        conditioned, padding=True, return_tensors="pt"
+                    ).to(model.device)
+                    if generation_inputs["input_ids"].shape[1] > args.max_input_len:
+                        raise ValueError("Verdict-conditioned prompt exceeds max input length")
                 output = model.generate(
-                    **inputs,
+                    **generation_inputs,
                     max_new_tokens=args.max_new_tokens,
                     do_sample=False,
                     pad_token_id=tokenizer.eos_token_id,
                 )
-            prompt_width = inputs["input_ids"].shape[1]
-            generations = tokenizer.batch_decode(
+            prompt_width = generation_inputs["input_ids"].shape[1]
+            suffixes = tokenizer.batch_decode(
                 output[:, prompt_width:], skip_special_tokens=True
             )
-            for row, generation in zip(batch_rows, generations):
+            generations = [prefix + suffix for prefix, suffix in zip(verdict_prefixes, suffixes)]
+            for row, generation, head_pred in zip(batch_rows, generations, head_predictions):
                 gold = extract_verdict(row["messages"][2]["content"])
                 pred = extract_verdict(generation)
                 gold_scope, gold_components = extract_localization(row["messages"][2]["content"])
@@ -507,6 +551,7 @@ def main():
                             "run_id": row.get("metadata", {}).get("run_id"),
                             "gold": gold,
                             "pred": pred,
+                            **({"verdict_head_pred": head_pred} if args.verdict_head else {}),
                             "gold_binary": to_binary(gold),
                             "pred_binary": to_binary(pred),
                             "gold_scope": gold_scope,
@@ -683,6 +728,23 @@ def main():
         "audit_trace_quality": trace_metrics,
         "attack_characterization": characterization_metrics,
     }
+    if args.verdict_head:
+        head_predictions = [row["verdict_head_pred"] for row in recs]
+        metrics["verdict_head"] = {
+            "enabled": True,
+            "prediction_distribution": dict(Counter(head_predictions)),
+            "three_class_accuracy": accuracy_score(y3, head_predictions),
+            "three_class_report": classification_report(
+                y3,
+                head_predictions,
+                labels=["clean_safe", "attack_failed", "attack_success"],
+                zero_division=0,
+                output_dict=True,
+            ),
+            "report_agreement": sum(
+                row["verdict_head_pred"] == row["pred"] for row in recs
+            ) / len(recs),
+        }
     json.dump(metrics, open(os.path.join(args.output_dir, "metrics.json"), "w"), indent=2)
     print(json.dumps(metrics, indent=2))
 
