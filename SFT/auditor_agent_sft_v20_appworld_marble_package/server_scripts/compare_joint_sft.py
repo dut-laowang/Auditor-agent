@@ -27,6 +27,13 @@ def main():
         raise ValueError("Both inputs must be validation metrics")
     if baseline.get("n") != 406 or joint.get("n") != 406:
         raise ValueError("Frozen comparison requires exactly 406 validation rows")
+    if joint.get("parse_success_rate") != 1.0:
+        raise RuntimeError("Joint model did not preserve 100% JSON parse success")
+    head = joint.get("verdict_head", {})
+    if head.get("report_agreement") != 1.0:
+        raise RuntimeError("Verdict head and final JSON are not perfectly aligned")
+    if head.get("unchanged_full_schema_rate") != 1.0:
+        raise RuntimeError("Joint model did not preserve the frozen full JSON schema")
     paths = {
         "accuracy": (("three_class_accuracy",),),
         "macro_f1": (("three_class_report", "macro avg", "f1-score"),),

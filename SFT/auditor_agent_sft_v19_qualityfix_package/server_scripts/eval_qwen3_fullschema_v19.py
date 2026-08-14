@@ -730,6 +730,28 @@ def main():
     }
     if args.verdict_head:
         head_predictions = [row["verdict_head_pred"] for row in recs]
+        expected_binary = {
+            "clean_safe": "safe",
+            "attack_failed": "safe",
+            "attack_success": "unsafe",
+        }
+        schema_checks = []
+        for row in recs:
+            try:
+                report = json.loads(row["generation"])
+                schema_checks.append(
+                    set(report) == {"decision", "attack", "localization", "audit_trace"}
+                    and isinstance(report["decision"], dict)
+                    and report["decision"].get("verdict") == row["verdict_head_pred"]
+                    and report["decision"].get("binary_label")
+                    == expected_binary[row["verdict_head_pred"]]
+                    and isinstance(report["attack"], dict)
+                    and isinstance(report["localization"], dict)
+                    and isinstance(report["localization"].get("component_ids"), list)
+                    and isinstance(report["audit_trace"], list)
+                )
+            except (json.JSONDecodeError, KeyError, TypeError):
+                schema_checks.append(False)
         metrics["verdict_head"] = {
             "enabled": True,
             "prediction_distribution": dict(Counter(head_predictions)),
@@ -744,6 +766,7 @@ def main():
             "report_agreement": sum(
                 row["verdict_head_pred"] == row["pred"] for row in recs
             ) / len(recs),
+            "unchanged_full_schema_rate": sum(schema_checks) / len(schema_checks),
         }
     json.dump(metrics, open(os.path.join(args.output_dir, "metrics.json"), "w"), indent=2)
     print(json.dumps(metrics, indent=2))
