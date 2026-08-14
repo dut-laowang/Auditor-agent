@@ -4,6 +4,13 @@ set -euo pipefail
 BASE="${BASE:-/gs/bs/tgh-26IAW/hongbo/project_4_coauthor}"
 REPO="${REPO:-$BASE/Auditor-agent}"
 MODEL_ROOT="${MODEL_ROOT:-$BASE/sft_models}"
+# Reuse the exact shared cache used by the V20 AppWorld pipeline. Without these
+# exports, Hugging Face falls back to the small login-node home cache and tries
+# to download the already available Qwen weights again.
+export HF_HOME="${HF_HOME:-$MODEL_ROOT/hf_cache}"
+export HF_HUB_CACHE="${HF_HUB_CACHE:-$HF_HOME/hub}"
+export TRANSFORMERS_CACHE="${TRANSFORMERS_CACHE:-$HF_HOME/transformers}"
+export HF_HUB_OFFLINE="${HF_HUB_OFFLINE:-1}"
 V20_RESULTS="${V20_RESULTS:-$BASE/v20_appworld_marble_core_validation}"
 V20_DATA="$V20_RESULTS/context_filtered_dataset"
 V20_ADAPTER="${V20_ADAPTER:-$MODEL_ROOT/qwen3-8b-mas-auditor-lora-v20-appworld-marble}"
