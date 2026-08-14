@@ -41,14 +41,14 @@ fi
 # validation gold labels and never changes decoding or the external JSON schema.
 CUDA_VISIBLE_DEVICES="$GPU" python "$V19/server_scripts/eval_qwen3_fullschema_v19.py" \
   --mode sft --model Qwen/Qwen3-8B --adapter "$ADAPTER" \
-  --verdict-head "$ADAPTER/verdict_head.pt" \
+  --verdict-head "$ADAPTER/verdict_head.pt" --verdict-conditioning posthoc \
   --test-file "$DATA/validation.jsonl" --dataset-role validation \
-  --output-dir "$RESULTS/qwen3_8b_joint_clean" --max-new-tokens 1024 \
+  --output-dir "$RESULTS/qwen3_8b_joint_posthoc_clean" --max-new-tokens 1024 \
   --batch-size "${QWEN_EVAL_BATCH:-4}" --resume
 
 python "$V20/server_scripts/compare_joint_sft.py" \
   --baseline "$SOURCE_RESULTS/qwen3_8b_clean/metrics.json" \
-  --joint "$RESULTS/qwen3_8b_joint_clean/metrics.json" \
+  --joint "$RESULTS/qwen3_8b_joint_posthoc_clean/metrics.json" \
   --output "$RESULTS/baseline_vs_joint.json"
 python "$V19/scripts/write_sha256_manifest.py" "$RESULTS"
 touch "$RESULTS/VALIDATION_COMPLETE"

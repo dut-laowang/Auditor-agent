@@ -251,6 +251,12 @@ def main():
         help="Optional jointly trained three-way head. Its prediction is used as the JSON verdict prefix.",
     )
     parser.add_argument(
+        "--verdict-conditioning",
+        choices=["prefix", "posthoc"],
+        default="prefix",
+        help="Use the head as a generation prefix or merge it into a complete generated JSON report.",
+    )
+    parser.add_argument(
         "--load-in-4bit",
         action="store_true",
         help="Load the base model in NF4 for single-GPU QLoRA adapter evaluation.",
@@ -382,7 +388,7 @@ def main():
         eval_contract.update({
             "verdict_head": os.path.abspath(args.verdict_head),
             "verdict_head_sha256": sha256_file(args.verdict_head),
-            "verdict_conditioning": "assistant_json_prefix",
+            "verdict_conditioning": args.verdict_conditioning,
         })
     contract_path = os.path.join(args.output_dir, "EVAL_CONTRACT.json")
     if os.path.isfile(contract_path):
@@ -516,16 +522,19 @@ def main():
                     logits = model.verdict_head(decoder_output.last_hidden_state[:, -1, :].float())
                     names = ("clean_safe", "attack_failed", "attack_success")
                     head_predictions = [names[index] for index in logits.argmax(-1).cpu().tolist()]
-                    verdict_prefixes = [
-                        '{"decision": {"verdict": "' + verdict + '"'
-                        for verdict in head_predictions
-                    ]
-                    conditioned = [prompt + prefix for prompt, prefix in zip(prompts, verdict_prefixes)]
-                    generation_inputs = tokenizer(
-                        conditioned, padding=True, return_tensors="pt"
-                    ).to(model.device)
-                    if generation_inputs["input_ids"].shape[1] > args.max_input_len:
-                        raise ValueError("Verdict-conditioned prompt exceeds max input length")
+                    if args.verdict_conditioning == "prefix":
+                        verdict_prefixes = [
+                            '{"decision": {"verdict": "' + verdict + '"'
+                            for verdict in head_predictions
+                        ]
+                        conditioned = [
+                            prompt + prefix for prompt, prefix in zip(prompts, verdict_prefixes)
+                        ]
+                        generation_inputs = tokenizer(
+                            conditioned, padding=True, return_tensors="pt"
+                        ).to(model.device)
+                        if generation_inputs["input_ids"].shape[1] > args.max_input_len:
+                            raise ValueError("Verdict-conditioned prompt exceeds max input length")
                 output = model.generate(
                     **generation_inputs,
                     max_new_tokens=args.max_new_tokens,
@@ -538,6 +547,21 @@ def main():
             )
             generations = [prefix + suffix for prefix, suffix in zip(verdict_prefixes, suffixes)]
             for row, generation, head_pred in zip(batch_rows, generations, head_predictions):
+                lm_verdict_pred = extract_verdict(generation)
+                if args.verdict_head and args.verdict_conditioning == "posthoc":
+                    try:
+                        report = json.loads(generation)
+                        if not isinstance(report.get("decision"), dict):
+                            raise ValueError("Generated report has no decision object")
+                        report["decision"]["verdict"] = head_pred
+                        report["decision"]["binary_label"] = (
+                            "unsafe" if head_pred == "attack_success" else "safe"
+                        )
+                        generation = json.dumps(report, ensure_ascii=False)
+                    except (json.JSONDecodeError, TypeError, ValueError):
+                        # Preserve the raw generation so the strict schema gate
+                        # reports the failure rather than silently repairing it.
+                        pass
                 gold = extract_verdict(row["messages"][2]["content"])
                 pred = extract_verdict(generation)
                 gold_scope, gold_components = extract_localization(row["messages"][2]["content"])
@@ -552,6 +576,7 @@ def main():
                             "gold": gold,
                             "pred": pred,
                             **({"verdict_head_pred": head_pred} if args.verdict_head else {}),
+                            **({"lm_verdict_pred": lm_verdict_pred} if args.verdict_head else {}),
                             "gold_binary": to_binary(gold),
                             "pred_binary": to_binary(pred),
                             "gold_scope": gold_scope,
@@ -765,6 +790,9 @@ def main():
             ),
             "report_agreement": sum(
                 row["verdict_head_pred"] == row["pred"] for row in recs
+            ) / len(recs),
+            "lm_head_agreement_before_merge": sum(
+                row["verdict_head_pred"] == row["lm_verdict_pred"] for row in recs
             ) / len(recs),
             "unchanged_full_schema_rate": sum(schema_checks) / len(schema_checks),
         }
