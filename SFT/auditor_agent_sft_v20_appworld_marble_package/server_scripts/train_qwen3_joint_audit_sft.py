@@ -308,6 +308,13 @@ def main():
         lambda_loc=args.lambda_loc,
         callbacks=[HeadCheckpoint()],
     )
+    smoke = Collator(tokenizer)([dataset["train"][0]])
+    smoke = {key: value.to(model.device) for key, value in smoke.items()}
+    with torch.no_grad():
+        smoke_loss = trainer.compute_loss(model, smoke)
+    if not torch.isfinite(smoke_loss):
+        raise RuntimeError("Joint-loss forward preflight is not finite")
+    print(json.dumps({"joint_forward_preflight": "pass", "loss": float(smoke_loss)}))
     checkpoint = get_last_checkpoint(args.output_dir) if args.resume == "auto" else None
     if checkpoint:
         head_file = os.path.join(checkpoint, "verdict_head.pt")

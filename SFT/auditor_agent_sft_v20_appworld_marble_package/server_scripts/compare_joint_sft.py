@@ -23,6 +23,10 @@ def main():
     args = parser.parse_args()
     baseline = json.load(open(args.baseline, encoding="utf-8"))
     joint = json.load(open(args.joint, encoding="utf-8"))
+    if baseline.get("dataset_role") != "validation" or joint.get("dataset_role") != "validation":
+        raise ValueError("Both inputs must be validation metrics")
+    if baseline.get("n") != 406 or joint.get("n") != 406:
+        raise ValueError("Frozen comparison requires exactly 406 validation rows")
     paths = {
         "accuracy": (("three_class_accuracy",),),
         "macro_f1": (("three_class_report", "macro avg", "f1-score"),),

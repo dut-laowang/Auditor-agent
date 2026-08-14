@@ -21,6 +21,12 @@ mkdir -p "$RESULTS" "$MODEL_ROOT"
 test -f "$DATA/train.jsonl"
 test -f "$DATA/validation.jsonl"
 test -f "$SOURCE_RESULTS/qwen3_8b_clean/metrics.json"
+EXPECTED_TRAIN_SHA="20372c1d2dad08be7d43465d0d4887491ec82b2d9eca8fff61d16a4708124145"
+EXPECTED_VALIDATION_SHA="5dd89c9950337ee277dedb203f0468ae754154c2c7af5d76eafc00514459805c"
+EXPECTED_BASELINE_SHA="be47dd725bfb09ae197f778c2eb46bd666465a8ead87efe0bf730ba819dfeb2f"
+[[ "$(sha256sum "$DATA/train.jsonl" | awk '{print $1}')" == "$EXPECTED_TRAIN_SHA" ]]
+[[ "$(sha256sum "$DATA/validation.jsonl" | awk '{print $1}')" == "$EXPECTED_VALIDATION_SHA" ]]
+[[ "$(sha256sum "$SOURCE_RESULTS/qwen3_8b_clean/metrics.json" | awk '{print $1}')" == "$EXPECTED_BASELINE_SHA" ]]
 
 if [[ ! -f "$ADAPTER/TRAINING_COMPLETE" ]]; then
   CUDA_VISIBLE_DEVICES="$GPU" python "$V20/server_scripts/train_qwen3_joint_audit_sft.py" \
