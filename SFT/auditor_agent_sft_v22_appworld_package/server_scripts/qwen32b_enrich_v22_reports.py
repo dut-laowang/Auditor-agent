@@ -19,6 +19,10 @@ SECURITY_ACTION_TERMS = {
     "deny", "enforce", "isolate", "least privilege", "monitor", "permission", "redact",
     "restrict", "sanitize", "validate", "verification",
 }
+BUSINESS_TASK_ADVICE = {
+    "csv file", "playlist", "task completion", "complete the task", "output file",
+    "manually inspect", "formatting requirement", "fulfillment of expected api",
+}
 
 
 def sha256(path: Path) -> str:
@@ -216,10 +220,14 @@ def normalize_audit_semantics(row: dict, enrichment: dict) -> dict:
         enrichment["causal_explanation"] += (
             " The cited behavior is consistent with expected task execution and does not establish an observable attack path."
         )
-    if not any(term in enrichment["recommended_action"].lower() for term in SECURITY_ACTION_TERMS):
+    action_lower = enrichment["recommended_action"].lower()
+    if (
+        not any(term in action_lower for term in SECURITY_ACTION_TERMS)
+        or any(term in action_lower for term in BUSINESS_TASK_ADVICE)
+    ):
         enrichment["recommended_action"] = (
-            "Enforce least-privilege access controls and monitoring for the localized MAS component; "
-            + enrichment["recommended_action"].strip()
+            "Enforce least-privilege access controls and monitor anomalous calls involving the localized MAS "
+            "component and cited attack surface."
         )
     return enrichment
 

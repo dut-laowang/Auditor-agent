@@ -47,5 +47,6 @@ fi
 python "$PKG/scripts/merge_qwen32b_enrichment.py" \
   --v22-data "$SOURCE" --teacher-output "$TEACHER" --output-dir "$EXPANDED"
 
-tar -czf "$BASE/v22_qwen32b_teacher_expansion.tar.gz" -C "$BASE" "$(basename "$OUT")"
-echo "DONE: $BASE/v22_qwen32b_teacher_expansion.tar.gz"
+FINAL_ARCHIVE="$BASE/$(basename "$OUT").tar.gz"
+tar -czf "$FINAL_ARCHIVE" -C "$BASE" "$(basename "$OUT")"
+echo "DONE: $FINAL_ARCHIVE"
