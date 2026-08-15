@@ -24,10 +24,24 @@ mkdir -p "$OUT"
 test -f "$SOURCE/train.jsonl"
 test -f "$SOURCE/validation.jsonl"
 
+TEACHER_EXTRA_ARGS=()
+if [[ -n "${TEACHER_LIMIT:-}" ]]; then
+  TEACHER_EXTRA_ARGS+=(--limit "$TEACHER_LIMIT")
+fi
+
 CUDA_VISIBLE_DEVICES="$GPU" python "$PKG/server_scripts/qwen32b_enrich_v22_reports.py" \
   --train-file "$SOURCE/train.jsonl" --output "$TEACHER" \
   --model Qwen/Qwen3-32B --revision 9216db5781bf21249d130ec9da846c4624c16137 \
-  --batch-size "${TEACHER_BATCH:-2}" --max-input-len 8192 --max-new-tokens 384
+  --batch-size "${TEACHER_BATCH:-2}" --max-input-len 8192 --max-new-tokens 384 \
+  "${TEACHER_EXTRA_ARGS[@]}"
+
+if [[ -n "${TEACHER_LIMIT:-}" && "$TEACHER_LIMIT" -lt 3122 ]]; then
+  python "$PKG/scripts/audit_qwen32b_enrichment_sample.py" \
+    --v22-train "$SOURCE/train.jsonl" --teacher-output "$TEACHER" --expected "$TEACHER_LIMIT"
+  tar -czf "$BASE/v22_qwen32b_teacher_expansion_v3_sample.tar.gz" -C "$BASE" "$(basename "$OUT")"
+  echo "SMALL-BATCH DONE: $BASE/v22_qwen32b_teacher_expansion_v3_sample.tar.gz"
+  exit 0
+fi
 
 python "$PKG/scripts/merge_qwen32b_enrichment.py" \
   --v22-data "$SOURCE" --teacher-output "$TEACHER" --output-dir "$EXPANDED"

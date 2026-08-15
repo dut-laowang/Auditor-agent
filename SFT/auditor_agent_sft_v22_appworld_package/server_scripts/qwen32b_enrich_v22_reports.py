@@ -12,7 +12,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
 
 REVISION = "9216db5781bf21249d130ec9da846c4624c16137"
-PROMPT_VERSION = "v22-three-field-evidence-grounded-v2"
+PROMPT_VERSION = "v22-three-field-evidence-grounded-v3"
 CONFIDENCE = {"high", "medium", "low"}
 
 
@@ -87,12 +87,14 @@ def prompt(row: dict) -> list[dict]:
         {"role": "system", "content": (
             "You enrich a security audit training target. The frozen audit fields and evidence IDs are authoritative. "
             "Return exactly one JSON object with only causal_explanation, recommended_action, and confidence. "
-            "causal_explanation must explain the observable path from cited events to the verdict in 2-4 concise sentences; "
+            "causal_explanation must explain the observable path from cited events to the verdict in 2-4 concise sentences "
+            "and explicitly cite at least two supplied evidence IDs (or every supplied ID when fewer than two exist); "
             "do not claim more than the evidence shows. recommended_action must be one safe, component-specific defensive action "
             "and must not reveal or reproduce attack instructions or secrets. confidence must be high, medium, or low and reflect "
             "evidence sufficiency: high requires direct localization and outcome evidence, medium means partial/indirect support, "
-            "and low means missing or conflicting support. Never add evidence IDs, labels, components, credentials, personal data, "
-            "or hidden facts. Do not merely paraphrase event types; explain what the cited observable events establish."
+            "and low means missing or conflicting support. Never add labels, components, credentials, personal data, "
+            "or hidden facts. Never invent an evidence ID. Do not merely paraphrase event types; explain what the cited "
+            "observable events establish."
         )},
         {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
     ]
@@ -133,6 +135,7 @@ def main() -> None:
     parser.add_argument("--max-input-len", type=int, default=8192)
     parser.add_argument("--max-new-tokens", type=int, default=384)
     parser.add_argument("--batch-size", type=int, default=2)
+    parser.add_argument("--limit", type=int)
     args = parser.parse_args()
     if args.model != "Qwen/Qwen3-32B" or args.revision != REVISION:
         raise ValueError("V22 teacher requires the pinned Qwen3-32B revision")
@@ -141,6 +144,10 @@ def main() -> None:
     rows = read(args.train_file)
     if len(rows) != 3122:
         raise RuntimeError("V22 teacher requires the frozen 3122-row train split")
+    if args.limit is not None:
+        if args.limit < 1 or args.limit > len(rows):
+            raise ValueError("--limit must be between 1 and 3122")
+        rows = rows[:args.limit]
     completed = read(args.output) if args.output.is_file() else []
     if len(completed) > len(rows):
         raise RuntimeError("Teacher resume output is longer than train data")
@@ -180,17 +187,27 @@ def main() -> None:
                 output = model.generate(**encoded, max_new_tokens=args.max_new_tokens, do_sample=False, pad_token_id=tokenizer.eos_token_id)
             suffix = tokenizer.batch_decode(output[:, encoded["input_ids"].shape[1]:], skip_special_tokens=True)
             for row, text in zip(batch_rows, suffix):
+                enrichment = extract(text)
+                valid_refs = {item["id"] for item in evidence(row, json.loads(row["messages"][2]["content"]))}
+                cited_refs = set(re.findall(r"\b(?:obs|out)_\d+\b", enrichment["causal_explanation"]))
+                required_refs = min(2, len(valid_refs))
+                if len(cited_refs) < required_refs or not cited_refs.issubset(valid_refs):
+                    raise ValueError(
+                        f"Teacher causal evidence gate failed for {row['metadata']['run_id']}: "
+                        f"cited={sorted(cited_refs)}, valid={sorted(valid_refs)}"
+                    )
                 item = {
                     "run_id": row["metadata"]["run_id"],
                     "prompt_version": PROMPT_VERSION,
-                    "enrichment": extract(text),
+                    "enrichment": enrichment,
                 }
                 writer.write(json.dumps(item, ensure_ascii=False) + "\n")
                 writer.flush()
                 progress.update(1)
         progress.close()
     contract = {
-        "rows": 3122, "train_sha256": sha256(args.train_file), "output_sha256": sha256(args.output),
+        "rows": len(rows), "source_rows": 3122, "train_sha256": sha256(args.train_file),
+        "output_sha256": sha256(args.output),
         "model": args.model, "revision": args.revision, "load_in_4bit": True,
         "fields": ["causal_explanation", "recommended_action", "confidence"],
         "prompt_version": PROMPT_VERSION,
