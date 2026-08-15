@@ -126,6 +126,18 @@ def apply_template(tokenizer, messages: list[dict]) -> str:
         return tokenizer.apply_chat_template(messages, **kwargs)
 
 
+def validate_evidence_grounding(row: dict, enrichment: dict) -> None:
+    report = json.loads(row["messages"][2]["content"])
+    valid_refs = {item["id"] for item in evidence(row, report)}
+    cited_refs = set(re.findall(r"\b(?:obs|out)_\d+\b", enrichment["causal_explanation"]))
+    required_refs = min(2, len(valid_refs))
+    if len(cited_refs) < required_refs or not cited_refs.issubset(valid_refs):
+        raise ValueError(
+            f"Teacher causal evidence gate failed for {row['metadata']['run_id']}: "
+            f"cited={sorted(cited_refs)}, valid={sorted(valid_refs)}"
+        )
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--train-file", required=True, type=Path)
@@ -187,15 +199,41 @@ def main() -> None:
                 output = model.generate(**encoded, max_new_tokens=args.max_new_tokens, do_sample=False, pad_token_id=tokenizer.eos_token_id)
             suffix = tokenizer.batch_decode(output[:, encoded["input_ids"].shape[1]:], skip_special_tokens=True)
             for row, text in zip(batch_rows, suffix):
-                enrichment = extract(text)
-                valid_refs = {item["id"] for item in evidence(row, json.loads(row["messages"][2]["content"]))}
-                cited_refs = set(re.findall(r"\b(?:obs|out)_\d+\b", enrichment["causal_explanation"]))
-                required_refs = min(2, len(valid_refs))
-                if len(cited_refs) < required_refs or not cited_refs.issubset(valid_refs):
-                    raise ValueError(
-                        f"Teacher causal evidence gate failed for {row['metadata']['run_id']}: "
-                        f"cited={sorted(cited_refs)}, valid={sorted(valid_refs)}"
-                    )
+                last_error = None
+                for attempt in range(3):
+                    try:
+                        enrichment = extract(text)
+                        validate_evidence_grounding(row, enrichment)
+                        break
+                    except (ValueError, json.JSONDecodeError) as error:
+                        last_error = error
+                        if attempt == 2:
+                            raise RuntimeError(
+                                f"Teacher repair failed after 3 attempts for {row['metadata']['run_id']}"
+                            ) from last_error
+                        repair_messages = prompt(row) + [
+                            {"role": "assistant", "content": text},
+                            {"role": "user", "content": (
+                                "Correct the JSON. The causal_explanation must explicitly cite at least two evidence IDs "
+                                "already supplied in visible_cited_evidence (or all IDs if fewer than two). Do not invent IDs, "
+                                "change the frozen verdict/localization, or add fields. Return only the corrected JSON object."
+                            )},
+                        ]
+                        repair_text = apply_template(tokenizer, repair_messages)
+                        repair_encoded = tokenizer(
+                            repair_text, add_special_tokens=False, return_tensors="pt"
+                        )
+                        if repair_encoded["input_ids"].shape[1] > args.max_input_len:
+                            raise ValueError("Teacher repair zero-truncation gate failed")
+                        repair_encoded = {key: value.to(model.device) for key, value in repair_encoded.items()}
+                        with torch.no_grad():
+                            repair_output = model.generate(
+                                **repair_encoded, max_new_tokens=args.max_new_tokens, do_sample=False,
+                                pad_token_id=tokenizer.eos_token_id,
+                            )
+                        text = tokenizer.decode(
+                            repair_output[0, repair_encoded["input_ids"].shape[1]:], skip_special_tokens=True
+                        )
                 item = {
                     "run_id": row["metadata"]["run_id"],
                     "prompt_version": PROMPT_VERSION,
