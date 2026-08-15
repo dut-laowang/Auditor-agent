@@ -38,8 +38,9 @@ CUDA_VISIBLE_DEVICES="$GPU" python "$PKG/server_scripts/qwen32b_enrich_v22_repor
 if [[ -n "${TEACHER_LIMIT:-}" && "$TEACHER_LIMIT" -lt 3122 ]]; then
   python "$PKG/scripts/audit_qwen32b_enrichment_sample.py" \
     --v22-train "$SOURCE/train.jsonl" --teacher-output "$TEACHER" --expected "$TEACHER_LIMIT"
-  tar -czf "$BASE/v22_qwen32b_teacher_expansion_v3_sample.tar.gz" -C "$BASE" "$(basename "$OUT")"
-  echo "SMALL-BATCH DONE: $BASE/v22_qwen32b_teacher_expansion_v3_sample.tar.gz"
+  SAMPLE_ARCHIVE="$BASE/$(basename "$OUT").tar.gz"
+  tar -czf "$SAMPLE_ARCHIVE" -C "$BASE" "$(basename "$OUT")"
+  echo "SMALL-BATCH DONE: $SAMPLE_ARCHIVE"
   exit 0
 fi
 
