@@ -12,6 +12,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig
 
 
 REVISION = "9216db5781bf21249d130ec9da846c4624c16137"
+PROMPT_VERSION = "v22-three-field-evidence-grounded-v2"
 CONFIDENCE = {"high", "medium", "low"}
 
 
@@ -146,6 +147,8 @@ def main() -> None:
     for index, item in enumerate(completed):
         if item["run_id"] != rows[index]["metadata"]["run_id"]:
             raise RuntimeError(f"Teacher resume run-id prefix mismatch at {index}")
+        if item.get("prompt_version") != PROMPT_VERSION:
+            raise RuntimeError("Teacher resume output uses an older prompt contract; use a fresh output path")
         extract(json.dumps(item["enrichment"], ensure_ascii=False))
 
     tokenizer = AutoTokenizer.from_pretrained(args.model, revision=args.revision, trust_remote_code=True)
@@ -177,7 +180,11 @@ def main() -> None:
                 output = model.generate(**encoded, max_new_tokens=args.max_new_tokens, do_sample=False, pad_token_id=tokenizer.eos_token_id)
             suffix = tokenizer.batch_decode(output[:, encoded["input_ids"].shape[1]:], skip_special_tokens=True)
             for row, text in zip(batch_rows, suffix):
-                item = {"run_id": row["metadata"]["run_id"], "enrichment": extract(text)}
+                item = {
+                    "run_id": row["metadata"]["run_id"],
+                    "prompt_version": PROMPT_VERSION,
+                    "enrichment": extract(text),
+                }
                 writer.write(json.dumps(item, ensure_ascii=False) + "\n")
                 writer.flush()
                 progress.update(1)
@@ -186,6 +193,7 @@ def main() -> None:
         "rows": 3122, "train_sha256": sha256(args.train_file), "output_sha256": sha256(args.output),
         "model": args.model, "revision": args.revision, "load_in_4bit": True,
         "fields": ["causal_explanation", "recommended_action", "confidence"],
+        "prompt_version": PROMPT_VERSION,
         "validation_gold_accessed": False, "sealed_test_accessed": False,
     }
     args.output.with_suffix(".contract.json").write_text(json.dumps(contract, indent=2), encoding="utf-8")
