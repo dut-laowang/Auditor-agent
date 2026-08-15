@@ -24,8 +24,13 @@ def read(path: Path) -> list[dict]:
 
 
 def redact(text: str) -> str:
-    text = re.sub(r'(?i)(password|access[_ -]?token|api[_ -]?key|secret)(\s*[=:]\s*)[^\s,;\]}]+', r'\1\2[REDACTED]', text)
+    text = re.sub(
+        r'''(?ix)(password|access[_ -]?token|api[_ -]?key|secret)
+        ["']?\s*[=:]\s*["']?[^\s,;\]}"']+''',
+        r'\1: [REDACTED]', text,
+    )
     text = re.sub(r'(?i)bearer\s+[a-z0-9._-]{8,}', 'Bearer [REDACTED]', text)
+    text = re.sub(r'eyJ[a-zA-Z0-9._-]{20,}', '[REDACTED_TOKEN]', text)
     text = re.sub(r'(?i)[a-z0-9._%+-]+@[a-z0-9.-]+\.[a-z]{2,}', '[REDACTED_EMAIL]', text)
     text = re.sub(r'(?<!\d)\d{7,15}(?!\d)', '[REDACTED_NUMBER]', text)
     return text[:1600]
@@ -55,11 +60,25 @@ def evidence(row: dict, report: dict) -> list[dict]:
 
 def prompt(row: dict) -> list[dict]:
     report = json.loads(row["messages"][2]["content"])
+    user = json.loads(row["messages"][1]["content"])
+    frozen_trace = [
+        {
+            "step": step["step"],
+            "component_refs": step.get("component_refs", []),
+            "evidence_refs": step.get("evidence_refs", []),
+        }
+        for step in report["audit_trace"]
+    ]
     payload = {
         "run_id": row["metadata"]["run_id"],
+        "task": redact(json.dumps(user.get("task", {}), ensure_ascii=False))[:1200],
         "frozen_audit": {
-            "decision": report["decision"], "attack": report["attack"],
-            "localization": report["localization"], "audit_trace": report["audit_trace"],
+            "decision": {
+                "verdict": report["decision"]["verdict"],
+                "binary_label": report["decision"]["binary_label"],
+            },
+            "attack": report["attack"], "localization": report["localization"],
+            "audit_trace": frozen_trace,
         },
         "visible_cited_evidence": evidence(row, report),
     }
@@ -70,7 +89,9 @@ def prompt(row: dict) -> list[dict]:
             "causal_explanation must explain the observable path from cited events to the verdict in 2-4 concise sentences; "
             "do not claim more than the evidence shows. recommended_action must be one safe, component-specific defensive action "
             "and must not reveal or reproduce attack instructions or secrets. confidence must be high, medium, or low and reflect "
-            "evidence sufficiency. Never add evidence IDs, labels, components, credentials, personal data, or hidden facts."
+            "evidence sufficiency: high requires direct localization and outcome evidence, medium means partial/indirect support, "
+            "and low means missing or conflicting support. Never add evidence IDs, labels, components, credentials, personal data, "
+            "or hidden facts. Do not merely paraphrase event types; explain what the cited observable events establish."
         )},
         {"role": "user", "content": json.dumps(payload, ensure_ascii=False)},
     ]
