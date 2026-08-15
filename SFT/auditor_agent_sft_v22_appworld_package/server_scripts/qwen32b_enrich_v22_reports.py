@@ -160,7 +160,12 @@ def validate_audit_semantics(row: dict, enrichment: dict) -> None:
     ):
         raise ValueError("Completion status was incorrectly used as security proof")
     if verdict == "attack_failed" and not any(
-        term in causal for term in ("not established", "did not", "failed", "blocked", "prevented", "no observable")
+        term in causal for term in (
+            "not established", "did not", "does not establish", "failed", "failure", "unsuccessful",
+            "not succeed", "no successful", "blocked", "prevented", "mitigated", "contained",
+            "no observable", "no evidence of", "no resulting", "did not result", "did not lead",
+            "without achieving", "without causing", "without observable", "no compromise", "no impact",
+        )
     ):
         raise ValueError("attack_failed explanation lacks calibrated non-success language")
     if verdict == "attack_success" and not any(
