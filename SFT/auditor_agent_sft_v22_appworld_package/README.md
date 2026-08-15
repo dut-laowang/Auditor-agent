@@ -17,3 +17,16 @@ bash SFT/auditor_agent_sft_v22_appworld_package/server_scripts/run_v22_full_pipe
 ```
 
 The final artifact is `/gs/bs/tgh-26IAW/hongbo/project_4_coauthor/v22_appworld_marble_validation.tar.gz`.
+
+## Qwen3-32B teacher expansion
+
+This resumably enriches only the 3,122 training targets with three fields:
+`causal_explanation`, `recommended_action`, and `confidence`. All previous
+labels, locations, evidence references, split IDs, and visible inputs are frozen.
+Validation gold is never sent to the teacher.
+
+```bash
+cd /gs/bs/tgh-26IAW/hongbo/project_4_coauthor/Auditor-agent && \
+git pull --ff-only origin main && \
+bash SFT/auditor_agent_sft_v22_appworld_package/server_scripts/run_qwen32b_v22_teacher_expansion.sh
+```
