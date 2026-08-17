@@ -3,7 +3,7 @@ set -euo pipefail
 
 BASE="${BASE:-/gs/bs/tgh-26IAW/hongbo/project_4_coauthor}"
 REPO="${REPO:-$BASE/Auditor-agent}"
-SOURCE_INPUT="${V22_ALL_SOURCE_BUNDLE:-$BASE/v22_all_source_bundle.zip}"
+SOURCE_INPUT="${V22_ALL_SOURCE_BUNDLE:-$REPO/SFT/auditor_agent_sft_v22_all_package/source_bundle/v22_all_source_bundle.zip}"
 RUN="${V22_ALL_RUN:-$BASE/v22_all_run}"
 MODEL_ROOT="${MODEL_ROOT:-$BASE/sft_models}"
 GPU="${GPU:-0}"

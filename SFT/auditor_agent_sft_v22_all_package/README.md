@@ -45,17 +45,20 @@ The successful output is `v22_all_source_bundle.zip`.
 
 ## One-command server run
 
-Upload the ZIP, pull the repository, and run:
+The quality-gated ZIP is versioned under `source_bundle/`. Pull the repository
+and run:
 
 ```bash
 cd /gs/bs/tgh-26IAW/hongbo/project_4_coauthor/Auditor-agent && \
 git pull --ff-only origin main && \
-V22_ALL_SOURCE_BUNDLE=/gs/bs/tgh-26IAW/hongbo/project_4_coauthor/v22_all_source_bundle.zip \
 V22_ALL_RUN=/gs/bs/tgh-26IAW/hongbo/project_4_coauthor/v22_all_run \
 TEACHER_BATCH=4 MODERN_TRAIN_BATCH=2 MODERN_GRAD_ACCUM=8 \
 QWEN_TRAIN_BATCH=2 QWEN_GRAD_ACCUM=8 QWEN_EVAL_BATCH=4 \
 bash SFT/auditor_agent_sft_v22_all_package/server_scripts/run_v22_all_unified_server.sh
 ```
+
+Set `V22_ALL_SOURCE_BUNDLE=/absolute/path/to/v22_all_source_bundle.zip` only
+when intentionally overriding the bundled source artifact.
 
 The pipeline trains one joint ModernBERT Inspector, expands only the joint
 training targets with Qwen3-32B, trains one joint enhanced Qwen3-8B Audit SFT,
