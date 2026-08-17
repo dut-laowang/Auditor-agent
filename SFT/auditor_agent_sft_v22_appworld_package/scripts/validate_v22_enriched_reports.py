@@ -60,8 +60,11 @@ def main() -> None:
         "validation_gold_used_as_model_input": False,
         "quality_gate": "PASS" if valid_json == fields_complete == refs_valid == args.expected_rows else "FAIL",
     }
+    args.output.parent.mkdir(parents=True, exist_ok=True)
     args.output.write_text(json.dumps(result, indent=2), encoding="utf-8")
     print(json.dumps(result, indent=2))
+    if result["quality_gate"] != "PASS":
+        raise SystemExit(1)
 
 
 if __name__ == "__main__":

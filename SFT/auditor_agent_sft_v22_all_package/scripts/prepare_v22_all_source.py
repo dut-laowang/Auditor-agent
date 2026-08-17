@@ -15,6 +15,9 @@ TRACKS = {
     "marble_appworld": {"train": 3122, "validation": 406, "sealed_test": 393},
 }
 VERDICTS = ("clean_safe", "attack_failed", "attack_success")
+SCOPES = {"none", "global", "node", "edge", "tool", "multi"}
+SURFACES = {"none", "input", "message", "tool", "memory", "profile", "dual"}
+OBJECTIVES = {"none", "disclosure", "disruption", "hijacking"}
 PRIVILEGED_KEYS = {
     "attack_exposed", "attack_injected", "attack_active", "attack_payload_template",
     "source_final_label", "marker_success", "success_markers", "security_judgment",
@@ -58,6 +61,10 @@ def nested_keys(value) -> set[str]:
     return keys
 
 
+def nonempty_text(value) -> bool:
+    return isinstance(value, str) and bool(value.strip())
+
+
 def validate_row(row: dict, track: str, split: str) -> list[str]:
     errors = []
     run_id = str(row.get("metadata", {}).get("run_id") or "")
@@ -83,6 +90,19 @@ def validate_row(row: dict, track: str, split: str) -> list[str]:
         errors.append(f"{prefix}: invalid verdict {verdict!r}")
     if row.get("metadata", {}).get("verdict") != verdict:
         errors.append(f"{prefix}: metadata/report verdict mismatch")
+    expected_binary = "unsafe" if verdict == "attack_success" else "safe"
+    if report.get("decision", {}).get("binary_label") != expected_binary:
+        errors.append(f"{prefix}: verdict/binary-label semantic mismatch")
+    attack = report.get("attack", {})
+    expected_present = verdict != "clean_safe"
+    if attack.get("present") is not expected_present:
+        errors.append(f"{prefix}: verdict/attack-present semantic mismatch")
+    if attack.get("surface") not in SURFACES or attack.get("objective") not in OBJECTIVES:
+        errors.append(f"{prefix}: invalid attack surface/objective taxonomy")
+    if verdict == "clean_safe" and (attack.get("surface"), attack.get("objective")) != ("none", "none"):
+        errors.append(f"{prefix}: clean row has non-none attack characterization")
+    if verdict != "clean_safe" and (attack.get("surface") == "none" or attack.get("objective") == "none"):
+        errors.append(f"{prefix}: attack row lacks attack characterization")
     evidence_rows = (
         user.get("run_evidence", {}).get("observed", [])
         + user.get("run_evidence", {}).get("final_output", [])
@@ -90,21 +110,55 @@ def validate_row(row: dict, track: str, split: str) -> list[str]:
     evidence_ids = [str(item.get("id")) for item in evidence_rows if isinstance(item, dict) and item.get("id")]
     if len(evidence_ids) != len(set(evidence_ids)) or not evidence_ids:
         errors.append(f"{prefix}: missing or duplicate evidence IDs")
+    for item in evidence_rows:
+        if not isinstance(item, dict) or not nonempty_text(item.get("text")):
+            errors.append(f"{prefix}: empty or malformed observable evidence text")
+            break
     candidate_ids = [str(item.get("id")) for item in user.get("graph_candidates", []) if isinstance(item, dict)]
     if len(candidate_ids) != len(set(candidate_ids)) or not candidate_ids:
         errors.append(f"{prefix}: missing or duplicate graph candidate IDs")
+    for candidate in user.get("graph_candidates", []):
+        if not isinstance(candidate, dict) or not nonempty_text(candidate.get("id")) or not nonempty_text(candidate.get("type")):
+            errors.append(f"{prefix}: malformed graph candidate identity")
+            break
+        if "description" in candidate and not nonempty_text(candidate.get("description")):
+            errors.append(f"{prefix}: empty graph candidate description")
+            break
+        candidate_refs = {
+            str(value) for key, values in candidate.items() if key.endswith("event_refs") and isinstance(values, list)
+            for value in values
+        }
+        if candidate_refs and not candidate_refs.issubset(set(evidence_ids)):
+            errors.append(f"{prefix}: graph candidate references invisible evidence")
+            break
     components = [str(value) for value in report.get("localization", {}).get("component_ids", [])]
     if not set(components).issubset(set(candidate_ids)):
         errors.append(f"{prefix}: localization references invisible candidates")
+    scope = report.get("localization", {}).get("scope")
+    if scope not in SCOPES:
+        errors.append(f"{prefix}: invalid localization scope")
+    if verdict == "clean_safe" and (scope != "none" or components):
+        errors.append(f"{prefix}: clean row has non-empty localization")
+    if verdict != "clean_safe" and (scope == "none" or not components):
+        errors.append(f"{prefix}: attack row lacks localization")
     traces = report.get("audit_trace", [])
     if not isinstance(traces, list) or not traces:
         errors.append(f"{prefix}: empty audit_trace")
     else:
         for trace in traces:
+            if trace.get("step") not in {"localize_component", "verify_outcome_effect"}:
+                errors.append(f"{prefix}: invalid audit trace step")
+                break
             refs = [str(value) for value in trace.get("evidence_refs", [])]
             if not refs or not set(refs).issubset(set(evidence_ids)):
                 errors.append(f"{prefix}: invalid or empty audit evidence_refs")
                 break
+            component_refs = [str(value) for value in trace.get("component_refs", [])]
+            if not set(component_refs).issubset(set(candidate_ids)):
+                errors.append(f"{prefix}: audit trace references invisible components")
+                break
+        if {trace.get("step") for trace in traces} != {"localize_component", "verify_outcome_effect"}:
+            errors.append(f"{prefix}: incomplete audit trace semantics")
     return errors
 
 
@@ -188,11 +242,17 @@ def main() -> None:
                         problems.append(f"{cell}: only {len(pool)} rows; need {args.sample_per_verdict}")
                         continue
                     chosen = rng.sample(pool, args.sample_per_verdict)
+                    sample_problems = []
+                    for _, sampled_row in chosen:
+                        sample_problems.extend(validate_row(sampled_row, track, split))
+                    if sample_problems:
+                        problems.extend(f"sample-semantic-gate: {value}" for value in sample_problems)
                     sample_path = output / "quality_samples" / track / split / f"{verdict}.jsonl"
                     sample_path.parent.mkdir(parents=True, exist_ok=True)
                     sample_path.write_text("\n".join(line for line, _ in chosen) + "\n", encoding="utf-8")
                     sample_cells[cell] = {
                         "available": len(pool), "sampled": len(chosen), "sha256": sha256(sample_path),
+                        "semantic_contract_checks": "PASS",
                     }
 
         overlaps = {
@@ -205,7 +265,7 @@ def main() -> None:
                 problems.append(f"train/validation {name} overlap: {count}")
 
         quality = {
-            "version": "V22-ALL-preupload-quality-v1",
+            "version": "V22-ALL-preupload-quality-v2",
             "status": "PASS" if not problems else "FAIL",
             "seed": args.seed,
             "sample_per_track_split_verdict": args.sample_per_verdict,
@@ -218,6 +278,7 @@ def main() -> None:
                 "train_validation_overlap": overlaps,
                 "privileged_input_keys": 0 if not any("privileged" in value for value in problems) else None,
                 "invalid_evidence_or_components": 0 if not any("evidence" in value or "candidate" in value for value in problems) else None,
+                "semantic_consistency_failures": 0 if not any("semantic" in value or "characterization" in value or "localization" in value for value in problems) else None,
                 "sealed_test_accessed": False,
             },
             "problems": problems[:1000],
@@ -249,7 +310,7 @@ def main() -> None:
             combined[split] = {"rows": count, "sha256": sha256(combined_path), "index_sha256": sha256(track_index_path)}
 
         source_manifest = {
-            "version": "V22-ALL-unified-source-v1",
+            "version": "V22-ALL-unified-source-v2",
             "tracks": manifest_tracks,
             "combined": combined,
             "classification_data": "unexpanded base_dataset",
@@ -265,7 +326,7 @@ def main() -> None:
     except Exception as exc:
         if not (output / "QUALITY_FAILURE_REPORT.json").exists():
             write_json(output / "QUALITY_FAILURE_REPORT.json", {
-                "version": "V22-ALL-preupload-quality-v1", "status": "FAIL", "error": str(exc), "problems": problems,
+                "version": "V22-ALL-preupload-quality-v2", "status": "FAIL", "error": str(exc), "problems": problems,
             })
         print(json.dumps({"status": "FAIL", "report": str(output / "QUALITY_FAILURE_REPORT.json"), "error": str(exc)}, ensure_ascii=False, indent=2))
         raise SystemExit(1) from exc

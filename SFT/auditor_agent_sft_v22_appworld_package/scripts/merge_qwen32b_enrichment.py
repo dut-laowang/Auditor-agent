@@ -26,6 +26,14 @@ def digest(value) -> str:
     return hashlib.sha256(json.dumps(value, ensure_ascii=False, sort_keys=True).encode()).hexdigest()
 
 
+def sha256(path: Path) -> str:
+    value = hashlib.sha256()
+    with path.open("rb") as handle:
+        for block in iter(lambda: handle.read(1024 * 1024), b""):
+            value.update(block)
+    return value.hexdigest()
+
+
 def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--v22-data", required=True, type=Path)
@@ -72,10 +80,18 @@ def main() -> None:
     validation_out = copy.deepcopy(validation)
     for row in validation_out:
         row["messages"][0]["content"] += instruction
-    write(args.output_dir / "train.jsonl", enriched)
-    write(args.output_dir / "validation.jsonl", validation_out)
+    train_output = args.output_dir / "train.jsonl"
+    validation_output = args.output_dir / "validation.jsonl"
+    write(train_output, enriched)
+    write(validation_output, validation_out)
     contract = {
+        "version": "V22-enriched-audit-v2",
         "train_rows": args.expected_train_rows, "validation_rows": args.expected_validation_rows,
+        "source_train_sha256": sha256(args.v22_data / "train.jsonl"),
+        "source_validation_sha256": sha256(args.v22_data / "validation.jsonl"),
+        "teacher_output_sha256": sha256(args.teacher_output),
+        "expanded_train_sha256": sha256(train_output),
+        "expanded_validation_sha256": sha256(validation_output),
         "train_ids_preserved": True, "validation_ids_preserved": True,
         "frozen_report_fields_preserved": True,
         "added_fields": sorted(FIELDS),

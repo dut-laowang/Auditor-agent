@@ -259,8 +259,8 @@ def main():
     parser.add_argument(
         "--structured-controls",
         help=("Optional JSONL keyed by run_id with pred, pred_scope, and pred_components. "
-              "The complete LM report is generated first, then only decision/localization "
-              "are replaced by these upstream predictions."),
+              "The complete LM report is generated first; decision/localization are replaced "
+              "by upstream predictions and attack presence is derived from that verdict."),
     )
     parser.add_argument(
         "--load-in-4bit",
@@ -417,7 +417,7 @@ def main():
         eval_contract.update({
             "structured_controls": os.path.abspath(args.structured_controls),
             "structured_controls_sha256": sha256_file(args.structured_controls),
-            "structured_control_merge": "posthoc_decision_and_localization_only",
+            "structured_control_merge": "posthoc_decision_localization_and_derived_attack_presence",
         })
     contract_path = os.path.join(args.output_dir, "EVAL_CONTRACT.json")
     if os.path.isfile(contract_path):
@@ -608,6 +608,12 @@ def main():
                         )
                         report["localization"]["scope"] = control["pred_scope"]
                         report["localization"]["component_ids"] = list(control["pred_components"])
+                        # Keep report sections logically consistent with the inspector
+                        # verdict without importing any gold-only attack attributes.
+                        report["attack"]["present"] = control["pred"] != "clean_safe"
+                        if control["pred"] == "clean_safe":
+                            report["attack"]["surface"] = "none"
+                            report["attack"]["objective"] = "none"
                         generation = json.dumps(report, ensure_ascii=False)
                     except (json.JSONDecodeError, KeyError, TypeError, ValueError):
                         # Never synthesize missing report sections; malformed generations
