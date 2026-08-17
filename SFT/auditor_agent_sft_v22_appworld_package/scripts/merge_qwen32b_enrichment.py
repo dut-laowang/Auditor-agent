@@ -31,11 +31,17 @@ def main() -> None:
     parser.add_argument("--v22-data", required=True, type=Path)
     parser.add_argument("--teacher-output", required=True, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
+    parser.add_argument("--expected-train-rows", type=int, default=3122)
+    parser.add_argument("--expected-validation-rows", type=int, default=406)
     args = parser.parse_args()
     train = read(args.v22_data / "train.jsonl")
     validation = read(args.v22_data / "validation.jsonl")
     teacher = read(args.teacher_output)
-    if len(train) != 3122 or len(teacher) != 3122 or len(validation) != 406:
+    if (
+        len(train) != args.expected_train_rows
+        or len(teacher) != args.expected_train_rows
+        or len(validation) != args.expected_validation_rows
+    ):
         raise RuntimeError("Expanded V22 split size mismatch")
     instruction = (
         " The decision object must also contain causal_explanation, recommended_action, and confidence. "
@@ -69,7 +75,7 @@ def main() -> None:
     write(args.output_dir / "train.jsonl", enriched)
     write(args.output_dir / "validation.jsonl", validation_out)
     contract = {
-        "train_rows": 3122, "validation_rows": 406,
+        "train_rows": args.expected_train_rows, "validation_rows": args.expected_validation_rows,
         "train_ids_preserved": True, "validation_ids_preserved": True,
         "frozen_report_fields_preserved": True,
         "added_fields": sorted(FIELDS),

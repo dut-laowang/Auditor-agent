@@ -25,11 +25,12 @@ def main() -> None:
     parser.add_argument("--metrics", required=True, type=Path)
     parser.add_argument("--modernbert-metrics", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--expected-rows", type=int, default=406)
     args = parser.parse_args()
     rows = [json.loads(line) for line in args.predictions.open(encoding="utf-8") if line.strip()]
     metrics = json.loads(args.metrics.read_text(encoding="utf-8"))
     reference = json.loads(args.modernbert_metrics.read_text(encoding="utf-8"))
-    if len(rows) != 406 or metrics["n"] != 406:
+    if len(rows) != args.expected_rows or metrics["n"] != args.expected_rows:
         raise RuntimeError("V22 result row mismatch")
     paths = [
         ("three_class_accuracy",), ("three_class_report", "macro avg", "f1-score"),
@@ -61,7 +62,7 @@ def main() -> None:
     if secret_hits:
         raise RuntimeError(f"Generated report secret-like content: {secret_hits[:5]}")
     quality = {
-        "n": 406, "modernbert_metrics_exact": True,
+        "n": args.expected_rows, "modernbert_metrics_exact": True,
         "complete_explanation_fields_rate": 1.0,
         "evidence_summary_alignment_rate": 1.0,
         "generated_secret_pattern_hits": 0,

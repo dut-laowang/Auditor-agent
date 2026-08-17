@@ -134,10 +134,19 @@ def main() -> None:
     parser.add_argument("--source-data", required=True, type=Path)
     parser.add_argument("--modernbert-predictions", required=True, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
+    parser.add_argument("--expected-train-rows", type=int, default=EXPECTED["train"][0])
+    parser.add_argument("--expected-validation-rows", type=int, default=EXPECTED["validation"][0])
+    parser.add_argument("--expected-train-sha256", default=EXPECTED["train"][1])
+    parser.add_argument("--expected-validation-sha256", default=EXPECTED["validation"][1])
+    parser.add_argument("--dataset-version", default="V22-AppWorld-MARBLE-explainable-audit-v1")
     args = parser.parse_args()
+    expected = {
+        "train": (args.expected_train_rows, args.expected_train_sha256),
+        "validation": (args.expected_validation_rows, args.expected_validation_sha256),
+    }
     source = {}
     ids = {}
-    for split, (count, digest) in EXPECTED.items():
+    for split, (count, digest) in expected.items():
         path = args.source_data / f"{split}.jsonl"
         if sha256(path) != digest:
             raise RuntimeError(f"Frozen V20/V22 {split} hash mismatch")
@@ -150,10 +159,10 @@ def main() -> None:
         raise RuntimeError("Train/validation run_id leakage")
 
     predictions = read(args.modernbert_predictions)
-    if len(predictions) != 406 or [row["run_id"] for row in predictions] != ids["validation"]:
+    if len(predictions) != args.expected_validation_rows or [row["run_id"] for row in predictions] != ids["validation"]:
         raise RuntimeError("ModernBERT predictions do not exactly match frozen validation IDs/order")
     by_id = {row["run_id"]: row for row in predictions}
-    if len(by_id) != 406:
+    if len(by_id) != args.expected_validation_rows:
         raise RuntimeError("Duplicate ModernBERT prediction run_id")
 
     train = [with_control(row, gold(row)) for row in source["train"]]
@@ -170,10 +179,10 @@ def main() -> None:
     write(args.output_dir / "inspector" / "train.jsonl", source["train"])
     write(args.output_dir / "inspector" / "validation.jsonl", source["validation"])
     manifest = {
-        "version": "V22-AppWorld-MARBLE-explainable-audit-v1",
-        "train_rows": 3122, "validation_rows": 406,
-        "train_source_sha256": EXPECTED["train"][1],
-        "validation_source_sha256": EXPECTED["validation"][1],
+        "version": args.dataset_version,
+        "train_rows": args.expected_train_rows, "validation_rows": args.expected_validation_rows,
+        "train_source_sha256": expected["train"][1],
+        "validation_source_sha256": expected["validation"][1],
         "validation_run_id_sha256": hashlib.sha256("\n".join(ids["validation"]).encode()).hexdigest(),
         "training_control": "train gold verdict/scope/components only",
         "validation_control": "ModernBERT predictions only; exact frozen ID/order match",

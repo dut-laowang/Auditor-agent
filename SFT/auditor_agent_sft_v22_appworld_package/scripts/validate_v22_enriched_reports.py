@@ -18,11 +18,12 @@ def main() -> None:
     parser.add_argument("--predictions", required=True, type=Path)
     parser.add_argument("--validation", required=True, type=Path)
     parser.add_argument("--output", required=True, type=Path)
+    parser.add_argument("--expected-rows", type=int, default=406)
     args = parser.parse_args()
     predictions = read(args.predictions)
     validation = read(args.validation)
-    if len(predictions) != 406 or len(validation) != 406:
-        raise RuntimeError("Enhanced V22 evaluation requires exactly 406 frozen rows")
+    if len(predictions) != args.expected_rows or len(validation) != args.expected_rows:
+        raise RuntimeError(f"Enhanced V22 evaluation row mismatch: expected {args.expected_rows}")
     by_id = {row["metadata"]["run_id"]: row for row in validation}
     valid_json = fields_complete = refs_valid = 0
     for item in predictions:
@@ -52,12 +53,12 @@ def main() -> None:
         if cited and cited.issubset(available):
             refs_valid += 1
     result = {
-        "rows": 406,
-        "valid_json_rate": valid_json / 406,
-        "three_enriched_fields_rate": fields_complete / 406,
-        "causal_evidence_refs_valid_rate": refs_valid / 406,
+        "rows": args.expected_rows,
+        "valid_json_rate": valid_json / args.expected_rows,
+        "three_enriched_fields_rate": fields_complete / args.expected_rows,
+        "causal_evidence_refs_valid_rate": refs_valid / args.expected_rows,
         "validation_gold_used_as_model_input": False,
-        "quality_gate": "PASS" if valid_json == fields_complete == refs_valid == 406 else "FAIL",
+        "quality_gate": "PASS" if valid_json == fields_complete == refs_valid == args.expected_rows else "FAIL",
     }
     args.output.write_text(json.dumps(result, indent=2), encoding="utf-8")
     print(json.dumps(result, indent=2))

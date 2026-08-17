@@ -272,17 +272,18 @@ def main() -> None:
     parser.add_argument("--max-new-tokens", type=int, default=384)
     parser.add_argument("--batch-size", type=int, default=2)
     parser.add_argument("--limit", type=int)
+    parser.add_argument("--expected-rows", type=int, default=3122)
     args = parser.parse_args()
     if args.model != "Qwen/Qwen3-32B" or args.revision != REVISION:
         raise ValueError("V22 teacher requires the pinned Qwen3-32B revision")
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA required")
     rows = read(args.train_file)
-    if len(rows) != 3122:
-        raise RuntimeError("V22 teacher requires the frozen 3122-row train split")
+    if len(rows) != args.expected_rows:
+        raise RuntimeError(f"V22 teacher row mismatch: {len(rows)} != {args.expected_rows}")
     if args.limit is not None:
         if args.limit < 1 or args.limit > len(rows):
-            raise ValueError("--limit must be between 1 and 3122")
+            raise ValueError(f"--limit must be between 1 and {len(rows)}")
         rows = rows[:args.limit]
     completed = read(args.output) if args.output.is_file() else []
     if len(completed) > len(rows):
@@ -378,7 +379,7 @@ def main() -> None:
                 progress.update(1)
         progress.close()
     contract = {
-        "rows": len(rows), "source_rows": 3122, "train_sha256": sha256(args.train_file),
+        "rows": len(rows), "source_rows": args.expected_rows, "train_sha256": sha256(args.train_file),
         "output_sha256": sha256(args.output),
         "model": args.model, "revision": args.revision, "load_in_4bit": True,
         "fields": ["causal_explanation", "recommended_action", "confidence"],
