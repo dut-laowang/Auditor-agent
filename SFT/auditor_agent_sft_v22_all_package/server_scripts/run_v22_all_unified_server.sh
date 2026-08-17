@@ -35,6 +35,30 @@ QWEN_EVAL="$RUN/qwen_eval"
 LOGS="$RUN/logs"
 
 cd "$REPO"
+
+# Automatically quarantine only downstream artifacts produced by the obsolete
+# all-row teacher stage. Source restoration, context filtering, and the joint
+# ModernBERT checkpoint/evaluation remain reusable. A corrected partial run has
+# APPWORLD_REUSE_CONTRACT.json and is never treated as stale here.
+if [[ -d "$RUN" ]] && {
+  [[ -f "$TEACHER_DIR/qwen32b_enrichment.jsonl" && ! -f "$TEACHER_DIR/APPWORLD_REUSE_CONTRACT.json" ]] ||
+  [[ -f "$EXPANDED/EXPANSION_CONTRACT.json" && ! -f "$EXPANDED/V22_ALL_REUSE_APPLIED.json" ]];
+}; then
+  case "$RUN" in
+    "$BASE"/v22_all_run|"$BASE"/v22_all_run_*) ;;
+    *) echo "Refusing automatic stale cleanup outside an exact V22-ALL run path: $RUN" >&2; exit 1 ;;
+  esac
+  STALE="$RUN/stale_pre_appworld_reuse_$(date -u +%Y%m%dT%H%M%SZ)"
+  mkdir -p "$STALE"
+  for TARGET in \
+    "$TEACHER_DIR" "$EXPANDED" "$QWEN_MODEL" "$QWEN_EVAL" \
+    "$RUN/per_track_quality" "$RUN/V22_ALL_CORE_QUALITY_GATE.json" \
+    "$RUN/V22_ALL_ENRICHED_REPORT_QUALITY.json" "$RUN/V22_ALL_RUN_SUMMARY.json" \
+    "$RUN/PIPELINE_COMPLETE" "$RUN.tar.gz"; do
+    if [[ -e "$TARGET" ]]; then mv -- "$TARGET" "$STALE/"; fi
+  done
+  echo "Quarantined obsolete all-row teacher/downstream artifacts at: $STALE"
+fi
 mkdir -p "$RUN" "$MODELS" "$LOGS" "$MODERN_EVAL" "$QWEN_EVAL"
 
 # Fail closed unless the local 900-row stratified pre-upload gate is intact.

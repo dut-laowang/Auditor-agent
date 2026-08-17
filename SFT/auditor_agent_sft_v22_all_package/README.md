@@ -67,3 +67,9 @@ joint enhanced Qwen3-8B Audit SFT, injects only ModernBERT predictions into
 validation, and evaluates both the 2,954-row union and every source track
 separately. Any reusable-artifact source hash, ID, order, schema, or leakage
 contract mismatch stops the run before new teacher inference.
+
+If the obsolete runner already created an all-row teacher output, the current
+runner automatically quarantines only that teacher output and its downstream
+expanded/Qwen artifacts under `v22_all_run/stale_pre_appworld_reuse_*`. It keeps
+the source, context-filtered data, joint ModernBERT checkpoint, and ModernBERT
+evaluation, then continues in the same run directory.
