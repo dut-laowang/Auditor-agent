@@ -1,0 +1,17 @@
+{
+  "rows": 3122,
+  "source_rows": 3122,
+  "train_sha256": "855975a5f749aab1ffdd430d0492f8f4a64ee2679951fdebc5f27d3b7846c245",
+  "output_sha256": "da00768c6db70958eae4c3f932c24df0af9e093c6192bfbaac281253a5cc1603",
+  "model": "Qwen/Qwen3-32B",
+  "revision": "9216db5781bf21249d130ec9da846c4624c16137",
+  "load_in_4bit": true,
+  "fields": [
+    "causal_explanation",
+    "recommended_action",
+    "confidence"
+  ],
+  "prompt_version": "v22-three-field-audit-grade-v4",
+  "validation_gold_accessed": false,
+  "sealed_test_accessed": false
+}

@@ -24,6 +24,8 @@ TRACK_INDEX="$RUN/track_index"
 MODERN_DATA="$RUN/modernbert_data"
 V22_DATA="$RUN/v22_data"
 TEACHER_DIR="$RUN/qwen32b_teacher"
+PRIOR_APPWORLD_TEACHER="${V22_APPWORLD_TEACHER:-$ALL/reuse/appworld_qwen32b_enrichment_v4.jsonl}"
+PRIOR_APPWORLD_CONTRACT="${V22_APPWORLD_TEACHER_CONTRACT:-$ALL/reuse/appworld_qwen32b_enrichment_v4.contract.json}"
 EXPANDED="$RUN/expanded_audit_sft"
 MODELS="$RUN/models"
 MODERN_MODEL="$MODELS/modernbert"
@@ -127,18 +129,43 @@ if [[ ! -f "$V22_DATA/manifest.json" ]]; then
     --dataset-version V22-ALL-explainable-audit-v1
 fi
 
-# Qwen3-32B expands training targets only and resumes against the frozen run-id prefix.
+# Reuse the already completed 3,122-row AppWorld teacher expansion. The strict
+# source hash and exact ID/order checks fail closed before any new inference.
 mkdir -p "$TEACHER_DIR"
+test -f "$PRIOR_APPWORLD_TEACHER"
+test -f "$PRIOR_APPWORLD_CONTRACT"
+python "$ALL/scripts/reuse_v22_appworld_teacher.py" prepare \
+  --v22-train "$V22_DATA/audit_sft/train.jsonl" \
+  --track-index "$TRACK_INDEX/train.jsonl" \
+  --prior-teacher "$PRIOR_APPWORLD_TEACHER" \
+  --prior-contract "$PRIOR_APPWORLD_CONTRACT" \
+  --appworld-train "$TEACHER_DIR/appworld_reused_train.jsonl" \
+  --new-train "$TEACHER_DIR/new_two_track_train.jsonl" \
+  --output-contract "$TEACHER_DIR/APPWORLD_REUSE_CONTRACT.json"
+NEW_TEACHER_ROWS="$(wc -l < "$TEACHER_DIR/new_two_track_train.jsonl" | tr -d ' ')"
+
+# Qwen3-32B runs only on MARBLE x MAB and AutoGen x MAB rows.
 CUDA_VISIBLE_DEVICES="$GPU" python "$V22/server_scripts/qwen32b_enrich_v22_reports.py" \
-  --train-file "$V22_DATA/audit_sft/train.jsonl" --output "$TEACHER_DIR/qwen32b_enrichment.jsonl" \
+  --train-file "$TEACHER_DIR/new_two_track_train.jsonl" --output "$TEACHER_DIR/new_two_track_enrichment.jsonl" \
   --model Qwen/Qwen3-32B --revision 9216db5781bf21249d130ec9da846c4624c16137 \
   --batch-size "${TEACHER_BATCH:-4}" --max-input-len 8192 --max-new-tokens 384 \
-  --expected-rows "$MODERN_TRAIN_ROWS"
+  --expected-rows "$NEW_TEACHER_ROWS"
+python "$ALL/scripts/reuse_v22_appworld_teacher.py" merge \
+  --v22-train "$V22_DATA/audit_sft/train.jsonl" \
+  --prior-teacher "$PRIOR_APPWORLD_TEACHER" \
+  --new-teacher "$TEACHER_DIR/new_two_track_enrichment.jsonl" \
+  --output "$TEACHER_DIR/qwen32b_enrichment.jsonl" \
+  --output-contract "$TEACHER_DIR/V22_ALL_TEACHER_MERGE_CONTRACT.json"
+if [[ -f "$EXPANDED/EXPANSION_CONTRACT.json" && ! -f "$EXPANDED/V22_ALL_REUSE_APPLIED.json" ]]; then
+  echo "Refusing stale expanded data that predates AppWorld reuse; use a fresh V22_ALL_RUN." >&2
+  exit 1
+fi
 if [[ ! -f "$EXPANDED/EXPANSION_CONTRACT.json" ]]; then
   python "$V22/scripts/merge_qwen32b_enrichment.py" \
     --v22-data "$V22_DATA/audit_sft" --teacher-output "$TEACHER_DIR/qwen32b_enrichment.jsonl" \
     --output-dir "$EXPANDED" --expected-train-rows "$MODERN_TRAIN_ROWS" \
     --expected-validation-rows "$MODERN_VALIDATION_ROWS"
+  cp "$TEACHER_DIR/V22_ALL_TEACHER_MERGE_CONTRACT.json" "$EXPANDED/V22_ALL_REUSE_APPLIED.json"
 fi
 
 INIT_ARGS=()

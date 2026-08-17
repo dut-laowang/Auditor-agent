@@ -60,7 +60,10 @@ bash SFT/auditor_agent_sft_v22_all_package/server_scripts/run_v22_all_unified_se
 Set `V22_ALL_SOURCE_BUNDLE=/absolute/path/to/v22_all_source_bundle.zip` only
 when intentionally overriding the bundled source artifact.
 
-The pipeline trains one joint ModernBERT Inspector, expands only the joint
-training targets with Qwen3-32B, trains one joint enhanced Qwen3-8B Audit SFT,
-injects only ModernBERT predictions into validation, and evaluates both the
-2,954-row union and every source track separately.
+The pipeline trains one joint ModernBERT Inspector, strictly reuses the already
+completed 3,122-row AppWorld Qwen3-32B expansion, expands only the two MAB
+tracks, merges both teacher outputs in exact joint-training order, trains one
+joint enhanced Qwen3-8B Audit SFT, injects only ModernBERT predictions into
+validation, and evaluates both the 2,954-row union and every source track
+separately. Any reusable-artifact source hash, ID, order, schema, or leakage
+contract mismatch stops the run before new teacher inference.
