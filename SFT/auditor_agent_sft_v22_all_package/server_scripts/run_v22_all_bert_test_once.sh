@@ -11,6 +11,7 @@ MODEL="$RUN/models/modernbert"
 CHECKPOINT="$MODEL/checkpoint-epoch-3.pt"
 REFERENCE="$RUN/base_dataset"
 SEALED="$RUN/modernbert_sealed_test_source"
+ELIGIBLE="$RUN/modernbert_sealed_test_8192"
 OUTPUT="$RUN/modernbert_sealed_test"
 VALIDATION="$RUN/modernbert_eval"
 LOGS="$RUN/logs"
@@ -39,16 +40,21 @@ python "$ALL/scripts/prepare_v22_all_sealed_test.py" \
   --marble-appworld-zip "$REPO/SFT/auditor_agent_sft_v20_appworld_marble_package/dataset_bundle/dataset_jsonl.zip" \
   --reference-data "$REFERENCE" --output-dir "$SEALED"
 
+python "$ALL/scripts/filter_modernbert_test_context.py" \
+  --test-file "$SEALED/test.jsonl" --track-index "$SEALED/track_index.jsonl" \
+  --output-dir "$ELIGIBLE" --model answerdotai/ModernBERT-base \
+  --revision 8949b909ec900327062f0ebf497f51aef5e6f0c8 --max-len 8192
+
 TRAIN_SHA="$(sha256sum "$RUN/modernbert_data/train.jsonl" | awk '{print $1}')"
 VALIDATION_SHA="$(sha256sum "$RUN/modernbert_data/validation.jsonl" | awk '{print $1}')"
-TEST_SHA="$(sha256sum "$SEALED/test.jsonl" | awk '{print $1}')"
+TEST_SHA="$(sha256sum "$ELIGIBLE/test.jsonl" | awk '{print $1}')"
 
 if [[ ! -f "$OUTPUT/FINAL_TEST_COMPLETE.json" ]]; then
   mkdir -p "$OUTPUT"
   CUDA_VISIBLE_DEVICES="$GPU" python "$V19/server_scripts/modernbert_multitask_v19.py" \
     --mode eval --model answerdotai/ModernBERT-base --revision 8949b909ec900327062f0ebf497f51aef5e6f0c8 \
     --checkpoint "$CHECKPOINT" \
-    --data-file "$SEALED/test.jsonl" --dataset-role test --sealed-test-ack FINAL_ONCE \
+    --data-file "$ELIGIBLE/test.jsonl" --dataset-role test --sealed-test-ack FINAL_ONCE \
     --expected-train-sha256 "$TRAIN_SHA" --expected-validation-sha256 "$VALIDATION_SHA" \
     --expected-test-sha256 "$TEST_SHA" \
     --output-dir "$OUTPUT" --max-len 8192 --attn-implementation sdpa --input-mode user \
@@ -58,32 +64,40 @@ else
 fi
 
 python "$ALL/scripts/score_predictions_by_track.py" \
-  --predictions "$OUTPUT/predictions.jsonl" --track-index "$SEALED/track_index.jsonl" \
+  --predictions "$OUTPUT/predictions.jsonl" --track-index "$ELIGIBLE/track_index.jsonl" \
   --output-dir "$OUTPUT/by_track"
 
-python - "$OUTPUT" "$SEALED/SEALED_TEST_MANIFEST.json" "$VALIDATION" <<'PY'
+python - "$OUTPUT" "$SEALED/SEALED_TEST_MANIFEST.json" "$ELIGIBLE/MODERNBERT_TEST_CONTEXT_GATE.json" "$VALIDATION" <<'PY'
 import hashlib, json, pathlib, sys
-output, manifest_path, validation = map(pathlib.Path, sys.argv[1:])
+output, sealed_manifest_path, gate_manifest_path, validation = map(pathlib.Path, sys.argv[1:])
 sha = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
-manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+sealed_manifest = json.loads(sealed_manifest_path.read_text(encoding="utf-8"))
+gate = json.loads(gate_manifest_path.read_text(encoding="utf-8"))
 metrics = json.loads((output / "metrics.json").read_text(encoding="utf-8"))
 by_track = json.loads((output / "by_track/metrics_by_track.json").read_text(encoding="utf-8"))
 validation_by_track = json.loads((validation / "by_track/metrics_by_track.json").read_text(encoding="utf-8"))
-if metrics.get("dataset_role") != "test" or metrics.get("n") != 2539:
+if metrics.get("dataset_role") != "test" or metrics.get("n") != gate["eligible_rows"]:
     raise RuntimeError("Final test metrics have the wrong role or row count")
-if metrics.get("data_sha256") != manifest["test_sha256"]:
+if metrics.get("data_sha256") != gate["eligible_sha256"]:
     raise RuntimeError("Final test metrics/data hash mismatch")
 summary = {
     "version": "V22-ALL-ModernBERT-final-test-v1",
     "status": "PASS",
-    "rows": 2539,
-    "tracks": manifest["tracks"],
+    "source_rows": gate["source_rows"],
+    "rows": gate["eligible_rows"],
+    "excluded_overlength_rows": gate["excluded_rows"],
+    "coverage": gate["coverage"],
+    "source_tracks": sealed_manifest["tracks"],
+    "tracks": gate["eligible_tracks"],
     "checkpoint_sha256": metrics["checkpoint_sha256"],
-    "test_sha256": metrics["data_sha256"],
+    "source_test_sha256": sealed_manifest["test_sha256"],
+    "eligible_test_sha256": metrics["data_sha256"],
     "metrics_sha256": sha(output / "metrics.json"),
     "predictions_sha256": sha(output / "predictions.jsonl"),
     "overall": by_track["all"],
     "by_track": by_track["tracks"],
+    "eligibility_policy": gate["policy"],
+    "truncation_used": False,
     "sealed_test_accessed": True,
 }
 (output / "V22_ALL_BERT_TEST_SUMMARY.json").write_text(
