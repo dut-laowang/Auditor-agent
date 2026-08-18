@@ -40,7 +40,8 @@ if [[ ! -f "$MODEL/run_manifest.json" ]]; then
     --max-len 12288 --context-contract v22-all-12288 --prompt-overflow error \
     --epochs "${QWEN_EPOCHS:-2}" --lr "${QWEN_LR:-2e-4}" \
     --batch "${QWEN_TRAIN_BATCH:-1}" --grad-accum "${QWEN_GRAD_ACCUM:-16}" \
-    --seed 42 --resume auto 2>&1 | tee -a "$LOGS/qwen3_8b_plain_sft_training.log"
+    --seed 42 --resume auto --disable-cudnn-sdp \
+    2>&1 | tee -a "$LOGS/qwen3_8b_plain_sft_training.log"
 fi
 
 python - "$MODEL/run_manifest.json" "$DATA" <<'PY'
@@ -55,6 +56,7 @@ required = {
     "max_length": 12288,
     "context_contract": "v22-all-12288",
     "prompt_overflow": "error",
+    "cudnn_sdp_enabled": False,
     "train_sha256": sha(data / "train.jsonl"),
     "validation_sha256": sha(data / "validation.jsonl"),
     "test_accessed": False,
@@ -69,7 +71,7 @@ CUDA_VISIBLE_DEVICES="$GPU" python "$V19/server_scripts/eval_qwen3_fullschema_v1
   --mode sft --model Qwen/Qwen3-8B --revision b968826d9c46dd6066d109eabc6255188de91218 \
   --adapter "$MODEL" --test-file "$DATA/validation.jsonl" --dataset-role validation \
   --output-dir "$VAL" --max-input-len 12288 --max-new-tokens 1400 \
-  --batch-size "${QWEN_EVAL_BATCH:-4}" --resume \
+  --batch-size "${QWEN_EVAL_BATCH:-4}" --resume --disable-cudnn-sdp \
   2>&1 | tee -a "$LOGS/qwen3_8b_plain_sft_validation.log"
 
 python "$ALL/scripts/score_predictions_by_track.py" \
@@ -87,7 +89,7 @@ CUDA_VISIBLE_DEVICES="$GPU" python "$V19/server_scripts/eval_qwen3_fullschema_v1
   --mode sft --model Qwen/Qwen3-8B --revision b968826d9c46dd6066d109eabc6255188de91218 \
   --adapter "$MODEL" --test-file "$SEALED/test.jsonl" --dataset-role test --sealed-test-ack FINAL_ONCE \
   --output-dir "$TEST" --max-input-len 12288 --max-new-tokens 1400 \
-  --batch-size "${QWEN_EVAL_BATCH:-4}" --resume \
+  --batch-size "${QWEN_EVAL_BATCH:-4}" --resume --disable-cudnn-sdp \
   2>&1 | tee -a "$LOGS/qwen3_8b_plain_sft_test.log"
 
 python "$ALL/scripts/score_predictions_by_track.py" \

@@ -126,6 +126,11 @@ def main():
     parser.add_argument("--batch", type=int, default=1)
     parser.add_argument("--grad-accum", type=int, default=16)
     parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--disable-cudnn-sdp",
+        action="store_true",
+        help="Disable the cuDNN SDPA backend while retaining other PyTorch SDPA backends.",
+    )
     parser.add_argument("--init-adapter", help="Optional existing LoRA adapter to continue training, e.g. v2 adapter.")
     parser.add_argument(
         "--resume",
@@ -134,6 +139,8 @@ def main():
         help="Automatically resume from the newest checkpoint in output-dir.",
     )
     args = parser.parse_args()
+    if args.disable_cudnn_sdp:
+        torch.backends.cuda.enable_cudnn_sdp(False)
     required_max_len = {"v19-8192": 8192, "v22-all-12288": 12288}[args.context_contract]
     if args.max_len != required_max_len:
         raise ValueError(
@@ -213,6 +220,7 @@ def main():
                 "cuda_device": torch.cuda.get_device_name(0),
                 "precision": "bf16" if use_bf16 else "fp16",
                 "tf32": use_tf32,
+                "cudnn_sdp_enabled": torch.backends.cuda.cudnn_sdp_enabled(),
             }
         )
     )
@@ -312,6 +320,7 @@ def main():
         "max_length": args.max_len,
         "context_contract": args.context_contract,
         "prompt_overflow": args.prompt_overflow,
+        "cudnn_sdp_enabled": torch.backends.cuda.cudnn_sdp_enabled(),
         "train_sha256": sha256(train_file),
         "validation_sha256": sha256(validation_file),
         "test_accessed": False,

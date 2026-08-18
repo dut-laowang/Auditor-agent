@@ -289,7 +289,14 @@ def main():
         action="store_true",
         help="Continue an interrupted predictions.jsonl after validating its run-id prefix.",
     )
+    parser.add_argument(
+        "--disable-cudnn-sdp",
+        action="store_true",
+        help="Disable the cuDNN SDPA backend while retaining other PyTorch SDPA backends.",
+    )
     args = parser.parse_args()
+    if args.disable_cudnn_sdp:
+        torch.backends.cuda.enable_cudnn_sdp(False)
     revision = args.revision or PINNED_REVISIONS.get(args.model)
     if not revision:
         raise ValueError("Unpinned model: pass an immutable --revision commit hash")
@@ -406,6 +413,7 @@ def main():
         "batch_size": args.batch_size,
         "load_in_4bit": args.load_in_4bit,
         "do_sample": False,
+        "cudnn_sdp_enabled": torch.backends.cuda.cudnn_sdp_enabled(),
     }
     if args.verdict_head:
         eval_contract.update({
