@@ -267,7 +267,7 @@ NEW_TEACHER_ROWS="$(wc -l < "$TEACHER_DIR/new_two_track_train.jsonl" | tr -d ' '
 CUDA_VISIBLE_DEVICES="$GPU" python "$V22/server_scripts/qwen32b_enrich_v22_reports.py" \
   --train-file "$TEACHER_DIR/new_two_track_train.jsonl" --output "$TEACHER_DIR/new_two_track_enrichment.jsonl" \
   --model Qwen/Qwen3-32B --revision 9216db5781bf21249d130ec9da846c4624c16137 \
-  --batch-size "${TEACHER_BATCH:-1}" --max-input-len 12288 --max-new-tokens 384 \
+  --batch-size "${TEACHER_BATCH:-2}" --max-input-len 12288 --max-new-tokens 384 \
   --expected-rows "$NEW_TEACHER_ROWS"
 python "$ALL/scripts/reuse_v22_appworld_teacher.py" merge \
   --v22-train "$V22_DATA/audit_sft/train.jsonl" \

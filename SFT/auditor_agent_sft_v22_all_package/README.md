@@ -60,7 +60,7 @@ and run:
 cd /gs/bs/tgh-26IAW/hongbo/project_4_coauthor/Auditor-agent && \
 git pull --ff-only origin main && \
 V22_ALL_RUN=/gs/bs/tgh-26IAW/hongbo/project_4_coauthor/v22_all_run \
-TEACHER_BATCH=1 MODERN_TRAIN_BATCH=2 MODERN_GRAD_ACCUM=8 \
+TEACHER_BATCH=2 MODERN_TRAIN_BATCH=2 MODERN_GRAD_ACCUM=8 \
 QWEN_TRAIN_BATCH=1 QWEN_GRAD_ACCUM=16 QWEN_EVAL_BATCH=4 \
 bash SFT/auditor_agent_sft_v22_all_package/server_scripts/run_v22_all_unified_server.sh
 ```
