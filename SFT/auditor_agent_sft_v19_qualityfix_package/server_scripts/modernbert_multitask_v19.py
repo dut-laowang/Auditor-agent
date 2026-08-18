@@ -449,8 +449,16 @@ def main():
         if not os.path.isfile(contract_path):
             raise RuntimeError("ModernBERT checkpoint has no TRAIN_CONTRACT.json")
         with open(contract_path, encoding="utf-8") as handle:
-            if json.load(handle) != train_contract:
-                raise RuntimeError("ModernBERT checkpoint training contract mismatch")
+            stored_train_contract = json.load(handle)
+        # The sealed test is intentionally unseen during training.  Its hash is
+        # therefore bound by the final-test seal below, not by the checkpoint's
+        # training contract.  Older checkpoints recorded a placeholder/source-
+        # specific test hash; retaining that value for this comparison permits a
+        # legitimate final test without weakening any train/validation binding.
+        checkpoint_contract = dict(train_contract)
+        checkpoint_contract["test_sha256"] = stored_train_contract.get("test_sha256")
+        if stored_train_contract != checkpoint_contract:
+            raise RuntimeError("ModernBERT checkpoint training contract mismatch")
     random.seed(args.seed)
     np.random.seed(args.seed)
     torch.manual_seed(args.seed)
