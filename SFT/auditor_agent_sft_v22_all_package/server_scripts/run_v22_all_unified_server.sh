@@ -198,13 +198,43 @@ if [[ ! -f "$MODERN_MODEL/TRAINING_COMPLETE.json" ]]; then
     --lambda-scope 1.0 --lambda-component 1.0 --seed 42 \
     2>&1 | tee -a "$LOGS/modernbert_training.log"
 fi
-CUDA_VISIBLE_DEVICES="$GPU" python "$V19/server_scripts/modernbert_multitask_v19.py" \
-  --mode eval --model answerdotai/ModernBERT-base --revision 8949b909ec900327062f0ebf497f51aef5e6f0c8 \
-  --checkpoint "$MODERN_MODEL/checkpoint-epoch-3.pt" \
-  --data-file "$MODERN_DATA/validation.jsonl" --dataset-role validation \
-  --expected-train-sha256 "$MODERN_TRAIN_SHA" --expected-validation-sha256 "$MODERN_VALIDATION_SHA" \
-  --output-dir "$MODERN_EVAL" --max-len 8192 --attn-implementation sdpa --input-mode user \
-  --batch "${MODERN_EVAL_BATCH:-4}" --seed 42 2>&1 | tee "$LOGS/modernbert_eval.log"
+
+# Validation inference is deterministic and expensive. Reuse it only after
+# verifying the exact validation data, checkpoint, role, and complete row count.
+MODERN_EVAL_VALID=0
+if [[ -f "$MODERN_EVAL/metrics.json" && -f "$MODERN_EVAL/predictions.jsonl" ]]; then
+  if python - "$MODERN_EVAL/metrics.json" "$MODERN_EVAL/predictions.jsonl" \
+      "$MODERN_DATA/validation.jsonl" "$MODERN_MODEL/checkpoint-epoch-3.pt" \
+      "$MODERN_VALIDATION_ROWS" <<'PY'
+import hashlib, json, pathlib, sys
+metrics_path, predictions, validation, checkpoint = map(pathlib.Path, sys.argv[1:5])
+expected_rows = int(sys.argv[5])
+sha = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
+metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
+if metrics.get("dataset_role") != "validation":
+    raise SystemExit(1)
+if metrics.get("data_sha256") != sha(validation):
+    raise SystemExit(1)
+if metrics.get("checkpoint_sha256") != sha(checkpoint):
+    raise SystemExit(1)
+if sum(1 for line in predictions.open(encoding="utf-8") if line.strip()) != expected_rows:
+    raise SystemExit(1)
+PY
+  then
+    MODERN_EVAL_VALID=1
+  fi
+fi
+if [[ "$MODERN_EVAL_VALID" -ne 1 ]]; then
+  CUDA_VISIBLE_DEVICES="$GPU" python "$V19/server_scripts/modernbert_multitask_v19.py" \
+    --mode eval --model answerdotai/ModernBERT-base --revision 8949b909ec900327062f0ebf497f51aef5e6f0c8 \
+    --checkpoint "$MODERN_MODEL/checkpoint-epoch-3.pt" \
+    --data-file "$MODERN_DATA/validation.jsonl" --dataset-role validation \
+    --expected-train-sha256 "$MODERN_TRAIN_SHA" --expected-validation-sha256 "$MODERN_VALIDATION_SHA" \
+    --output-dir "$MODERN_EVAL" --max-len 8192 --attn-implementation sdpa --input-mode user \
+    --batch "${MODERN_EVAL_BATCH:-4}" --seed 42 2>&1 | tee "$LOGS/modernbert_eval.log"
+else
+  echo "Reusing verified ModernBERT validation predictions: $MODERN_EVAL/predictions.jsonl"
+fi
 
 python "$ALL/scripts/score_predictions_by_track.py" \
   --predictions "$MODERN_EVAL/predictions.jsonl" --track-index "$TRACK_INDEX/validation.jsonl" \
