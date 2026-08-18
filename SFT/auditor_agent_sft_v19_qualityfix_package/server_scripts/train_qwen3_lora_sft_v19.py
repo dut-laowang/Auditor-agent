@@ -110,6 +110,12 @@ def main():
     parser.add_argument("--output-dir", required=True)
     parser.add_argument("--max-len", type=int, default=8192)
     parser.add_argument(
+        "--context-contract",
+        choices=["v19-8192", "v22-all-12288"],
+        default="v19-8192",
+        help="Explicit experiment context contract; V19 remains fixed at 8192 by default.",
+    )
+    parser.add_argument(
         "--prompt-overflow",
         choices=["error", "middle"],
         default="error",
@@ -128,8 +134,11 @@ def main():
         help="Automatically resume from the newest checkpoint in output-dir.",
     )
     args = parser.parse_args()
-    if args.max_len != 8192:
-        raise ValueError("The zero-truncation V19 experiment requires --max-len 8192")
+    required_max_len = {"v19-8192": 8192, "v22-all-12288": 12288}[args.context_contract]
+    if args.max_len != required_max_len:
+        raise ValueError(
+            f"Context contract {args.context_contract} requires --max-len {required_max_len}"
+        )
 
     train_file = os.path.join(args.data_dir, "train.jsonl")
     validation_file = os.path.join(args.data_dir, "validation.jsonl")
@@ -288,7 +297,11 @@ def main():
                 digest.update(block)
         return digest.hexdigest()
     run_manifest = {
-        "version": "V19-qualityfix",
+        "version": (
+            "V22-ALL-audit-grade-sft-v1"
+            if args.context_contract == "v22-all-12288"
+            else "V19-qualityfix"
+        ),
         "model": args.model,
         "model_revision": args.revision,
         "seed": args.seed,
@@ -297,6 +310,7 @@ def main():
         "batch": args.batch,
         "gradient_accumulation": args.grad_accum,
         "max_length": args.max_len,
+        "context_contract": args.context_contract,
         "prompt_overflow": args.prompt_overflow,
         "train_sha256": sha256(train_file),
         "validation_sha256": sha256(validation_file),

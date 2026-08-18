@@ -384,7 +384,8 @@ if [[ ! -f "$QWEN_MODEL/run_manifest.json" ]]; then
   CUDA_VISIBLE_DEVICES="$GPU" python "$V19/server_scripts/train_qwen3_lora_sft_v19.py" \
     --model Qwen/Qwen3-8B --revision b968826d9c46dd6066d109eabc6255188de91218 \
     --data-dir "$QWEN_READY" --output-dir "$QWEN_MODEL" "${INIT_ARGS[@]}" \
-    --max-len 12288 --epochs "${QWEN_EPOCHS:-2}" --lr "$QWEN_LR" \
+    --max-len 12288 --context-contract v22-all-12288 \
+    --epochs "${QWEN_EPOCHS:-2}" --lr "$QWEN_LR" \
     --batch "${QWEN_TRAIN_BATCH:-1}" --grad-accum "${QWEN_GRAD_ACCUM:-16}" \
     --seed 42 --resume auto 2>&1 | tee -a "$LOGS/qwen_training.log"
 fi
@@ -393,6 +394,10 @@ import hashlib, json, pathlib, sys
 manifest = json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
 data = pathlib.Path(sys.argv[2])
 sha = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
+if manifest.get("version") != "V22-ALL-audit-grade-sft-v1":
+    raise RuntimeError("Qwen model/version contract mismatch")
+if manifest.get("context_contract") != "v22-all-12288" or manifest.get("max_length") != 12288:
+    raise RuntimeError("Qwen model/context contract mismatch")
 if manifest.get("train_sha256") != sha(data / "train.jsonl"):
     raise RuntimeError("Qwen model/train data resume hash mismatch")
 if manifest.get("validation_sha256") != sha(data / "validation.jsonl"):
