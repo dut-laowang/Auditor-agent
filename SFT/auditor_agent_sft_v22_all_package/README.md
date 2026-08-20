@@ -1,11 +1,12 @@
 # V22-ALL unified multi-source audit pipeline
 
-V22-ALL combines the three completed framework/task-source tracks without
+V22-ALL now combines the complete 2 x 2 framework/task-source tracks without
 changing their observable evidence:
 
 - `marble_mab`: MARBLE x MultiAgentBench
 - `autogen_mab`: AutoGen x MultiAgentBench
 - `marble_appworld`: MARBLE x AppWorld
+- `autogen_appworld`: AutoGen x AppWorld
 
 The local bundle contains the unified source training rows and the full frozen
 validation rows. The server applies an exact final-chat Qwen context gate again
@@ -19,7 +20,9 @@ into model-visible text.
 
 `prepare_v22_all_source.py` performs a full structural, leakage, evidence, and
 cross-field semantic-contract audit plus deterministic stratified sampling. It samples 50 rows for every
-`track x split x verdict` cell (900 rows total) and writes the sampled rows for
+`track x split x verdict` cell and writes the sampled rows for review. Small
+minority cells are reviewed exhaustively. The expanded bundle checks 1,184 rows
+in this sampled gate in addition to the full-dataset checks.
 review. Every sampled row is rechecked for non-empty observable evidence,
 verdict/binary/attack consistency, localization validity, candidate/evidence
 alignment, and complete audit-trace semantics. The ZIP is created only when every cell and every full-dataset gate
@@ -31,13 +34,16 @@ Expected current inputs after the existing Qwen 8,192-token gate:
 | Track | Train | Validation | Sealed test (not read) |
 | --- | ---: | ---: | ---: |
 | MARBLE x MultiAgentBench | 5,404 | 1,756 | 1,522 |
-| AutoGen x MultiAgentBench | 1,912 | 792 | 624 |
-| MARBLE x AppWorld | 3,122 | 406 | 393 |
-| **V22-ALL** | **10,438** | **2,954** | **2,539** |
+| AutoGen x MultiAgentBench | 6,042 | 2,099 | 1,804 |
+| MARBLE x AppWorld | 7,641 | 1,025 | 951 |
+| AutoGen x AppWorld | 5,117 | 693 | 619 |
+| **V22-ALL expanded** | **24,204** | **5,573** | **4,896** |
 
-The ModernBERT-only 8,192-token gate trains that inspector on 10,420 rows
-(18 overlength AutoGen training documents are ineligible for ModernBERT), but
-those 18 rows remain unchanged in the 10,438-row V22/Qwen training split.
+The Qwen 12,288-token gate is lossless at these final counts. The independent
+ModernBERT 8,192-token user-input gate retains 24,153 train, 5,541 validation,
+and 4,866 test rows. The longer Qwen-eligible rows remain in the Plain-Qwen
+dataset; the bounded Agent treats them as verifier-unavailable rather than
+truncating them.
 
 ## Local preparation
 
@@ -46,12 +52,42 @@ python SFT/auditor_agent_sft_v22_all_package/scripts/prepare_v22_all_source.py `
   --marble-mab-data D:\path\to\marble\context_filtered_dataset `
   --autogen-mab-data D:\path\to\autogen\context_filtered_dataset `
   --marble-appworld-data D:\path\to\appworld\context_filtered_dataset `
+  --autogen-appworld-data D:\path\to\autogen_appworld\context_filtered_dataset `
   --output-dir D:\FIRST_COPILOT\plan_e\v22_all_source_bundle
 ```
 
 The successful output is `v22_all_source_bundle.zip`.
 
-## One-command server run
+The expanded assembly is produced by `assemble_v22_all_expanded_tracks.py`.
+It inherits the frozen split of every existing task group, removes duplicate
+run IDs, assigns deterministic globally unique sample UIDs, and fails on task,
+run-ID, or exact-input overlap. Source `ambiguous` and `not_exposed` labels,
+leaky private controls, insufficient observable-evidence rows, and over-budget
+Qwen chats are never forced into training.
+
+## Expanded Plain-Qwen + verifier Agent run
+
+The primary auditor remains Plain Qwen3-8B SFT. ModernBERT is independently
+fine-tuned on its eligible subset and is queried only by the learned bounded
+router. Localization remains Qwen-owned except for the existing empty-component
+compatibility fallback. The frozen labeled test ZIP must be transferred
+separately and is opened only after both training stages finish.
+
+```bash
+cd /gs/bs/tgh-26IAW/hongbo/project_4_coauthor/Auditor-agent && \
+git pull --ff-only origin main && \
+V22_ALL_RUN=/gs/bs/tgh-26IAW/hongbo/project_4_coauthor/v22_all_expanded_run \
+V22_ALL_SEALED_TEST_BUNDLE=/absolute/path/v22_all_expanded_sealed_test.zip \
+GPU=0 QWEN_TRAIN_BATCH=1 QWEN_GRAD_ACCUM=16 QWEN_EVAL_BATCH=4 \
+MODERN_TRAIN_BATCH=2 MODERN_GRAD_ACCUM=8 MODERN_EVAL_BATCH=4 \
+bash SFT/auditor_agent_sft_v22_all_package/server_scripts/run_v22_all_expanded_plain_agent_once.sh
+```
+
+## Legacy three-track cascade runner (not for the expanded source)
+
+The command below documents the frozen earlier cascade experiment only. Its
+hard count/hash guards intentionally reject the expanded source. Use the
+expanded Plain-Qwen + verifier Agent command above for current V22-ALL.
 
 The quality-gated ZIP is versioned under `source_bundle/`. Pull the repository
 and run:

@@ -12,8 +12,9 @@ from prepare_v22_all_source import task_key, validate_row
 
 TRACKS = {
     "marble_mab": 1522,
-    "autogen_mab": 624,
-    "marble_appworld": 393,
+    "autogen_mab": 1804,
+    "marble_appworld": 951,
+    "autogen_appworld": 619,
 }
 
 
@@ -35,6 +36,13 @@ def read_jsonl(path: Path) -> list[dict]:
 
 
 def read_test_member(path: Path) -> tuple[list[str], list[dict]]:
+    if path.is_dir():
+        test_path = path / "test.jsonl"
+        if not test_path.is_file():
+            raise FileNotFoundError(test_path)
+        text = test_path.read_text(encoding="utf-8")
+        lines = [line.rstrip("\r") for line in text.splitlines() if line.strip()]
+        return lines, [json.loads(line) for line in lines]
     if not path.is_file():
         raise FileNotFoundError(path)
     with zipfile.ZipFile(path) as archive:
@@ -48,6 +56,8 @@ def read_test_member(path: Path) -> tuple[list[str], list[dict]]:
 
 def infer_track(row: dict) -> str:
     source_type = str(row.get("metadata", {}).get("source_type", ""))
+    if "autogen_appworld" in source_type:
+        return "autogen_appworld"
     if "appworld" in source_type:
         return "marble_appworld"
     if "autogen" in source_type:
@@ -78,6 +88,7 @@ def main() -> None:
     parser.add_argument("--marble-mab-zip", required=True, type=Path)
     parser.add_argument("--autogen-mab-zip", required=True, type=Path)
     parser.add_argument("--marble-appworld-zip", required=True, type=Path)
+    parser.add_argument("--autogen-appworld-zip", required=True, type=Path)
     parser.add_argument("--reference-data", required=True, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
     args = parser.parse_args()
@@ -93,6 +104,7 @@ def main() -> None:
         "marble_mab": args.marble_mab_zip.resolve(),
         "autogen_mab": args.autogen_mab_zip.resolve(),
         "marble_appworld": args.marble_appworld_zip.resolve(),
+        "autogen_appworld": args.autogen_appworld_zip.resolve(),
     }
     reference_rows = []
     for split in ("train", "validation"):

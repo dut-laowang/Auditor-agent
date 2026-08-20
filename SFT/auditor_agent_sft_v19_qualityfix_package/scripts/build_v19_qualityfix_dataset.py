@@ -250,6 +250,16 @@ def semantic_sanitize_text(
         text,
         flags=re.I,
     )
+    # Excerpting can cut an injection provenance tag before its closing bracket
+    # (for example ``...[Injected memory:rnd...``).  Remove only that unfinished
+    # trailing tag from the individual field; never let a later JSON-array
+    # bracket be mistaken for its terminator.
+    text = re.sub(
+        r"\[(?:Injected|External)[^\]\r\n]{0,240}$",
+        "",
+        text,
+        flags=re.I,
+    )
     text = re.sub(
         r"\b(?:Injected|External)\s+(?:message|instruction|profile)\b"
         r"(?:\s+instruction)?\s*:?\s*",
@@ -320,6 +330,16 @@ def sanitize_visible_value(
             sanitize_visible_value(item, replacements, run_id) for item in value
         ]
     if isinstance(value, str):
+        # Tool/event fields can themselves contain JSON encoded as text.  Parse
+        # and sanitize that nested value structurally when possible so that no
+        # regex replacement is ever applied to a serialized JSON envelope.
+        try:
+            nested = json.loads(value)
+        except (json.JSONDecodeError, TypeError):
+            return semantic_sanitize_text(value, replacements, run_id)
+        if isinstance(nested, (dict, list)):
+            sanitized = sanitize_visible_value(nested, replacements, run_id)
+            return json.dumps(sanitized, ensure_ascii=False)
         return semantic_sanitize_text(value, replacements, run_id)
     return value
 
@@ -339,10 +359,7 @@ def sanitize_sample_messages(
             )
         else:
             structured = sanitize_visible_value(structured, replacements, run_id)
-            serialized = json.dumps(structured, ensure_ascii=False)
-            # Some tool outputs contain nested JSON encoded as strings. Apply the
-            # provenance-only substitutions once more to the serialized envelope.
-            message["content"] = semantic_sanitize_text(serialized, {}, run_id)
+            message["content"] = json.dumps(structured, ensure_ascii=False)
 
 
 def semantic_events_from_trajectory(

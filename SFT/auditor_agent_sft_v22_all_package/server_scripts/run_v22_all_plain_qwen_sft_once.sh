@@ -10,6 +10,7 @@ ALL="$REPO/SFT/auditor_agent_sft_v22_all_package"
 DATA="$RUN/base_dataset"
 TRACK_INDEX="$RUN/track_index"
 SEALED="$RUN/modernbert_sealed_test_source"
+SEALED_BUNDLE="${V22_ALL_SEALED_TEST_BUNDLE:-}"
 MODEL="$RUN/models/qwen3_8b_plain_sft"
 VAL="$RUN/qwen3_8b_plain_sft_validation"
 TEST="$RUN/qwen3_8b_plain_sft_test"
@@ -27,8 +28,8 @@ for path in "$DATA/train.jsonl" "$DATA/validation.jsonl" \
   "$TRACK_INDEX/train.jsonl" "$TRACK_INDEX/validation.jsonl"; do
   test -f "$path"
 done
-[[ "$(wc -l < "$DATA/train.jsonl" | tr -d ' ')" -eq 10438 ]]
-[[ "$(wc -l < "$DATA/validation.jsonl" | tr -d ' ')" -eq 2954 ]]
+[[ "$(wc -l < "$DATA/train.jsonl" | tr -d ' ')" -eq 24204 ]]
+[[ "$(wc -l < "$DATA/validation.jsonl" | tr -d ' ')" -eq 5573 ]]
 mkdir -p "$LOGS"
 
 # Plain SFT: original gold audit JSON only. No teacher expansion, ModernBERT
@@ -78,12 +79,14 @@ python "$ALL/scripts/score_predictions_by_track.py" \
   --predictions "$VAL/predictions.jsonl" --track-index "$TRACK_INDEX/validation.jsonl" \
   --output-dir "$VAL/by_track"
 
-# Open the already frozen final test only after training and validation finish.
-python "$ALL/scripts/prepare_v22_all_sealed_test.py" \
-  --marble-mab-zip "$REPO/SFT/auditor_agent_sft_v20_marble_package/dataset_bundle/dataset_jsonl.zip" \
-  --autogen-mab-zip "$REPO/SFT/auditor_agent_sft_v20_autogen_package/dataset_bundle/dataset_jsonl.zip" \
-  --marble-appworld-zip "$REPO/SFT/auditor_agent_sft_v20_appworld_marble_package/dataset_bundle/dataset_jsonl.zip" \
-  --reference-data "$DATA" --output-dir "$SEALED"
+# Open the separately transported frozen final test only after training and
+# validation finish.  It is deliberately not versioned with the training data.
+if [[ ! -f "$SEALED/SEALED_TEST_MANIFEST.json" ]]; then
+  test -n "$SEALED_BUNDLE"; test -f "$SEALED_BUNDLE"
+  mkdir -p "$SEALED"
+  unzip -q "$SEALED_BUNDLE" -d "$SEALED"
+fi
+[[ "$(wc -l < "$SEALED/test.jsonl" | tr -d ' ')" -eq 4896 ]]
 
 CUDA_VISIBLE_DEVICES="$GPU" python "$V19/server_scripts/eval_qwen3_fullschema_v19.py" \
   --mode sft --model Qwen/Qwen3-8B --revision b968826d9c46dd6066d109eabc6255188de91218 \
@@ -102,7 +105,7 @@ validation, test, model_manifest = map(pathlib.Path, sys.argv[1:])
 val = json.loads((validation / "by_track/metrics_by_track.json").read_text(encoding="utf-8"))
 tst = json.loads((test / "by_track/metrics_by_track.json").read_text(encoding="utf-8"))
 manifest = json.loads(model_manifest.read_text(encoding="utf-8"))
-if val["all"]["n"] != 2954 or tst["all"]["n"] != 2539:
+if val["all"]["n"] != 5573 or tst["all"]["n"] != 4896:
     raise RuntimeError("Plain SFT evaluation is incomplete")
 
 def compact(item):
@@ -164,8 +167,8 @@ for scope, entry in [("overall", comparison["overall"]), *comparison["by_track"]
 )
 (test / "PLAIN_QWEN_TEST_COMPLETE.json").write_text(json.dumps({
     "status": "PASS",
-    "validation_rows": 2954,
-    "test_rows": 2539,
+    "validation_rows": 5573,
+    "test_rows": 4896,
     "comparison_sha256": hashlib.sha256(
         (test / "V22_ALL_PLAIN_QWEN_VALIDATION_TEST_COMPARISON.json").read_bytes()
     ).hexdigest(),

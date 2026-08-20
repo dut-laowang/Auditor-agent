@@ -11,8 +11,9 @@ from pathlib import Path
 
 TRACKS = {
     "marble_mab": {"train": 5404, "validation": 1756, "sealed_test": 1522},
-    "autogen_mab": {"train": 1912, "validation": 792, "sealed_test": 624},
-    "marble_appworld": {"train": 3122, "validation": 406, "sealed_test": 393},
+    "autogen_mab": {"train": 6042, "validation": 2099, "sealed_test": 1804},
+    "marble_appworld": {"train": 7641, "validation": 1025, "sealed_test": 951},
+    "autogen_appworld": {"train": 5117, "validation": 693, "sealed_test": 619},
 }
 VERDICTS = ("clean_safe", "attack_failed", "attack_success")
 SCOPES = {"none", "global", "node", "edge", "tool", "multi"}
@@ -164,7 +165,7 @@ def validate_row(row: dict, track: str, split: str) -> list[str]:
 
 def task_key(row: dict, track: str) -> tuple[str, str, str]:
     meta = row["metadata"]
-    family = "appworld" if track == "marble_appworld" else "multiagentbench"
+    family = "appworld" if track in {"marble_appworld", "autogen_appworld"} else "multiagentbench"
     return family, str(meta.get("scenario")), str(meta.get("sample_id"))
 
 
@@ -174,10 +175,11 @@ def write_json(path: Path, value) -> None:
 
 
 def main() -> None:
-    parser = argparse.ArgumentParser(description="Build the leakage-safe three-track V22-ALL source bundle.")
+    parser = argparse.ArgumentParser(description="Build the leakage-safe four-track V22-ALL source bundle.")
     parser.add_argument("--marble-mab-data", required=True, type=Path)
     parser.add_argument("--autogen-mab-data", required=True, type=Path)
     parser.add_argument("--marble-appworld-data", required=True, type=Path)
+    parser.add_argument("--autogen-appworld-data", required=True, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
     parser.add_argument("--sample-per-verdict", type=int, default=50)
     parser.add_argument("--seed", type=int, default=20260817)
@@ -186,6 +188,7 @@ def main() -> None:
         "marble_mab": args.marble_mab_data.resolve(),
         "autogen_mab": args.autogen_mab_data.resolve(),
         "marble_appworld": args.marble_appworld_data.resolve(),
+        "autogen_appworld": args.autogen_appworld_data.resolve(),
     }
     output = args.output_dir.resolve()
     if output.exists() and any(output.iterdir()):
@@ -238,10 +241,13 @@ def main() -> None:
                 for verdict in VERDICTS:
                     pool = cells.get(verdict, [])
                     cell = f"{track}/{split}/{verdict}"
-                    if len(pool) < args.sample_per_verdict:
-                        problems.append(f"{cell}: only {len(pool)} rows; need {args.sample_per_verdict}")
+                    if not pool:
+                        problems.append(f"{cell}: no rows available for quality sampling")
                         continue
-                    chosen = rng.sample(pool, args.sample_per_verdict)
+                    # Small minority-class cells are reviewed exhaustively rather
+                    # than failing or duplicating rows merely to reach the nominal
+                    # sample count.
+                    chosen = rng.sample(pool, min(len(pool), args.sample_per_verdict))
                     sample_problems = []
                     for _, sampled_row in chosen:
                         sample_problems.extend(validate_row(sampled_row, track, split))
@@ -252,6 +258,7 @@ def main() -> None:
                     sample_path.write_text("\n".join(line for line, _ in chosen) + "\n", encoding="utf-8")
                     sample_cells[cell] = {
                         "available": len(pool), "sampled": len(chosen), "sha256": sha256(sample_path),
+                        "sampling": "exhaustive" if len(pool) < args.sample_per_verdict else "random",
                         "semantic_contract_checks": "PASS",
                     }
 
@@ -265,7 +272,7 @@ def main() -> None:
                 problems.append(f"train/validation {name} overlap: {count}")
 
         quality = {
-            "version": "V22-ALL-preupload-quality-v2",
+            "version": "V22-ALL-preupload-quality-v3-expanded-2x2",
             "status": "PASS" if not problems else "FAIL",
             "seed": args.seed,
             "sample_per_track_split_verdict": args.sample_per_verdict,
@@ -310,11 +317,11 @@ def main() -> None:
             combined[split] = {"rows": count, "sha256": sha256(combined_path), "index_sha256": sha256(track_index_path)}
 
         source_manifest = {
-            "version": "V22-ALL-unified-source-v2",
+            "version": "V22-ALL-unified-source-v3-expanded-2x2",
             "tracks": manifest_tracks,
             "combined": combined,
             "classification_data": "unexpanded base_dataset",
-            "audit_sft_data": "server-built after ModernBERT predictions and train-only teacher expansion",
+            "audit_sft_data": "same leakage-safe gold audit reports used by the plain-Qwen SFT",
             "preupload_quality_gate": "PASS",
             "quality_sample_rows": quality["sampled_rows"],
             "sealed_test_rows": sum(value["sealed_test"] for value in TRACKS.values()),
@@ -326,7 +333,7 @@ def main() -> None:
     except Exception as exc:
         if not (output / "QUALITY_FAILURE_REPORT.json").exists():
             write_json(output / "QUALITY_FAILURE_REPORT.json", {
-                "version": "V22-ALL-preupload-quality-v2", "status": "FAIL", "error": str(exc), "problems": problems,
+                "version": "V22-ALL-preupload-quality-v3-expanded-2x2", "status": "FAIL", "error": str(exc), "problems": problems,
             })
         print(json.dumps({"status": "FAIL", "report": str(output / "QUALITY_FAILURE_REPORT.json"), "error": str(exc)}, ensure_ascii=False, indent=2))
         raise SystemExit(1) from exc
