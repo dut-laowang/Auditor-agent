@@ -130,3 +130,15 @@ bash SFT/auditor_agent_sft_v22_all_package/server_scripts/run_v22_plain_hetero_a
 Only verdict changes trigger report regeneration with the existing local Plain
 Qwen checkpoint. Results and the frozen calibration policy are written under
 `$V22_ALL_RUN/plain_hetero_agent_test300`.
+
+After the frozen 300-row pilot passes, evaluate all 2,531 rows jointly eligible
+for Plain Qwen and ModernBERT without changing the learned policy or budget:
+
+```bash
+V22_ALL_RUN=/gs/bs/tgh-26IAW/hongbo/project_4_coauthor/v22_all_run \
+GPU=0 QWEN_EVAL_BATCH=4 \
+bash SFT/auditor_agent_sft_v22_all_package/server_scripts/run_v22_plain_hetero_agent_full_test_once.sh
+```
+
+The full result uses its own `$V22_ALL_RUN/plain_hetero_agent_full_test`
+directory and does not overwrite the pilot.

@@ -216,15 +216,15 @@ def prepare(args: argparse.Namespace) -> None:
                 "pred_scope": final_scope, "pred_components": final_components,
             })
     out = args.output_dir
-    write(out / "test_300.jsonl", [data[i] for i in ids])
-    write(out / "test_300_index.jsonl", [next(r for r in test_idx if r["run_id"] == i) for i in ids])
+    write(out / "test_subset.jsonl", [data[i] for i in ids])
+    write(out / "test_subset_index.jsonl", [next(r for r in test_idx if r["run_id"] == i) for i in ids])
     write(out / "base_predictions.jsonl", base)
     write(out / "rewrite_data.jsonl", rewrite_data)
     write(out / "rewrite_controls.jsonl", rewrite_controls)
     write(out / "agent_decisions.jsonl", [{"run_id": i, **decisions[i]} for i in ids])
     (out / "CALIBRATION_POLICY.json").write_text(json.dumps(policy, indent=2), encoding="utf-8")
     manifest = {
-        "version": "V22-ALL-plain-heterogeneous-agent-test300-v1", "rows": len(ids),
+        "version": "V22-ALL-plain-heterogeneous-agent-test-v2", "rows": len(ids),
         "verify_rows": len(verified), "verify_rate": len(verified) / len(ids),
         "rewrite_rows": len(rewrite_data), "actions": Counter(d["action"] for d in decisions.values()),
         "test_decision_label_blind": True, "router": "validation-trained logistic_regression",
@@ -252,7 +252,7 @@ def merge(args: argparse.Namespace) -> None:
     corrupted = sum(initial_ok[i] and not final_ok[i] for i in initial_ok)
     actions = Counter(r["action"] for r in decisions.values())
     result = {
-        "version": "V22-ALL-plain-heterogeneous-agent-test300-results-v1", "rows": len(base),
+        "version": "V22-ALL-plain-heterogeneous-agent-test-results-v2", "rows": len(base),
         "actions": actions, "verify_rate": sum(a != "FINALIZE" for a in actions.elements()) / len(base),
         "defer_rate": actions["DEFER"] / len(base), "coverage": 1 - actions["DEFER"] / len(base),
         "corrected": corrected, "corrupted": corrupted, "net_corrections": corrected - corrupted,
@@ -264,7 +264,7 @@ def merge(args: argparse.Namespace) -> None:
             "localization_micro_f1": after["localization"]["component_micro_f1"] - before["localization"]["component_micro_f1"],
         },
     }
-    (args.output_dir / "AGENT_TEST300_COMPARISON.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
+    (args.output_dir / "AGENT_TEST_COMPARISON.json").write_text(json.dumps(result, indent=2), encoding="utf-8")
     print(json.dumps({k: result[k] for k in ("rows", "actions", "verify_rate", "coverage", "corrected", "corrupted", "net_corrections", "delta")}, indent=2))
 
 
