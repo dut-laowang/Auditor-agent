@@ -114,10 +114,12 @@ recheck rate, corrections, corruptions, deltas, and per-row agent traces.
 ## Plain-Qwen heterogeneous-verifier Agent: frozen test-300
 
 This is the primary bounded-agent experiment. Plain Qwen remains the auditor;
-ModernBERT is consulted only for the highest-risk 15% of rows. Conflict routing
-is calibrated once on validation predictions and frozen before a deterministic,
+ModernBERT is consulted only for the 15% of rows assigned the highest Qwen-error
+probability by a learned logistic router. A fixed hash split uses 70% of the
+validation predictions to train the router and the remaining 30% to train/check
+the heterogeneous conflict selector; both are frozen before a deterministic,
 stratified 300-row sample is drawn from the common eligible sealed-test pool.
-No test gold field is used by the policy.
+All router features are deployment-visible and no test gold field is used.
 
 ```bash
 V22_ALL_RUN=/gs/bs/tgh-26IAW/hongbo/project_4_coauthor/v22_all_run \

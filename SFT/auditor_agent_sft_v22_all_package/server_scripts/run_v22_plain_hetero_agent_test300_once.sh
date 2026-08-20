@@ -32,7 +32,7 @@ python "$ALL/scripts/v22_plain_hetero_agent.py" prepare \
   --test-qwen "$RUN/qwen3_8b_plain_sft_test/predictions.jsonl" \
   --test-bert "$RUN/modernbert_sealed_test/predictions.jsonl" \
   --output-dir "$OUT" --rows "${AGENT_TEST_ROWS:-300}" \
-  --max-verify-rate "${AGENT_MAX_VERIFY_RATE:-0.15}" --min-calibration-support 20
+  --max-verify-rate "${AGENT_MAX_VERIFY_RATE:-0.15}"
 
 if [[ -s "$OUT/rewrite_data.jsonl" ]]; then
   if [[ -f "$OUT/rewrite_eval/predictions.jsonl" && ! -s "$OUT/rewrite_eval/predictions.jsonl" \
