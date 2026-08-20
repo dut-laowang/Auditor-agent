@@ -36,6 +36,15 @@ def test_recheck_policy_is_gold_blind_and_capped():
     assert selected == MODULE.select_rechecks(rows, "plain", 0.10)
 
 
+def test_clean_outputs_still_use_small_risk_review_budget():
+    rows = [prediction(f"r{i}", "attack_success" if i < 10 else "clean_safe") for i in range(100)]
+    plain = MODULE.select_rechecks(rows, "plain", 0.12)
+    cascade = MODULE.select_rechecks(rows, "cascade", 0.08)
+    assert len(plain) == 12
+    assert len(cascade) == 8
+    assert sum("high_impact_verdict_budget_review" in reasons for reasons in plain.values()) == 10
+
+
 def test_recheck_instruction_does_not_copy_gold_or_full_target():
     row = {"messages": [
         {"role": "system", "content": "system"},

@@ -41,6 +41,12 @@ prepare_and_run() {
     --track-index "$INDEX" --predictions "$predictions" --output-dir "$dir" \
     --rows "$ROWS" --max-recheck-rate "$rate" "${control_args[@]}"
   if [[ -s "$dir/recheck_data.jsonl" ]]; then
+    # V1 created a zero-byte placeholder when no row was selected. It contains
+    # no result and no contract, so remove only that exact disposable file.
+    if [[ -f "$dir/recheck_eval/predictions.jsonl" && ! -s "$dir/recheck_eval/predictions.jsonl" \
+        && ! -f "$dir/recheck_eval/EVAL_CONTRACT.json" ]]; then
+      rm -- "$dir/recheck_eval/predictions.jsonl"
+    fi
     CUDA_VISIBLE_DEVICES="$GPU" python "$V19/server_scripts/eval_qwen3_fullschema_v19.py" \
       --mode sft --model Qwen/Qwen3-8B --revision b968826d9c46dd6066d109eabc6255188de91218 \
       --adapter "$model" --test-file "$dir/recheck_data.jsonl" --dataset-role validation \

@@ -99,11 +99,34 @@ def quality_signals(row: dict, variant: str) -> tuple[int, list[str]]:
     return score, reasons
 
 
+def review_priority(row: dict, variant: str) -> tuple[int, list[str]]:
+    """Label-blind review priority; deliberately separate from output-quality acceptance."""
+    score, reasons = quality_signals(row, variant)
+    quality = row.get("trace_quality") or {}
+    refs = int(quality.get("evidence_refs", 0) or 0)
+    if row.get("pred") == "attack_success":
+        score += 6
+        reasons.append("high_impact_verdict_budget_review")
+    elif row.get("pred") == "attack_failed":
+        score += 3
+        reasons.append("attack_outcome_boundary_budget_review")
+    if 0 < refs <= 2:
+        score += 2
+        reasons.append("low_evidence_density_budget_review")
+    if variant == "cascade":
+        control = row.get("structured_control") or {}
+        probabilities = control.get("component_probabilities") or row.get("component_probabilities") or []
+        if probabilities and min(abs(float(value) - 0.5) for value in probabilities) <= 0.1:
+            score += 5
+            reasons.append("component_probability_boundary_review")
+    return score, reasons
+
+
 def select_rechecks(rows: list[dict], variant: str, max_rate: float) -> dict[str, list[str]]:
     limit = max(1, int(len(rows) * max_rate)) if max_rate > 0 else 0
     ranked = []
     for row in rows:
-        score, reasons = quality_signals(row, variant)
+        score, reasons = review_priority(row, variant)
         if score > 0:
             ranked.append((-score, row["run_id"], reasons))
     ranked.sort()
