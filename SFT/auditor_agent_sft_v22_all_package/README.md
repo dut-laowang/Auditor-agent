@@ -92,3 +92,21 @@ the source, context-filtered data, joint ModernBERT checkpoint, and ModernBERT
 evaluation, then continues in the same run directory. Stale artifacts are not
 embedded in the final archive. The completion marker and PASS summary are
 written only after the union and all three per-track quality gates pass.
+
+## Two bounded-agent 100-row demo
+
+After the plain-Qwen and V22-ALL cascade validation predictions exist, run:
+
+```bash
+V22_ALL_RUN=/gs/bs/tgh-26IAW/hongbo/project_4_coauthor/v22_all_run \
+GPU=0 QWEN_EVAL_BATCH=4 \
+bash SFT/auditor_agent_sft_v22_all_package/server_scripts/run_v22_all_agent_demo_100.sh
+```
+
+This command does not retrain a model or open the sealed test. It uses the same
+deterministic, track/verdict-stratified 100 validation rows for both variants,
+reuses their base predictions, and calls the corresponding local Qwen checkpoint
+only for label-blind policy selections. Defaults cap extra inference at 12% for
+plain SFT and 8% for the cascade. Results under
+`$V22_ALL_RUN/agent_demo_100` contain ordinary initial/final task metrics,
+recheck rate, corrections, corruptions, deltas, and per-row agent traces.
