@@ -110,3 +110,21 @@ only for label-blind policy selections. Defaults cap extra inference at 12% for
 plain SFT and 8% for the cascade. Results under
 `$V22_ALL_RUN/agent_demo_100` contain ordinary initial/final task metrics,
 recheck rate, corrections, corruptions, deltas, and per-row agent traces.
+
+## Plain-Qwen heterogeneous-verifier Agent: frozen test-300
+
+This is the primary bounded-agent experiment. Plain Qwen remains the auditor;
+ModernBERT is consulted only for the highest-risk 15% of rows. Conflict routing
+is calibrated once on validation predictions and frozen before a deterministic,
+stratified 300-row sample is drawn from the common eligible sealed-test pool.
+No test gold field is used by the policy.
+
+```bash
+V22_ALL_RUN=/gs/bs/tgh-26IAW/hongbo/project_4_coauthor/v22_all_run \
+GPU=0 QWEN_EVAL_BATCH=4 \
+bash SFT/auditor_agent_sft_v22_all_package/server_scripts/run_v22_plain_hetero_agent_test300_once.sh
+```
+
+Only verdict changes trigger report regeneration with the existing local Plain
+Qwen checkpoint. Results and the frozen calibration policy are written under
+`$V22_ALL_RUN/plain_hetero_agent_test300`.
