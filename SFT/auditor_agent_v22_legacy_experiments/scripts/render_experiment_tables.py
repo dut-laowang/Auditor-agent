@@ -41,6 +41,35 @@ def table(title: str, headers: list[str], rows: list[list[str]]) -> str:
     return "\n".join(out)
 
 
+def latex_escape(value: str) -> str:
+    for old, new in (("\\", r"\textbackslash{}"), ("&", r"\&"), ("%", r"\%"), ("_", r"\_"), ("#", r"\#")):
+        value = value.replace(old, new)
+    return value
+
+
+def latex_from_markdown(markdown: str) -> str:
+    blocks, title, rows = [], None, []
+    def flush() -> None:
+        nonlocal rows
+        if not title or len(rows) < 2:
+            rows = []; return
+        headers, body = rows[0], rows[2:]
+        cols = "l" + "r" * (len(headers) - 1)
+        lines = [r"\begin{table*}[t]", r"\centering", r"\small", f"\\caption{{{latex_escape(title)}}}", f"\\begin{{tabular}}{{{cols}}}", r"\toprule"]
+        lines += [" & ".join(map(latex_escape, headers)) + r" \\", r"\midrule"]
+        lines += [" & ".join(map(latex_escape, row)) + r" \\" for row in body]
+        lines += [r"\bottomrule", r"\end{tabular}", r"\end{table*}"]
+        blocks.append("\n".join(lines)); rows = []
+    for line in markdown.splitlines():
+        if line.startswith("## "):
+            flush(); title = line[3:]
+        elif title and line.startswith("|"):
+            cells = [cell.strip() for cell in line.strip().strip("|").split("|")]
+            rows.append(cells)
+    flush()
+    return "% Requires \\usepackage{booktabs}\n" + "\n\n".join(blocks) + "\n"
+
+
 def main() -> None:
     p = argparse.ArgumentParser()
     p.add_argument("--run-dir", type=Path, required=True)
@@ -61,14 +90,14 @@ def main() -> None:
     for name, rels in main_methods:
         data = first([root / rel for rel in rels for root in (args.run_dir, supplement)])
         rows.append([name, *(metric(data, key) for key in METRICS), str(data.get("n", "TBD")) if data else "TBD"])
-    sections = [table("Main table — Frozen V22-ALL three-track test", ["Method", "Acc.", "Macro-F1", "AS Recall", "Binary Acc.", "Loc. F1", "N"], rows)]
+    sections = [table("Main table - Frozen V22-ALL three-track test", ["Method", "Acc.", "Macro-F1", "AS Recall", "Binary Acc.", "Loc. F1", "N"], rows)]
 
     held_rows = []
     for fold in ("topology__tree", "surface__message", "scenario__research"):
         for method in ("modernbert", "qwen"):
             data = load(supplement / "heldout" / fold / method / "metrics.json")
             held_rows.append([fold.replace("__", "="), method, *(metric(data, key) for key in METRICS), str(data.get("n", "TBD")) if data else "TBD"])
-    sections.append(table("Supplement A — Held-out generalization", ["Held out", "Method", "Acc.", "Macro-F1", "AS Recall", "Binary Acc.", "Loc. F1", "N"], held_rows))
+    sections.append(table("Supplement A - Held-out generalization", ["Held out", "Method", "Acc.", "Macro-F1", "AS Recall", "Binary Acc.", "Loc. F1", "N"], held_rows))
 
     flat = load(supplement / "single_transfer/qwen3_8b_flat_validation/metrics.json")
     graph = first([args.run_dir / "qwen3_8b_plain_sft_validation/metrics.json"])
@@ -76,15 +105,15 @@ def main() -> None:
                 ["AgentDoG 1.5 outcome-adapted", "flattened full trajectory", "TBD", "TBD", "transfer baseline"],
                 ["Qwen3-8B Flat SFT", "same V22 IDs/events; graph removed", metric(flat, "three_class_macro_f1"), metric(flat, "localization_micro_f1"), "controlled ablation"],
                 ["Qwen3-8B Graph SFT", "same V22 IDs/events; full graph", metric(graph, "three_class_macro_f1"), metric(graph, "localization_micro_f1"), "ours"]]
-    sections.append(table("Supplement B — Single-agent/trajectory-to-MAS transfer", ["Method", "Input", "Macro-F1", "Loc. F1", "Role"], transfer))
+    sections.append(table("Supplement B - Single-agent/trajectory-to-MAS transfer", ["Method", "Input", "Macro-F1", "Loc. F1", "Role"], transfer))
 
     online = [["AgentForesight-7B", "prefix-only online", "Exact-F1", "ASS / FAR", "external AFTraj/Who&When only"],
               ["Our post-hoc auditor", "complete trajectory", "Acc./Macro-F1", "Loc. F1", "not directly comparable"],
               ["Our prefix adapter", "prefix-only online", "TBD", "TBD", "run only after decisive-step labels exist"]]
-    sections.append(table("Supplement C — Online auditing protocol", ["Method", "Observation", "Primary", "Localization/cost", "Status"], online))
+    sections.append(table("Supplement C - Online auditing protocol", ["Method", "Observation", "Primary", "Localization/cost", "Status"], online))
 
     agent = first([args.run_dir / "plain_hetero_agent_full_test" / "summary.json", args.run_dir / "plain_hetero_agent_full_test" / "AGENT_FULL_TEST_COMPLETE.json"])
-    sections.append(table("Supplement D — Agent utility and cost", ["Variant", "Final Macro-F1", "Final Loc. F1", "Verify rate", "Defer rate", "Coverage", "Extra calls"], [[
+    sections.append(table("Supplement D - Agent utility and cost", ["Variant", "Final Macro-F1", "Final Loc. F1", "Verify rate", "Defer rate", "Coverage", "Extra calls"], [[
         "Bounded Audit Agent", metric(agent, "three_class_macro_f1"), metric(agent, "localization_micro_f1"),
         "TBD" if not agent else f"{100*agent.get('verify_rate', 0):.2f}", "TBD" if not agent else f"{100*agent.get('defer_rate', 0):.2f}",
         "TBD" if not agent else f"{100*agent.get('coverage', 0):.2f}", str(agent.get("verify_rows", "TBD")) if agent else "TBD"
@@ -99,10 +128,11 @@ def main() -> None:
             cf_rows.append([name, f"{100*values['three_class_macro_f1']:.2f}", f"{100*values['localization_micro_f1']:.2f}", f"{100*delta['three_class_macro_f1']:+.2f}", f"{100*delta['localization_micro_f1']:+.2f}"])
     else:
         cf_rows = [[name, "TBD", "TBD", "TBD", "TBD"] for name in ("Clean", "Cross-label text rotation", "Event text removed", "Lexical shortcuts masked", "Event shuffling", "Task goal removed", "Structure links removed", "Outcome text removed")]
-    sections.append(table("Supplement E — SFT counterfactual ablations (validation only)", ["Condition", "Macro-F1", "Loc. F1", "Delta Macro-F1", "Delta Loc. F1"], cf_rows))
+    sections.append(table("Supplement E - SFT counterfactual ablations (validation only)", ["Condition", "Macro-F1", "Loc. F1", "Delta Macro-F1", "Delta Loc. F1"], cf_rows))
     args.output_dir.mkdir(parents=True, exist_ok=True)
     text = "# V22 experiment tables\n\n`TBD` means the experiment has not been run; no result is imputed.\n\n" + "\n\n".join(sections) + "\n"
     (args.output_dir / "EXPECTED_TABLES.md").write_text(text, encoding="utf-8")
+    (args.output_dir / "EXPECTED_TABLES.tex").write_text(latex_from_markdown(text), encoding="utf-8")
     (args.output_dir / "TABLE_STATUS.json").write_text(json.dumps({"status": "PASS", "tbd_cells": text.count("TBD")}, indent=2), encoding="utf-8")
     print(text)
 
