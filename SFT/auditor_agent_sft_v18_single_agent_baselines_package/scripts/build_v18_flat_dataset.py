@@ -99,6 +99,7 @@ def main() -> None:
     parser = argparse.ArgumentParser()
     parser.add_argument("--graph-data-dir", required=True, type=Path)
     parser.add_argument("--output-dir", required=True, type=Path)
+    parser.add_argument("--eval-split", choices=["validation", "test"], default="test")
     args = parser.parse_args()
     args.output_dir.mkdir(parents=True, exist_ok=True)
 
@@ -107,20 +108,20 @@ def main() -> None:
         train = rows(train_source)
     else:
         train = zipped_rows(args.graph_data_dir / "train.jsonl.zip", "train.jsonl")
-    test = rows(args.graph_data_dir / "test.jsonl")
+    test = rows(args.graph_data_dir / f"{args.eval_split}.jsonl")
 
     train_count, train_sha = write(
         args.output_dir / "train.jsonl", (flatten(row) for row in train)
     )
     test_count, test_sha = write(
-        args.output_dir / "test.jsonl", (flatten(row) for row in test)
+        args.output_dir / f"{args.eval_split}.jsonl", (flatten(row) for row in test)
     )
     stats = {
         "protocol": "v18_flat_preregistered",
         "train_rows": train_count,
-        "test_rows": test_count,
+        f"{args.eval_split}_rows": test_count,
         "train_sha256": train_sha,
-        "test_sha256": test_sha,
+        f"{args.eval_split}_sha256": test_sha,
         "removed": [
             "graph",
             "topology",

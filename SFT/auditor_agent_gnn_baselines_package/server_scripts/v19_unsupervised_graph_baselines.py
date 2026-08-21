@@ -312,9 +312,12 @@ def build_records(scored, lower: float, upper: float, component_threshold: float
 
 def metrics(records: list[dict]) -> dict:
     gold, pred = [r["gold"] for r in records], [r["pred"] for r in records]
+    gold_binary = [value == "attack_success" for value in gold]
+    pred_binary = [value == "attack_success" for value in pred]
     report = classification_report(gold, pred, labels=list(common.VERDICTS), zero_division=0, output_dict=True)
     return {
         "n": len(records), "three_class_accuracy": accuracy_score(gold, pred),
+        "binary_accuracy": accuracy_score(gold_binary, pred_binary),
         "three_class_report": report,
         "localization": common.localization_summary(records, lambda row: row["gold"] == "attack_success"),
         "all_attacked_localization": common.localization_summary(records, lambda row: row["gold"] != "clean_safe"),
@@ -327,12 +330,14 @@ def save_predictions(path: Path, records: list[dict]) -> None:
             handle.write(json.dumps(record, ensure_ascii=False) + "\n")
 
 
-def load_splits(data_dir: Path, cache_dir: Path, splits: tuple[str, ...], normal_only_train: bool = False):
+def load_splits(data_dir: Path, cache_dir: Path, splits: tuple[str, ...], normal_only_train: bool = False,
+                expected_hashes: dict[str, str] | None = None):
     encoded, hashes = {}, {}
     for split in splits:
         path = data_dir / f"{split}.jsonl"
         actual = sha256_file(path)
-        if actual != common.MARBLE_SHA256[split]:
+        expected = (expected_hashes or common.MARBLE_SHA256)[split]
+        if actual != expected:
             raise RuntimeError(f"Frozen MARBLE {split} hash mismatch: {actual}")
         hashes[split] = actual
         raw = common.build_raw_graphs(path)
@@ -354,7 +359,8 @@ def train(args) -> None:
     device, output = torch.device("cuda"), Path(args.output_dir)
     output.mkdir(parents=True, exist_ok=True)
     commit = official_commit(Path(args.official_dir), args.model_kind)
-    encoded, hashes = load_splits(Path(args.data_dir), Path(args.cache_dir), ("train", "validation"), normal_only_train=True)
+    expected = {"train": args.expected_train_sha256, "validation": args.expected_validation_sha256}
+    encoded, hashes = load_splits(Path(args.data_dir), Path(args.cache_dir), ("train", "validation"), normal_only_train=True, expected_hashes=expected)
     normal = [row for row in encoded["train"] if row["gold_verdict"] == "clean_safe"]
     if not normal:
         raise RuntimeError("No clean_safe rows available for unsupervised normal-only training")
@@ -451,7 +457,7 @@ def final_test(args) -> None:
     checkpoint = checkpoint_dir / "best_model.pt"
     if sha256_file(checkpoint) != contract["best_model_sha256"]:
         raise RuntimeError("Best-model hash mismatch")
-    rows, hashes = load_splits(Path(args.data_dir), Path(args.cache_dir), ("test",))
+    rows, hashes = load_splits(Path(args.data_dir), Path(args.cache_dir), ("test",), expected_hashes={"test": args.expected_test_sha256})
     device = torch.device("cuda")
     dim = int(rows["test"][0]["x_sentence"].shape[1])
     model = make_model(kind, Path(args.official_dir), dim, contract["hidden_dim"], contract["latent_dim"]).to(device)
@@ -530,10 +536,13 @@ def main() -> None:
     train_p.add_argument("--lower-quantile", type=float, default=0.95)
     train_p.add_argument("--upper-quantile", type=float, default=0.99)
     train_p.add_argument("--component-quantile", type=float, default=0.90)
+    train_p.add_argument("--expected-train-sha256", default=common.MARBLE_SHA256["train"])
+    train_p.add_argument("--expected-validation-sha256", default=common.MARBLE_SHA256["validation"])
     test_p = sub.add_parser("final-test")
     test_p.add_argument("--checkpoint-dir", required=True); test_p.add_argument("--official-dir", required=True)
     test_p.add_argument("--data-dir", required=True); test_p.add_argument("--cache-dir", required=True)
     test_p.add_argument("--output-dir", required=True); test_p.add_argument("--sealed-test-ack", choices=["FINAL_ONCE"], required=True)
+    test_p.add_argument("--expected-test-sha256", default=common.MARBLE_SHA256["test"])
     smoke_p = sub.add_parser("runtime-smoke")
     smoke_p.add_argument("--blindguard-dir", required=True); smoke_p.add_argument("--xgguard-dir", required=True)
     args = parser.parse_args()
