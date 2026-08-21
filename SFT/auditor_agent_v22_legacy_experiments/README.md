@@ -59,23 +59,30 @@ python SFT/auditor_agent_v22_legacy_experiments/scripts/render_experiment_tables
   --output-dir /gs/bs/tgh-26IAW/hongbo/project_4_coauthor/v22_legacy_supplement_run/tables
 ```
 
-## One-click pilot
+## Final one-click suite (no new Qwen SFT)
 
 ```bash
 cd /gs/bs/tgh-26IAW/hongbo/project_4_coauthor/Auditor-agent && \
 git pull --ff-only origin main && \
 V22_LEGACY_RUN=/gs/bs/tgh-26IAW/hongbo/project_4_coauthor/v22_all_run \
 V22_SUPPLEMENT_RUN=/gs/bs/tgh-26IAW/hongbo/project_4_coauthor/v22_legacy_supplement_run \
-GPU=0 METHODS=modernbert \
+GPU=0 RUN_BASE_LLMS=1 RUN_EXTERNAL_BASELINES=1 RUN_AGENT_FULL=1 \
 bash SFT/auditor_agent_v22_legacy_experiments/server_scripts/run_v22_legacy_all_missing_experiments.sh
 ```
 
-Full optional run:
+The runner prints `task i/N`, an overall progress bar, elapsed time, estimated
+remaining time, and live output from the active task. It reuses completed
+checkpoints and does not retrain Qwen SFT, V18 transfer, or V19 counterfactual
+models. The only default retraining is the three smaller ModernBERT held-out
+folds; Qwen3-8B/32B Base are inference-only and resumable. Transfer back the
+final `V22_LEGACY_FINAL_RESULTS.tar.gz`; it contains
+the Markdown/LaTeX five-table bundle, status JSON, progress record, and logs.
 
-```bash
-METHODS=modernbert,qwen RUN_EXTERNAL_BASELINES=1 RUN_SINGLE_TRANSFER=1 RUN_COUNTERFACTUALS=1 \
-bash SFT/auditor_agent_v22_legacy_experiments/server_scripts/run_v22_legacy_all_missing_experiments.sh
-```
+`TABLE_STATUS.json` can be `INCOMPLETE` even when the suite itself passes. This
+means an external/API row remains `TBD`, never that a value was inferred. In
+particular GPT-4.1 requires an explicit API key/budget, while AgentForesight remains
+in Table 3 under its native published Exact-F1/ASS/FAR protocol and is not mixed
+with V22 post-hoc metrics.
 
 `RUN_AGENTFORESIGHT_NATIVE=1` additionally reproduces the official external
 paper-test protocol and requires `AGENTFORESIGHT_MODEL` and
