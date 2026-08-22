@@ -28,8 +28,11 @@ for spec in topology__tree surface__message scenario__research; do
   train_sha="$(python -c "import hashlib;print(hashlib.sha256(open('$fold/train.jsonl','rb').read()).hexdigest())")"
   val_sha="$(python -c "import hashlib;print(hashlib.sha256(open('$fold/validation.jsonl','rb').read()).hexdigest())")"
   if [[ ",$METHODS," == *,modernbert,* ]]; then
-    model="$OUT/heldout/$spec/modernbert_model"
-    result="$OUT/heldout/$spec/modernbert"
+    # v2 is deliberately isolated from the pre-filter v1 contract. The first
+    # failed preflight may already have written CONTRACT.json even though no
+    # checkpoint exists; reusing that directory would correctly be rejected.
+    model="$OUT/heldout/$spec/modernbert_model_ztr_v2"
+    result="$OUT/heldout/$spec/modernbert_ztr_v2"
     modern_epochs="${MODERN_EPOCHS:-3}"
     checkpoint="$model/checkpoint-epoch-${modern_epochs}.pt"
     if [[ ! -f "$checkpoint" ]]; then

@@ -88,7 +88,10 @@ def main():
  for dim,v,fold in labels:
   for method,kind in (("ModernBERT","true held-out retraining"),("Qwen3-8B SFT","frozen OOD slice"),("Bounded Agent","frozen OOD slice")):
    key="modernbert" if method=="ModernBERT" else ("qwen_frozen" if method.startswith("Qwen") else "agent_frozen")
-   d=load(s/"heldout"/fold/key/"metrics.json") or (load(s/"heldout"/fold/"qwen"/"metrics.json") if method.startswith("Qwen") else None)
+   if method=="ModernBERT":
+    d=load(s/"heldout"/fold/"modernbert_ztr_v2"/"metrics.json") or load(s/"heldout"/fold/"modernbert"/"metrics.json")
+   else:
+    d=load(s/"heldout"/fold/key/"metrics.json") or (load(s/"heldout"/fold/"qwen"/"metrics.json") if method.startswith("Qwen") else None)
    held.append([dim,v,method,kind,*[pct(d,k) for k in METRICS],nval(d)])
  tables.append(("Table 4. V22-ALL held-out and frozen-OOD generalization",["Dimension","Unseen value","Method","Protocol","Acc.","Macro-F1","AS Recall","Binary Acc.","Loc. F1","N"],held))
  tables.append(("Table 5. Evidence dependence and counterfactual ablations (frozen V19 validation)",["Condition","3-way Acc.","Macro-F1","AS Recall","Loc. F1","Hit","Exact","Scope Acc.","Δ Class.","Δ Loc."],V19))
