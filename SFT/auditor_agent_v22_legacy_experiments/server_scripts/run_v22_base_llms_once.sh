@@ -16,4 +16,4 @@ run_one() {
     --max-input-len 12288 --max-new-tokens 1400 --batch-size "$batch" --resume --disable-cudnn-sdp
 }
 run_one Qwen/Qwen3-8B b968826d9c46dd6066d109eabc6255188de91218 qwen3_8b_base "${QWEN8_BASE_BATCH:-4}"
-run_one Qwen/Qwen3-32B 9216db5781bf9f97bad3d229c117be829f1811ca qwen3_32b_base "${QWEN32_BASE_BATCH:-1}"
+run_one Qwen/Qwen3-32B 9216db5781bf21249d130ec9da846c4624c16137 qwen3_32b_base "${QWEN32_BASE_BATCH:-1}"
