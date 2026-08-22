@@ -65,8 +65,8 @@ def main():
  b=get("modernbert_sealed_test/metrics.json","modernbert_sealed_test/test_metrics.json","modernbert_eval/test/metrics.json")
  ag=get("plain_hetero_agent_full_test/AGENT_FULL_TEST_COMPLETE.json","plain_hetero_agent_full_test/summary.json","plain_hetero_agent_full_test/metrics.json")
  defs=[
- ("Open-source general LLM","Qwen3-8B Base",get("baselines/qwen3_8b_base/metrics.json","baselines/qwen3_8b_base_common200/metrics.json"),"Zero-shot fixed prompt"),
- ("Open-source general LLM","Qwen3-32B Base",get("baselines/qwen3_32b_base/metrics.json","baselines/qwen3_32b_base_common200/metrics.json"),"Zero-shot fixed prompt"),
+ ("Open-source general LLM","Qwen3-8B Base",get("baselines/qwen3_8b_base_ztr12288_v2/metrics.json","baselines/qwen3_8b_base/metrics.json","baselines/qwen3_8b_base_common200/metrics.json"),"Zero-shot fixed prompt; zero truncation"),
+ ("Open-source general LLM","Qwen3-32B Base",get("baselines/qwen3_32b_base_ztr12288_v2/metrics.json","baselines/qwen3_32b_base/metrics.json","baselines/qwen3_32b_base_common200/metrics.json"),"Zero-shot fixed prompt; zero truncation"),
  ("Closed-source general LLM","GPT-4.1",get("baselines/gpt41/metrics.json","baselines/gpt41_common200/metrics.json"),"Zero-shot fixed prompt"),
  ("Graph MAS defense","G-Safeguard",get("baselines/gsafeguard/metrics.json"),"V22-adapted"),
  ("Graph MAS defense","TAM Encoder",get("baselines/tam/metrics.json"),"V22 supervised adaptation"),

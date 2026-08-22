@@ -24,6 +24,10 @@ def main():
         elapsed=time.time()-start; left=sum(x[2] for x in tasks[i-1:]); filled=int(20*(i-1)/len(tasks)); bar="#"*filled+"-"*(20-filled)
         print(f"\n[{bar}] task {i}/{len(tasks)} START: {name}\nelapsed={clock(elapsed)} estimated_remaining={clock(left)}",flush=True)
         t=time.time(); log=a.out/f"task_{i:02d}.log"
+        if name.startswith("Protocol/data preflight") and (a.out/"SUPPLEMENT_SUITE_COMPLETE.json").is_file():
+            duration=time.time()-t; done.append({"task":i,"name":name,"returncode":0,"seconds":duration,"status":"SKIPPED_COMPLETE","log":str(log)})
+            print(f"task {i}/{len(tasks)} SKIP: validated completion marker exists",flush=True)
+            continue
         with log.open("a",encoding="utf-8") as f:
             p=subprocess.Popen(cmd,cwd=a.repo,env=env,stdout=subprocess.PIPE,stderr=subprocess.STDOUT,text=True,bufsize=1)
             assert p.stdout is not None

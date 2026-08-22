@@ -374,7 +374,10 @@ def main():
     }))
 
     test_sha256 = sha256_file(args.test_file)
-    if args.model == "Qwen/Qwen3-32B":
+    # The manifest/hash block below validates the historical V19 32B SFT
+    # adapter. A pinned base-model evaluation has no adapter manifest and may
+    # legitimately evaluate a different frozen dataset such as V22-ALL.
+    if args.model == "Qwen/Qwen3-32B" and args.mode == "sft":
         if test_sha256 != MARBLE_SHA256[args.dataset_role]:
             raise ValueError(
                 f"Frozen V19 MARBLE {args.dataset_role} hash mismatch: "
