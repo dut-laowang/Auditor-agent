@@ -21,7 +21,7 @@ cd "$REPO"
 
 [[ "$(wc -l < "$DATA/train.jsonl" | tr -d ' ')" -eq 10438 ]]
 [[ "$(wc -l < "$DATA/validation.jsonl" | tr -d ' ')" -eq 2954 ]]
-python "$PKG/scripts/build_heldout_splits.py" --data-dir "$DATA" --output-dir "$FOLDS"
+python "$PKG/scripts/build_heldout_splits.py" --data-dir "$DATA" --output-dir "$FOLDS" --modernbert-zero-truncation
 
 for spec in topology__tree surface__message scenario__research; do
   fold="$FOLDS/$spec"

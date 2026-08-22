@@ -11,6 +11,8 @@ from pathlib import Path
 
 LEGACY_COUNTS = {"train": 10438, "validation": 2954}
 DEFAULT_FOLDS = (("topology", "tree"), ("surface", "message"), ("scenario", "research"))
+MODERNBERT_MODEL = "answerdotai/ModernBERT-base"
+MODERNBERT_REVISION = "8949b909ec900327062f0ebf497f51aef5e6f0c8"
 
 
 def read_jsonl(path: Path) -> list[dict]:
@@ -42,6 +44,25 @@ def exact_input(row: dict) -> str:
 
 def selected(row: dict, axis: str, value: str) -> bool:
     return str(row["metadata"].get(axis)) == value
+
+
+def modernbert_eligible(rows: list[dict], tokenizer, max_len: int = 8192) -> tuple[list[dict], list[dict]]:
+    """Apply the exact zero-truncation document/candidate contract used by the trainer."""
+    kept, excluded = [], []
+    for row in rows:
+        user = row["messages"][1]["content"]
+        document_len = len(tokenizer(user, truncation=False, add_special_tokens=True)["input_ids"])
+        payload = json.loads(user)
+        candidate_lengths = [
+            len(tokenizer(json.dumps(c, ensure_ascii=False, sort_keys=True), truncation=False, add_special_tokens=True)["input_ids"])
+            for c in payload.get("graph_candidates", []) if isinstance(c, dict) and c.get("id")
+        ]
+        candidate_max = max(candidate_lengths, default=0)
+        if document_len <= max_len and candidate_max <= max_len:
+            kept.append(row)
+        else:
+            excluded.append({"run_id": row["metadata"]["run_id"], "document_tokens": document_len, "max_candidate_tokens": candidate_max})
+    return kept, excluded
 
 
 def build_fold(train: list[dict], validation: list[dict], axis: str, value: str) -> tuple[list[dict], list[dict]]:
@@ -87,18 +108,30 @@ def main() -> None:
     p.add_argument("--data-dir", type=Path, required=True)
     p.add_argument("--output-dir", type=Path, required=True)
     p.add_argument("--fold", action="append", help="axis=value; repeatable")
+    p.add_argument("--modernbert-zero-truncation", action="store_true", help="Filter each fold using the pinned ModernBERT tokenizer and 8192-token hard gate")
     args = p.parse_args()
     train = read_jsonl(args.data_dir / "train.jsonl")
     validation = read_jsonl(args.data_dir / "validation.jsonl")
     if {"train": len(train), "validation": len(validation)} != LEGACY_COUNTS:
         raise RuntimeError("This suite accepts only frozen V22 legacy data (10,438 train / 2,954 validation)")
     folds = DEFAULT_FOLDS if not args.fold else tuple(tuple(x.split("=", 1)) for x in args.fold)
-    manifest = {"version": "V22-legacy-heldout-v1", "source_counts": LEGACY_COUNTS, "folds": {}}
+    tokenizer = None
+    if args.modernbert_zero_truncation:
+        from transformers import AutoTokenizer
+        tokenizer = AutoTokenizer.from_pretrained(MODERNBERT_MODEL, revision=MODERNBERT_REVISION)
+    manifest = {"version": "V22-legacy-heldout-v2", "source_counts": LEGACY_COUNTS, "folds": {}, "modernbert_zero_truncation": bool(tokenizer), "modernbert_revision": MODERNBERT_REVISION if tokenizer else None}
     for axis, value in folds:
         if axis not in {"topology", "surface", "scenario"}:
             raise ValueError(f"Unsupported held-out axis: {axis}")
         fold_train, fold_eval = build_fold(train, validation, axis, value)
+        excluded_train, excluded_eval = [], []
+        if tokenizer is not None:
+            fold_train, excluded_train = modernbert_eligible(fold_train, tokenizer)
+            fold_eval, excluded_eval = modernbert_eligible(fold_eval, tokenizer)
         report = audit(fold_train, fold_eval, axis, value)
+        report["zero_truncation_excluded_train"] = len(excluded_train)
+        report["zero_truncation_excluded_validation"] = len(excluded_eval)
+        report["zero_truncation_exclusions"] = {"train": excluded_train, "validation": excluded_eval}
         root = args.output_dir / f"{axis}__{value}"
         report["train_sha256"] = write_jsonl(root / "train.jsonl", fold_train)
         report["validation_sha256"] = write_jsonl(root / "validation.jsonl", fold_eval)
