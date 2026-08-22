@@ -31,7 +31,10 @@ def first(*ps):
 def deep(d,k):
  if not d:return None
  if k in d:return d[k]
- for q in ("summary","metrics","test","delta"):
+ if isinstance(d.get("agent_final_full_coverage"),dict):
+  nested=deep(d["agent_final_full_coverage"],k)
+  if nested is not None:return nested
+ for q in ("summary","metrics","test","delta","agent_final_full_coverage"):
   if isinstance(d.get(q),dict) and k in d[q]:return d[q][k]
  if k=="three_class_macro_f1":return d.get("three_class_report",{}).get("macro avg",{}).get("f1-score")
  if k=="localization_micro_f1":return d.get("localization",{}).get("component_micro_f1")
@@ -63,7 +66,7 @@ def main():
  def get(*rels):return first(*[root/rel for rel in rels for root in (r,s)])
  q=get("qwen3_8b_plain_sft_test/metrics.json","qwen3_8b_plain_sft_test/test_metrics.json")
  b=get("modernbert_sealed_test/metrics.json","modernbert_sealed_test/test_metrics.json","modernbert_eval/test/metrics.json")
- ag=get("plain_hetero_agent_full_test/AGENT_FULL_TEST_COMPLETE.json","plain_hetero_agent_full_test/summary.json","plain_hetero_agent_full_test/metrics.json")
+ ag=get("plain_hetero_agent_full_test_common2531_v3/AGENT_TEST_COMPARISON.json","plain_hetero_agent_full_test/AGENT_TEST_COMPARISON.json","plain_hetero_agent_full_test/AGENT_FULL_TEST_COMPLETE.json","plain_hetero_agent_full_test/summary.json","plain_hetero_agent_full_test/metrics.json")
  defs=[
  ("Open-source general LLM","Qwen3-8B Base",get("baselines/qwen3_8b_base_ztr12288_v2/metrics.json","baselines/qwen3_8b_base/metrics.json","baselines/qwen3_8b_base_common200/metrics.json"),"Zero-shot fixed prompt; zero truncation"),
  ("Open-source general LLM","Qwen3-32B Base",get("baselines/qwen3_32b_base_ztr12288_v2/metrics.json","baselines/qwen3_32b_base/metrics.json","baselines/qwen3_32b_base_common200/metrics.json"),"Zero-shot fixed prompt; zero truncation"),

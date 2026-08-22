@@ -8,6 +8,11 @@ echo "V22 legacy no-new-Qwen-SFT suite"
 echo "source=$RUN output=$OUT GPU=${GPU:-0}"
 echo "agent_common_eligible_rows=2531"
 python "$REPO/SFT/auditor_agent_v22_legacy_experiments/scripts/run_progress_suite.py" --repo "$REPO" --run-dir "$RUN" --out "$OUT"
-tar -C "$OUT" -czf "$OUT/V22_LEGACY_FINAL_RESULTS.tar.gz" tables PROGRESS.json task_*.log heldout 2>/dev/null || \
-tar -C "$OUT" -czf "$OUT/V22_LEGACY_FINAL_RESULTS.tar.gz" tables PROGRESS.json task_*.log
+mkdir -p "$OUT/collected_results/agent"
+for f in AGENT_TEST_COMPARISON.json AGENT_TEST_COMPLETE.json PREPARE_MANIFEST.json CALIBRATION_POLICY.json; do
+  src="$RUN/plain_hetero_agent_full_test_common2531_v3/$f"
+  [[ ! -f "$src" ]] || cp -f "$src" "$OUT/collected_results/agent/$f"
+done
+tar -C "$OUT" -czf "$OUT/V22_LEGACY_FINAL_RESULTS.tar.gz" tables PROGRESS.json task_*.log heldout baselines collected_results 2>/dev/null || \
+tar -C "$OUT" -czf "$OUT/V22_LEGACY_FINAL_RESULTS.tar.gz" tables PROGRESS.json task_*.log collected_results
 echo "TRANSFER THIS FILE: $OUT/V22_LEGACY_FINAL_RESULTS.tar.gz"
