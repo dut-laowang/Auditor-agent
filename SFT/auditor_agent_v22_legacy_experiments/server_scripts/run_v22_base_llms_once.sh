@@ -9,7 +9,7 @@ TEST="$RUN/modernbert_sealed_test_source/test.jsonl"
 GPU="${GPU:-0}"
 mkdir -p "$OUT"
 run_one() {
-  local model="$1" revision="$2" name="$3" batch="$4" target="$OUT/${3}_ztr12288_v2"
+  local model="$1" revision="$2" name="$3" batch="$4" target="$OUT/${3}_ztr12288_mnt1400_v3"
   if [[ -f "$target/metrics.json" ]]; then echo "SKIP completed $name"; return; fi
   CUDA_VISIBLE_DEVICES="$GPU" python "$EVAL" --mode base --model "$model" --revision "$revision" \
     --test-file "$TEST" --dataset-role test --sealed-test-ack FINAL_ONCE --output-dir "$target" \
