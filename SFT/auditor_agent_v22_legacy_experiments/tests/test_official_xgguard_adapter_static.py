@@ -23,5 +23,8 @@ class TestOfficialXGGuardAdapterStatic(unittest.TestCase):
         for method in ("G-Safeguard","TAM","XG-Guard"):
             self.assertIn(method,source)
         self.assertIn("V22_THREE_OFFICIAL_GNN_RESULTS.tar.gz",source)
+        adapter=(ROOT/"server_scripts/run_v22_official_gsafe_tam_once.sh").read_text(encoding="utf8")
+        self.assertIn('run_method gat "$GSAFE/MA"',adapter)
+        self.assertIn('run_method tam "$BLIND/MA"',adapter)
 
 if __name__=="__main__":unittest.main()

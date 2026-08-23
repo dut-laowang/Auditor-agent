@@ -51,5 +51,5 @@ PY
   echo "DONE: $out/test/metrics.json"
 }
 methods=",${GNN_METHODS:-gat,tam},"
-[[ "$methods" != *,gat,* ]] || run_method gat "$GSAFE" gsafeguard
+[[ "$methods" != *,gat,* ]] || run_method gat "$GSAFE/MA" gsafeguard
 [[ "$methods" != *,tam,* ]] || run_method tam "$BLIND/MA" tam
