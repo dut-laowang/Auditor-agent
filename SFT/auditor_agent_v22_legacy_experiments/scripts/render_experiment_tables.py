@@ -74,7 +74,7 @@ def main():
  ("Graph MAS defense","G-Safeguard",get("baselines/gsafeguard/metrics.json"),"V22-adapted"),
  ("Graph MAS defense","TAM Encoder",get("baselines/tam/metrics.json"),"V22 supervised adaptation"),
  ("Graph MAS defense","BlindGuard",get("baselines/blindguard/metrics.json"),"V22-adapted, normal-only"),
- ("Graph MAS defense","XG-Guard (ACL'26)",get("baselines/xgguard_test/metrics.json"),"V22-adapted, normal-only"),
+ ("Graph MAS defense","XG-Guard (ACL'26)",get("baselines/xgguard_official_v22_v1/full/metrics.json"),"official OursMethod; V22 adapter; normal-only"),
  ("Discriminative auditor","ModernBERT",b,"V22 supervised"),
  ("Generative auditor","Plain Qwen3-8B SFT",q,"V22 audit SFT"),
  ("Our full method","Qwen SFT + BERT Bounded Agent",ag,"learned routing + selective verification")]

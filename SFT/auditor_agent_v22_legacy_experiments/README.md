@@ -89,3 +89,23 @@ paper-test protocol and requires `AGENTFORESIGHT_MODEL` and
 `AGENTFORESIGHT_DATA`. It never changes V22 predictions.
 Set `RUN_XGGUARD_TEST=1` only after its validation thresholds are frozen; this
 opens the already sealed legacy test once and writes a separate test directory.
+
+## Official XG-Guard V22 adapter
+
+The earlier `xgguard_test` row is a compatible mathematical reimplementation
+and must not be reported as official XG-Guard. The replacement adapter extracts
+`GCNEncoder`, `OursMethod`, and `get_score_overall` directly from the pinned
+official `Ours.py`; V22 conversion and validation calibration remain outside
+the model. It reports native node AUROC/AUPRC separately from projected V22
+audit metrics. Run only this baseline with:
+
+```bash
+V22_LEGACY_RUN=/gs/bs/tgh-26IAW/hongbo/project_4_coauthor/v22_all_run \
+V22_SUPPLEMENT_RUN=/gs/bs/tgh-26IAW/hongbo/project_4_coauthor/v22_legacy_supplement_run \
+GPU=0 XGGUARD_OFFICIAL_BATCH=8 \
+bash SFT/auditor_agent_v22_legacy_experiments/server_scripts/run_v22_official_xgguard_once.sh
+```
+
+The runner first completes a 100-row validation-only smoke test. It does not
+touch the sealed test until official-source identity, graph conversion, model
+forward/backward, calibration, and scoring have all passed.
