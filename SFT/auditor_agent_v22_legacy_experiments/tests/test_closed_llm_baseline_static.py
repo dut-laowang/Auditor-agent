@@ -16,4 +16,10 @@ class TestClosedLLM(unittest.TestCase):
  def test_runner_does_not_score_or_require_gold(self):
   s=(ROOT/'server_scripts/run_v22_closed_llm_colleague_once.sh').read_text(encoding='utf8')
   self.assertNotIn('PRIVATE_GOLD',s);self.assertNotIn(' score ',s);self.assertIn('RAW_RESULTS.tar.gz',s)
+  self.assertIn('V22_CLOSED_LLM_INPUTS_LABEL_BLIND.tar.gz',s);self.assertIn('EXPECTED_REQUESTS_SHA256',s);self.assertIn('2539',s)
+ def test_batch_runner_prompts_two_keys_and_packs_both(self):
+  s=(ROOT/'server_scripts/run_v22_closed_llms_batch_once.sh').read_text(encoding='utf8')
+  self.assertIn('read -rsp "OpenAI API Key:',s);self.assertIn('read -rsp "Anthropic API Key:',s)
+  self.assertIn('OPENAI_PID',s);self.assertIn('ANTHROPIC_PID',s);self.assertIn('V22_CLOSED_LLMS_RAW_RESULTS.tar.gz',s)
+  self.assertNotIn('PRIVATE_GOLD',s)
 if __name__=='__main__':unittest.main()
