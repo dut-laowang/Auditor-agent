@@ -23,6 +23,9 @@ def sha(path):
 def read(path):return [json.loads(x) for x in Path(path).read_text(encoding="utf8").splitlines() if x.strip()]
 def write_json(path,obj):Path(path).parent.mkdir(parents=True,exist_ok=True);Path(path).write_text(json.dumps(obj,ensure_ascii=False,indent=2),encoding="utf8")
 def write_jsonl(path,rows):Path(path).parent.mkdir(parents=True,exist_ok=True);Path(path).write_text("".join(json.dumps(x,ensure_ascii=False)+"\n" for x in rows),encoding="utf8")
+def graph_stats(rows):
+ counts=collections.Counter(len(x["nodes"]) for x in rows)
+ return {"graphs":len(rows),"single_node_graphs":counts.get(1,0),"min_nodes":min(counts),"max_nodes":max(counts),"node_count_distribution":{str(k):v for k,v in sorted(counts.items())}}
 
 def official_model(repo:Path):
  from torch_geometric.nn import GCNConv
@@ -162,8 +165,12 @@ def main():
  Model,fuse,identity=official_model(a.official_dir);sources={k:sha(v) for k,v in (("train",a.train),("validation",a.validation),("test",a.test))};raw={k:[convert(x) for x in read(v)] for k,v in (("train",a.train),("validation",a.validation),("test",a.test))}
  if a.smoke_only:raw={k:v[:100] for k,v in raw.items()}
  for k,v in raw.items():
-  if not v or any(len(x["nodes"])<2 for x in v):raise RuntimeError(f"invalid {k} graphs")
+  # A one-agent run is a valid degenerate graph. ``convert`` adds its self-loop,
+  # so the official GCN can process it without inventing or dropping a node.
+  # Contrastive training still uses at least two same-size graphs per batch.
+  if not v or any(len(x["nodes"])<1 for x in v):raise RuntimeError(f"invalid {k} graphs")
+ graph_statistics={k:graph_stats(v) for k,v in raw.items()}
  enc={k:encode(v,a.cache_dir/f"{k}{'_smoke' if a.smoke_only else ''}.pt",sources[k]) for k,v in raw.items()};device=torch.device("cuda");seed_all(a.seed);model=Model(enc["train"][0]["x_sentence"].shape[1]).to(device)
  a.output_dir.mkdir(parents=True,exist_ok=True);ck=a.output_dir/"official_oursmethod.pt";hist,nclean=train(model,fuse,enc["train"],device,1 if a.smoke_only else a.epochs,a.batch_size,1e-4,1e-4,2e-4,a.seed,ck)
- val=score(model,fuse,enc["validation"],device);cal=calibrate(val);test=score(model,fuse,enc["test"],device);pred=records(test,cal["verdict_lower"],cal["verdict_upper"],cal["component_threshold"]);m=metrics(pred);m.update({"method":"Official XG-Guard OursMethod + V22 adapter","official_identity":identity,"native_validation":native(val),"native_test":native(test),"calibration":cal,"training_clean_rows":nclean,"source_sha256":sources,"smoke_only":a.smoke_only,"adaptation":"agent-node anomaly is native; V22 verdict/component projection is validation-calibrated"});write_json(a.output_dir/"metrics.json",m);write_jsonl(a.output_dir/"predictions.jsonl",pred);write_json(a.output_dir/"RUN_COMPLETE.json",{"status":"PASS","metrics_sha256":sha(a.output_dir/"metrics.json"),"official_identity":identity,"smoke_only":a.smoke_only});print(json.dumps(m,indent=2))
+ val=score(model,fuse,enc["validation"],device);cal=calibrate(val);test=score(model,fuse,enc["test"],device);pred=records(test,cal["verdict_lower"],cal["verdict_upper"],cal["component_threshold"]);m=metrics(pred);m.update({"method":"Official XG-Guard OursMethod + V22 adapter","official_identity":identity,"native_validation":native(val),"native_test":native(test),"calibration":cal,"training_clean_rows":nclean,"graph_statistics":graph_statistics,"single_node_policy":"retain as a valid self-loop graph; no synthetic nodes and no sample filtering","source_sha256":sources,"smoke_only":a.smoke_only,"adaptation":"agent-node anomaly is native; V22 verdict/component projection is validation-calibrated"});write_json(a.output_dir/"metrics.json",m);write_jsonl(a.output_dir/"predictions.jsonl",pred);write_json(a.output_dir/"RUN_COMPLETE.json",{"status":"PASS","metrics_sha256":sha(a.output_dir/"metrics.json"),"official_identity":identity,"smoke_only":a.smoke_only});print(json.dumps(m,indent=2))
 if __name__=="__main__":main()

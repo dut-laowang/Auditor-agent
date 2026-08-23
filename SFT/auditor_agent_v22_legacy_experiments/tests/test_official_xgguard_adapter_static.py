@@ -18,6 +18,13 @@ class TestOfficialXGGuardAdapterStatic(unittest.TestCase):
         self.assertLess(source.index('--test "$VAL"'),source.index('--test "$TEST"'))
         self.assertIn("OFFICIAL_XGGUARD_SMOKE: PASS",source)
 
+    def test_single_node_graphs_are_retained_with_self_loops(self):
+        source=(ROOT/"scripts/v22_xgguard_official_adapter.py").read_text(encoding="utf8")
+        self.assertIn('edges += [(i,i) for i in range(len(nodes))]',source)
+        self.assertIn('any(len(x["nodes"])<1 for x in v)',source)
+        self.assertNotIn('any(len(x["nodes"])<2 for x in v)',source)
+        self.assertIn('"single_node_policy"',source)
+
     def test_three_gnn_runner_has_all_methods_and_compact_output(self):
         source=(ROOT/"server_scripts/run_v22_three_official_gnns_once.sh").read_text(encoding="utf8")
         for method in ("G-Safeguard","TAM","XG-Guard"):
