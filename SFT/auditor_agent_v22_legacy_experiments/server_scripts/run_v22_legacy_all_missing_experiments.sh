@@ -13,6 +13,11 @@ for f in AGENT_TEST_COMPARISON.json AGENT_TEST_COMPLETE.json PREPARE_MANIFEST.js
   src="$RUN/plain_hetero_agent_full_test_common2531_v3/$f"
   [[ ! -f "$src" ]] || cp -f "$src" "$OUT/collected_results/agent/$f"
 done
-tar -C "$OUT" -czf "$OUT/V22_LEGACY_FINAL_RESULTS.tar.gz" tables PROGRESS.json task_*.log heldout baselines collected_results 2>/dev/null || \
-tar -C "$OUT" -czf "$OUT/V22_LEGACY_FINAL_RESULTS.tar.gz" tables PROGRESS.json task_*.log collected_results
+(
+  cd "$OUT"
+  items=(tables PROGRESS.json task_*.log collected_results)
+  [[ ! -d heldout ]] || items+=(heldout)
+  [[ ! -d baselines ]] || items+=(baselines)
+  tar -czf V22_LEGACY_FINAL_RESULTS.tar.gz "${items[@]}"
+)
 echo "TRANSFER THIS FILE: $OUT/V22_LEGACY_FINAL_RESULTS.tar.gz"
