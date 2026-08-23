@@ -18,4 +18,10 @@ class TestOfficialXGGuardAdapterStatic(unittest.TestCase):
         self.assertLess(source.index('--test "$VAL"'),source.index('--test "$TEST"'))
         self.assertIn("OFFICIAL_XGGUARD_SMOKE: PASS",source)
 
+    def test_three_gnn_runner_has_all_methods_and_compact_output(self):
+        source=(ROOT/"server_scripts/run_v22_three_official_gnns_once.sh").read_text(encoding="utf8")
+        for method in ("G-Safeguard","TAM","XG-Guard"):
+            self.assertIn(method,source)
+        self.assertIn("V22_THREE_OFFICIAL_GNN_RESULTS.tar.gz",source)
+
 if __name__=="__main__":unittest.main()

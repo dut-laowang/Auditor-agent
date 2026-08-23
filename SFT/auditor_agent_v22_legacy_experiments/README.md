@@ -109,3 +109,18 @@ bash SFT/auditor_agent_v22_legacy_experiments/server_scripts/run_v22_official_xg
 The runner first completes a 100-row validation-only smoke test. It does not
 touch the sealed test until official-source identity, graph conversion, model
 forward/backward, calibration, and scoring have all passed.
+
+Run the unified three-GNN experiment (G-Safeguard, TAM, XG-Guard) with:
+
+```bash
+V22_LEGACY_RUN=/gs/bs/tgh-26IAW/hongbo/project_4_coauthor/v22_all_run \
+V22_SUPPLEMENT_RUN=/gs/bs/tgh-26IAW/hongbo/project_4_coauthor/v22_legacy_supplement_run \
+GPU=0 GNN_OFFICIAL_EPOCHS=20 XGGUARD_OFFICIAL_EPOCHS=20 \
+bash SFT/auditor_agent_v22_legacy_experiments/server_scripts/run_v22_three_official_gnns_once.sh
+```
+
+G-Safeguard and TAM use their pinned official encoders with explicitly labelled
+V22-supervised audit heads. XG-Guard uses the pinned complete official
+`OursMethod` and validation-calibrated projection because its native task is
+unsupervised malicious-agent anomaly detection. These are intentionally not
+described as identical adaptation regimes.

@@ -76,8 +76,31 @@ def official_commit(path: Path) -> str:
     return result
 
 
+def official_source_identity(kind: str, path: Path) -> dict:
+    source = path / ("model.py" if kind == "gat" else "TAM.py")
+    if not source.is_file():
+        raise RuntimeError(f"Missing official {kind} source: {source}")
+    return {"path": source.name, "sha256": sha256_file(source)}
+
+
 def load_jsonl(path: Path) -> list[dict]:
     return [json.loads(line) for line in path.open(encoding="utf-8-sig") if line.strip()]
+
+
+def deterministic_stratified_limit(rows: list[dict], limit: int | None) -> list[dict]:
+    if limit is None:
+        return rows
+    groups = {name: [] for name in VERDICTS}
+    for row in rows:
+        groups[row["gold_verdict"]].append(row)
+    selected = []
+    while len(selected) < limit and any(groups.values()):
+        for name in VERDICTS:
+            if groups[name] and len(selected) < limit:
+                selected.append(groups[name].pop(0))
+    if len(selected) != min(limit, len(rows)):
+        raise RuntimeError("Could not construct deterministic stratified limit")
+    return selected
 
 
 def parse_row(row: dict) -> tuple[dict, dict, str, list[str]]:
@@ -551,6 +574,7 @@ def train(args) -> None:
     output_dir = Path(args.output_dir)
     cache_dir = Path(args.cache_dir)
     resolved_official_commit = official_commit(Path(args.official_dir))
+    source_identity = official_source_identity(args.model_kind, Path(args.official_dir))
     if resolved_official_commit != OFFICIAL_COMMITS[args.model_kind]:
         raise RuntimeError(
             f"Wrong official {args.model_kind} commit: {resolved_official_commit} != "
@@ -572,13 +596,19 @@ def train(args) -> None:
             )
         hashes[split] = actual
         raw = build_raw_graphs(path)
+        if args.limit is not None:
+            raw = deterministic_stratified_limit(raw, args.limit)
+            if not raw:
+                raise RuntimeError("--limit produced an empty split")
         contract = {
             "data_sha256": actual,
             "encoder_model": ENCODER_MODEL,
             "encoder_revision": ENCODER_REVISION,
             "candidate_graph_schema": "v19-component-graph-v2-zero-truncation",
+            "limit": args.limit,
         }
-        encoded[split] = encode_graphs(raw, cache_dir / f"{split}.pt", contract)
+        suffix = f"_limit{args.limit}" if args.limit is not None else ""
+        encoded[split] = encode_graphs(raw, cache_dir / f"{split}{suffix}.pt", contract)
     if not torch.cuda.is_available():
         raise RuntimeError("A CUDA GPU is required")
     device = torch.device("cuda")
@@ -675,6 +705,7 @@ def train(args) -> None:
             "method": "G-Safeguard" if args.model_kind == "gat" else "TAM encoder (supervised adaptation)",
             "model_kind": args.model_kind,
             "official_commit": official_commit_hash,
+            "official_source_identity": source_identity,
             "encoder_model": ENCODER_MODEL,
             "encoder_revision": ENCODER_REVISION,
             "data_file": str((data_dir / "validation.jsonl").resolve()),
@@ -691,6 +722,7 @@ def train(args) -> None:
     contract = {
         "model_kind": args.model_kind,
         "official_commit": official_commit_hash,
+        "official_source_identity": source_identity,
         "encoder_model": ENCODER_MODEL,
         "encoder_revision": ENCODER_REVISION,
         "train_sha256": hashes["train"],
@@ -719,9 +751,9 @@ def final_test(args) -> None:
         raise RuntimeError("Final test requires --sealed-test-ack FINAL_ONCE")
     checkpoint_dir = Path(args.checkpoint_dir)
     output_dir = Path(args.output_dir)
-    if output_dir.exists():
-        raise RuntimeError("Final-test output directory must not already exist")
-    output_dir.mkdir(parents=True)
+    if output_dir.exists() and any(output_dir.iterdir()):
+        raise RuntimeError("Non-empty final-test output directory already exists")
+    output_dir.mkdir(parents=True, exist_ok=True)
     contract = json.loads((checkpoint_dir / "TRAIN_CONTRACT.json").read_text(encoding="utf-8"))
     if contract["test_accessed"] is not False:
         raise RuntimeError("Invalid training contract")
@@ -730,6 +762,9 @@ def final_test(args) -> None:
         raise RuntimeError(
             f"Official baseline commit mismatch: {actual_commit} != {contract['official_commit']}"
         )
+    actual_source_identity = official_source_identity(contract["model_kind"], Path(args.official_dir))
+    if actual_source_identity != contract["official_source_identity"]:
+        raise RuntimeError("Official baseline source identity mismatch")
     checkpoint_path = checkpoint_dir / "best_model.pt"
     checkpoint_hash = sha256_file(checkpoint_path)
     if checkpoint_hash != contract["best_model_sha256"]:
@@ -738,16 +773,22 @@ def final_test(args) -> None:
         )
     test_path = Path(args.test_file)
     actual_hash = sha256_file(test_path)
-    if actual_hash != MARBLE_SHA256["test"]:
-        raise RuntimeError(f"Frozen MARBLE test hash mismatch: {actual_hash}")
+    if actual_hash != args.expected_test_sha256:
+        raise RuntimeError(f"Frozen test hash mismatch: {actual_hash} != {args.expected_test_sha256}")
     raw = build_raw_graphs(test_path)
+    if args.limit is not None:
+        raw = deterministic_stratified_limit(raw, args.limit)
+        if not raw:
+            raise RuntimeError("--limit produced an empty test split")
     cache_contract = {
         "data_sha256": actual_hash,
         "encoder_model": ENCODER_MODEL,
         "encoder_revision": ENCODER_REVISION,
         "candidate_graph_schema": "v19-component-graph-v2-zero-truncation",
+        "limit": args.limit,
     }
-    rows = encode_graphs(raw, Path(args.cache_dir) / "test.pt", cache_contract)
+    suffix = f"_limit{args.limit}" if args.limit is not None else ""
+    rows = encode_graphs(raw, Path(args.cache_dir) / f"test{suffix}.pt", cache_contract)
     if not torch.cuda.is_available():
         raise RuntimeError("A CUDA GPU is required")
     device = torch.device("cuda")
@@ -763,6 +804,7 @@ def final_test(args) -> None:
             "method": "G-Safeguard" if args.model_kind == "gat" else "TAM encoder (supervised adaptation)",
             "model_kind": args.model_kind,
             "official_commit": contract["official_commit"],
+            "official_source_identity": actual_source_identity,
             "encoder_model": ENCODER_MODEL,
             "encoder_revision": ENCODER_REVISION,
             "data_file": str(test_path.resolve()),
@@ -796,6 +838,7 @@ def main() -> None:
     train_parser.add_argument("--scope-loss-weight", type=float, default=1.0)
     train_parser.add_argument("--grad-accum", type=int, default=16)
     train_parser.add_argument("--seed", type=int, default=42)
+    train_parser.add_argument("--limit", type=int)
     train_parser.add_argument("--expected-train-sha256", default=MARBLE_SHA256["train"])
     train_parser.add_argument(
         "--expected-validation-sha256", default=MARBLE_SHA256["validation"]
@@ -807,6 +850,8 @@ def main() -> None:
     test_parser.add_argument("--cache-dir", required=True)
     test_parser.add_argument("--output-dir", required=True)
     test_parser.add_argument("--sealed-test-ack", choices=["FINAL_ONCE"], required=True)
+    test_parser.add_argument("--expected-test-sha256", default=MARBLE_SHA256["test"])
+    test_parser.add_argument("--limit", type=int)
     args = parser.parse_args()
     if args.command == "train-validation":
         train(args)
