@@ -24,4 +24,10 @@ class TestDeepSeekV4FlashBaseline(unittest.TestCase):
         self.assertIn('${EVAL_API_KEY:-}',runner)
         self.assertIn('V22_DEEPSEEK_V4_FLASH_TABLE1_RESULTS.tar.gz',runner)
 
+    def test_recoverable_nested_localization_is_normalized_but_disclosed(self):
+        source=(ROOT/"scripts/v22_deepseek_v4_flash_baseline.py").read_text(encoding="utf-8")
+        self.assertIn('decision.get("localization")',source)
+        self.assertIn('"strict_json_schema_rate"',source)
+        self.assertIn('"normalized_json_schema_valid_rate"',source)
+
 if __name__=="__main__": unittest.main()
