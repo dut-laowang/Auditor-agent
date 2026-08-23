@@ -15,9 +15,17 @@ for f in AGENT_TEST_COMPARISON.json AGENT_TEST_COMPLETE.json PREPARE_MANIFEST.js
 done
 (
   cd "$OUT"
-  items=(tables PROGRESS.json task_*.log collected_results)
-  [[ ! -d heldout ]] || items+=(heldout)
-  [[ ! -d baselines ]] || items+=(baselines)
-  tar -czf V22_LEGACY_FINAL_RESULTS.tar.gz "${items[@]}"
+  filelist="CORE_RESULT_FILELIST.txt"
+  : > "$filelist"
+  for f in PROGRESS.json SUPPLEMENT_SUITE_COMPLETE.json; do
+    [[ ! -f "$f" ]] || printf '%s\0' "$f" >> "$filelist"
+  done
+  for d in tables heldout baselines collected_results; do
+    [[ ! -d "$d" ]] || find "$d" -type f \
+      \( -name '*.json' -o -name '*.jsonl' -o -name '*.md' -o -name '*.tex' \) \
+      ! -path '*/cache/*' -print0 >> "$filelist"
+  done
+  tar --null --files-from="$filelist" -czf V22_LEGACY_CORE_RESULTS.tar.gz
 )
-echo "TRANSFER THIS FILE: $OUT/V22_LEGACY_FINAL_RESULTS.tar.gz"
+echo "TRANSFER THIS FILE: $OUT/V22_LEGACY_CORE_RESULTS.tar.gz"
+echo "Model checkpoints remain on server and are intentionally excluded."
