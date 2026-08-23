@@ -20,15 +20,16 @@ test_sha="$(python -c "import hashlib;print(hashlib.sha256(open('$TEST','rb').re
 
 run_method() {
   local kind="$1" official="$2" name="$3" out="$SUP/baselines/${3}_official_v22_v1"
-  mkdir -p "$out/cache"
+  local cache="$SUP/baselines/v22_official_gnn_shared_component_cache_v1"
+  mkdir -p "$cache"
   if [[ ! -f "$out/smoke_model/TRAIN_CONTRACT.json" ]]; then
     CUDA_VISIBLE_DEVICES="$GPU" python "$SCRIPT" train-validation --model-kind "$kind" --official-dir "$official" \
-      --data-dir "$DATA" --cache-dir "$out/cache" --output-dir "$out/smoke_model" --epochs 1 --limit 100 \
+      --data-dir "$DATA" --cache-dir "$cache" --output-dir "$out/smoke_model" --epochs 1 --limit 100 \
       --expected-train-sha256 "$train_sha" --expected-validation-sha256 "$val_sha"
   fi
   if [[ ! -f "$out/smoke_test/metrics.json" ]]; then
     CUDA_VISIBLE_DEVICES="$GPU" python "$SCRIPT" final-test --checkpoint-dir "$out/smoke_model" --official-dir "$official" \
-      --test-file "$DATA/validation.jsonl" --cache-dir "$out/cache" --output-dir "$out/smoke_test" \
+      --test-file "$DATA/validation.jsonl" --cache-dir "$cache" --output-dir "$out/smoke_test" \
       --sealed-test-ack FINAL_ONCE --expected-test-sha256 "$val_sha" --limit 100
   fi
   python - "$out/smoke_test/metrics.json" <<'PY'
@@ -38,13 +39,13 @@ print("OFFICIAL_ENCODER_V22_SMOKE: PASS",x["method"])
 PY
   if [[ ! -f "$out/model/TRAIN_CONTRACT.json" ]]; then
     CUDA_VISIBLE_DEVICES="$GPU" python "$SCRIPT" train-validation --model-kind "$kind" --official-dir "$official" \
-      --data-dir "$DATA" --cache-dir "$out/cache" --output-dir "$out/model" \
+      --data-dir "$DATA" --cache-dir "$cache" --output-dir "$out/model" \
       --epochs "${GNN_OFFICIAL_EPOCHS:-20}" --grad-accum "${GNN_GRAD_ACCUM:-16}" \
       --expected-train-sha256 "$train_sha" --expected-validation-sha256 "$val_sha"
   fi
   if [[ ! -f "$out/test/metrics.json" ]]; then
     CUDA_VISIBLE_DEVICES="$GPU" python "$SCRIPT" final-test --checkpoint-dir "$out/model" --official-dir "$official" \
-      --test-file "$TEST" --cache-dir "$out/cache" --output-dir "$out/test" \
+      --test-file "$TEST" --cache-dir "$cache" --output-dir "$out/test" \
       --sealed-test-ack FINAL_ONCE --expected-test-sha256 "$test_sha"
   fi
   echo "DONE: $out/test/metrics.json"
