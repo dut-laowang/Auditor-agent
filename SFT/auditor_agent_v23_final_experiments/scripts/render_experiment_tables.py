@@ -71,7 +71,7 @@ def main():
  defs=[
  ("Graph MAS defense","G-Safeguard",get("baselines/gsafeguard_official_v23_v1/test/metrics.json"),"official MyGAT encoder; V23 supervised heads"),
  ("Graph MAS defense","TAM Encoder",get("baselines/tam_official_v23_v1/test/metrics.json"),"official TAM encoder; V23 supervised heads"),
- ("Graph MAS defense","BlindGuard",get("baselines/blindguard_official_v23_v1/test/metrics.json"),"official GATSCL; normal-only SCL; no LLM SFT"),
+ ("Graph MAS defense","BlindGuard",get("baselines/blindguard_official_v23_v1/test/metrics.json"),"official GATSCL/SCL; normal-only; shared component-graph projection; no LLM SFT"),
  ("Graph MAS defense","XG-Guard (ACL'26)",get("baselines/xgguard_official_v23_v1/full/metrics.json"),"official OursMethod; V23 adapter; normal-only"),
  ("Discriminative auditor","ModernBERT",b,"V23 supervised; zero-truncation subset"),
  ("Generative auditor","Plain Qwen3-8B SFT",q,"V23 audit SFT"),

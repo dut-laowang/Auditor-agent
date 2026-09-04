@@ -428,6 +428,9 @@ def train(args) -> None:
         "calibration": calibration, "selected_epoch": best_epoch,
         "adaptation_disclosure": "Official native anomaly scores; normal-training-distribution two-threshold projection to MOSAIC 3-way labels and threshold projection to G/N/E/T candidates.",
         "input_policy": "MOSAIC user message only; zero-truncation candidate graph projection",
+        "graph_projection": "Shared MOSAIC G/N/E/T component graph; communication and ownership edges; frozen MiniLM node-text encoding",
+        "optimization_supervision": "No attack class, attacker identity, outcome, scope, or localization label enters the SCL loss; clean_safe is used only to select the normal training corpus",
+        "official_method_retained": "BlindGuard GATSCL encode + neg_all SCL loss + negative all-node similarity anomaly score",
     })
     json_dump(output / "metrics.json", result); save_predictions(output / "predictions.jsonl", records)
     checkpoint_hash = sha256_file(output / "best_model.pt")
@@ -440,6 +443,8 @@ def train(args) -> None:
         "alpha": args.alpha, "normal_only_training_rows": len(normal), "best_epoch": best_epoch,
         "lower_quantile": args.lower_quantile, "upper_quantile": args.upper_quantile,
         "component_quantile": args.component_quantile,
+        "graph_projection": "shared MOSAIC G/N/E/T component graph",
+        "optimization_labels": "none after normal-corpus selection",
         "calibration": calibration, "history": history, "best_model_sha256": checkpoint_hash,
     })
     print(json.dumps(result, indent=2))
