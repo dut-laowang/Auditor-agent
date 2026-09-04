@@ -111,7 +111,7 @@ def main():
     parser.add_argument("--max-len", type=int, default=8192)
     parser.add_argument(
         "--context-contract",
-        choices=["v19-8192", "v22-all-12288"],
+        choices=["v19-8192", "v22-all-12288", "v23-all-12288"],
         default="v19-8192",
         help="Explicit experiment context contract; V19 remains fixed at 8192 by default.",
     )
@@ -141,7 +141,11 @@ def main():
     args = parser.parse_args()
     if args.disable_cudnn_sdp:
         torch.backends.cuda.enable_cudnn_sdp(False)
-    required_max_len = {"v19-8192": 8192, "v22-all-12288": 12288}[args.context_contract]
+    required_max_len = {
+        "v19-8192": 8192,
+        "v22-all-12288": 12288,
+        "v23-all-12288": 12288,
+    }[args.context_contract]
     if args.max_len != required_max_len:
         raise ValueError(
             f"Context contract {args.context_contract} requires --max-len {required_max_len}"
@@ -305,11 +309,11 @@ def main():
                 digest.update(block)
         return digest.hexdigest()
     run_manifest = {
-        "version": (
-            "V22-ALL-audit-grade-sft-v1"
-            if args.context_contract == "v22-all-12288"
-            else "V19-qualityfix"
-        ),
+        "version": {
+            "v19-8192": "V19-qualityfix",
+            "v22-all-12288": "V22-ALL-audit-grade-sft-v1",
+            "v23-all-12288": "V23-ALL-audit-grade-sft-v1",
+        }[args.context_contract],
         "model": args.model,
         "model_revision": args.revision,
         "seed": args.seed,

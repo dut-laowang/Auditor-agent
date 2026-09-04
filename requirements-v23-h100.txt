@@ -1,0 +1,11 @@
+transformers==4.53.3
+datasets==3.6.0
+peft==0.16.0
+accelerate==1.8.1
+sentence-transformers==5.0.0
+torch-geometric==2.6.1
+scikit-learn==1.7.0
+numpy==1.26.4
+scipy==1.15.3
+tqdm==4.67.1
+safetensors==0.5.3

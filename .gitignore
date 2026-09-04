@@ -15,3 +15,8 @@ auditor_agent_0629/auditor_agent_marbel/logs/
 Thumbs.db
 .vscode/
 .idea/
+
+# V23 local validation/runtime artifacts (release data archive remains tracked).
+.tmp_v23_clone_audit*/
+SFT/auditor_agent_v23_final_experiments/local_validation/
+.v23_runtime/

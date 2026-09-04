@@ -1,5 +1,21 @@
 # Auditor Agent 0629
 
+## V23 one-command H100 run
+
+The final 43,844-row V23 dataset is included as a verified compressed asset.
+On a Linux server with one 96GB H100, CUDA driver, Git, and Python 3.10+:
+
+```bash
+git clone https://github.com/dut-laowang/Auditor-agent.git
+cd Auditor-agent
+bash run_v23_h100.sh
+```
+
+The entry point creates an isolated environment, verifies and extracts the
+dataset, runs the dependency/memory-aware parallel experiment DAG, renders the
+four paper tables, and produces a checksummed result archive. Re-running the
+same command resumes completed stages.
+
 本项目用于在 MARBLE / MultiAgentBench 上运行 ACI-style attack evaluation，并整理 attack result、ASR 和后续 SFT data 构建所需的核心输出。
 
 ## Contents
