@@ -17,11 +17,12 @@ bash SFT/auditor_agent_v23_final_experiments/server_scripts/run_v23_all_experime
 ```
 
 The scheduler queries each GPU's physical memory and admits concurrent jobs by
-an explicit reservation budget. On one 96GB H100, Qwen (34GB reservation) and
-InternLM (34GB) start together while the scheduler retains roughly 15% for CUDA
-peaks; ModernBERT (12GB) starts as soon as budget is available. Dependency-ready
-CPU scoring overlaps automatically. For multiple cards,
-set `V23_GPUS=0,1,...`. Override detection only when necessary with
+an explicit reservation budget. The repository-root entry point defaults to
+`V23_GPUS=0,1`; Qwen and InternLM start concurrently and each temporarily owns
+one H100, preventing memory/compute contention in the two primary comparisons.
+As each finishes, its card immediately accepts compatible ModernBERT, held-out,
+and graph jobs under the reservation budget. CPU scoring overlaps automatically. Set
+`V23_GPUS=0` for a one-card fallback. Override detection only when necessary with
 `V23_GPU_MEMORY_GB`; tune the safety fraction with
 `V23_GPU_MEMORY_UTILIZATION` (default `0.85`). Each stage resumes or skips only
 after its completion marker exists. A failed task halts the suite, and required
@@ -37,7 +38,9 @@ sidecar. Checkpoints are excluded.
 - ModernBERT zero-truncation training/evaluation
 - fixed cascade, deterministic 15% rule router, and learned router
 - held-out retraining for tree, message, and research folds
-- official-source G-Safeguard, TAM, BlindGuard SCL, and XG-Guard adapters
+- official-source G-Safeguard, TAM, BlindGuard SCL, and XG-Guard adapters;
+  every graph baseline uses train/validation first and a separately opened,
+  hash-bound sealed test stage
 - exactly four Markdown/LaTeX tables, with no imputed values
 
 Files retaining `v22` in their names are frozen adapters or legacy references.

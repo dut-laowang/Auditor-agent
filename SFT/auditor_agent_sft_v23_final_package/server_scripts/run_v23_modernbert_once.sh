@@ -13,8 +13,9 @@ CKPT="$MODEL/checkpoint-epoch-${MODERN_EPOCHS:-3}.pt"
 CUDA_VISIBLE_DEVICES="$GPU" python "$V19/server_scripts/modernbert_multitask_v19.py" --mode eval --model answerdotai/ModernBERT-base --revision 8949b909ec900327062f0ebf497f51aef5e6f0c8 --checkpoint "$CKPT" --data-file "$OUT/validation.jsonl" --dataset-role validation --output-dir "$VAL" --expected-train-sha256 "$TS" --expected-validation-sha256 "$VS" --expected-test-sha256 "$XS" --max-len 8192 --attn-implementation sdpa --input-mode user --batch "${MODERN_EVAL_BATCH:-4}" --seed 42
 CUDA_VISIBLE_DEVICES="$GPU" python "$V19/server_scripts/modernbert_multitask_v19.py" --mode eval --model answerdotai/ModernBERT-base --revision 8949b909ec900327062f0ebf497f51aef5e6f0c8 --checkpoint "$CKPT" --data-file "$OUT/test.jsonl" --dataset-role test --sealed-test-ack FINAL_ONCE --output-dir "$TEST" --expected-train-sha256 "$TS" --expected-validation-sha256 "$VS" --expected-test-sha256 "$XS" --max-len 8192 --attn-implementation sdpa --input-mode user --batch "${MODERN_EVAL_BATCH:-4}" --seed 42
 python "$V22/scripts/score_predictions_by_track.py" --predictions "$TEST/predictions.jsonl" --track-index "$OUT/test_track_index.jsonl" --output-dir "$TEST/by_track"
-python - "$TEST/metrics.json" "$RUN" <<'PY'
-import json,pathlib,sys
-m=json.loads(pathlib.Path(sys.argv[1]).read_text());assert m['n']==6167
-(pathlib.Path(sys.argv[2])/'MODERNBERT_COMPLETE.json').write_text(json.dumps({'status':'PASS','rows':6167},indent=2))
+python - "$TEST/metrics.json" "$RUN" "$DATA/test.jsonl" "$OUT/test.jsonl" <<'PY'
+import hashlib,json,pathlib,sys
+metric,run,source_test,filtered_test=map(pathlib.Path,sys.argv[1:]);m=json.loads(metric.read_text());assert m['n']==6167
+sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
+(run/'MODERNBERT_COMPLETE.json').write_text(json.dumps({'status':'PASS','rows':6167,'source_test_sha256':sha(source_test),'filtered_test_sha256':sha(filtered_test),'metrics_sha256':sha(metric)},indent=2))
 PY

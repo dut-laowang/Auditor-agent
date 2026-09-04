@@ -32,7 +32,9 @@ V23_RUN=/absolute/path/v23_final_run GPU=0 \
 bash SFT/auditor_agent_sft_v23_final_package/server_scripts/run_v23_internlm3_sft_once.sh
 ```
 
-On a single GPU, run Qwen and InternLM sequentially. Concurrent GPU training is
-disabled by design because it changes memory pressure and throughput and can
-invalidate the controlled comparison. CPU-only preprocessing and table
-rendering may run concurrently with inactive GPU stages.
+The standalone commands above run one model at a time. The repository-root
+`run_v23_h100.sh` entry point instead uses explicit memory reservations on a
+96GB H100 and may co-schedule Qwen and InternLM; seeds, data order, model
+revisions, and optimization settings remain independent. Set
+`V23_GPU_MEMORY_UTILIZATION` lower if the provider reserves unusual amounts of
+device memory.

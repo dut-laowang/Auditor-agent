@@ -633,8 +633,27 @@ def train(args) -> None:
     best_epoch = 0
     start_epoch = 1
     last_path = output_dir / "last_checkpoint.pt"
+    resume_contract = {
+        "model_kind": args.model_kind,
+        "official_commit": resolved_official_commit,
+        "official_source_identity": source_identity,
+        "train_sha256": hashes["train"],
+        "validation_sha256": hashes["validation"],
+        "seed": args.seed,
+        "epochs": args.epochs,
+        "lr": args.lr,
+        "weight_decay": args.weight_decay,
+        "grad_accum": args.grad_accum,
+        "hidden_dim": args.hidden_dim,
+        "latent_dim": args.latent_dim,
+        "localization_loss_weight": args.localization_loss_weight,
+        "scope_loss_weight": args.scope_loss_weight,
+        "limit": args.limit,
+    }
     if last_path.is_file():
         state = torch.load(last_path, map_location=device, weights_only=False)
+        if state.get("resume_contract") != resume_contract:
+            raise RuntimeError("Existing GNN checkpoint contract does not match this run")
         model.load_state_dict(state["model"])
         optimizer.load_state_dict(state["optimizer"])
         start_epoch = int(state["epoch"]) + 1
@@ -692,6 +711,7 @@ def train(args) -> None:
                 "history": history,
                 "torch_rng_state": torch.get_rng_state(),
                 "cuda_rng_state_all": torch.cuda.get_rng_state_all(),
+                "resume_contract": resume_contract,
             },
             last_path,
         )

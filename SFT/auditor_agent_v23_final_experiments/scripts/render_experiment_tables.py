@@ -72,7 +72,7 @@ def main():
  ("Graph MAS defense","G-Safeguard",get("baselines/gsafeguard_official_v23_v1/test/metrics.json"),"official MyGAT encoder; V23 supervised heads"),
  ("Graph MAS defense","TAM Encoder",get("baselines/tam_official_v23_v1/test/metrics.json"),"official TAM encoder; V23 supervised heads"),
  ("Graph MAS defense","BlindGuard",get("baselines/blindguard_official_v23_v1/test/metrics.json"),"official GATSCL/SCL; normal-only; shared component-graph projection; no LLM SFT"),
- ("Graph MAS defense","XG-Guard (ACL'26)",get("baselines/xgguard_official_v23_v1/full/metrics.json"),"official OursMethod; V23 adapter; normal-only"),
+ ("Graph MAS defense","XG-Guard (ACL'26)",get("baselines/xgguard_official_v23_v2/test/metrics.json"),"official OursMethod; normal-only; sealed two-phase V23 adapter"),
  ("Discriminative auditor","ModernBERT",b,"V23 supervised; zero-truncation subset"),
  ("Generative auditor","Plain Qwen3-8B SFT",q,"V23 audit SFT"),
  ("Generative auditor","InternLM3-8B SFT",intern,"V23 audit SFT; architecture transfer"),
@@ -80,18 +80,17 @@ def main():
  rows=[]
  for cat,name,d,adapt in defs:
   cells=[pct(d,k) for k in METRICS]
-  if cat in ("Graph MAS defense","Closed-source general LLM"):cells=["N/A" if x=="TBD" else x for x in cells]
   rows.append([cat,name,adapt,*cells,nval(d,"6,167" if name=="ModernBERT" else "TBD")])
  tables=[("Table 1. V23 unified test results",["Category","Method","Training/adaptation","3-way Acc.","Macro-F1","AS Recall","Binary Acc.","Loc. F1","N"],rows)]
  agent_rows=[]
- for name,d in [("ModernBERT-only",b),("Plain Qwen3-8B SFT",q),("Qwen + BERT fixed cascade",get("components/fixed_cascade/metrics.json")),("Rule-router (15% cap)",get("components/rule_router/metrics.json")),("Bounded Agent (learned router)",ag)]:
-  values=[name,pct(d,"three_class_macro_f1"),pct(d,"localization_micro_f1"),val(d,"verify_rate"),val(d,"defer_rate"),val(d,"coverage"),str(deep(d,"corrected") if deep(d,"corrected") is not None else "TBD"),str(deep(d,"corrupted") if deep(d,"corrupted") is not None else "TBD"),str(deep(d,"verify_rows") if deep(d,"verify_rows") is not None else "TBD")]
-  if name in {"ModernBERT-only","Plain Qwen3-8B SFT"}:values[3:]=["N/A"]*6
-  if name=="Qwen + BERT fixed cascade":values[6:8]=["N/A","N/A"]
+ for name,policy,d in [("ModernBERT-only","Discriminative only",b),("Plain Qwen3-8B SFT","Generative only",q),("Qwen + BERT fixed cascade","Verify all",get("components/fixed_cascade/metrics.json")),("Rule-router (15% cap)","Deterministic router",get("components/rule_router/metrics.json")),("Bounded Agent (learned router)","Learned router",ag)]:
+  values=[name,policy,*[pct(d,k) for k in METRICS],val(d,"verify_rate"),str(deep(d,"corrected") if deep(d,"corrected") is not None else "TBD"),str(deep(d,"corrupted") if deep(d,"corrupted") is not None else "TBD"),str(deep(d,"verify_rows") if deep(d,"verify_rows") is not None else "TBD")]
+  if name in {"ModernBERT-only","Plain Qwen3-8B SFT"}:values[7:]=["N/A"]*4
+  if name=="Qwen + BERT fixed cascade":values[8:10]=["N/A","N/A"]
   agent_rows.append(values)
- tables.append(("Table 2. Core modules, Agent utility, and cost",["Method","Final Macro-F1","Final Loc. F1","Verify %↓","Defer %↓","Coverage %↑","Corrected↑","Corrupted↓","Extra calls↓"],agent_rows))
+ tables.append(("Table 2. Core modules, Agent utility, and cost",["Method","Decision policy","3-way Acc.","Macro-F1","AS Recall","Binary Acc.","Loc. F1","Verify %","Corrected","Corrupted","Extra calls"],agent_rows))
  tables.append(("Table 3. Single-Agent-to-MAS transfer and online-audit reference",["Protocol","Method","Binary Acc.","Unsafe P","Unsafe R","3-way Acc.","Macro-F1","Loc. F1","Scope Acc.","N / native metrics"],V18))
- held=[]
+ held=[["IID reference","Full test","ModernBERT","IID V23 zero-truncation",*[pct(b,k) for k in METRICS],nval(b,"6,167")]]
  labels=[("Topology","Tree","topology__tree"),("Attack surface","Message","surface__message"),("Scenario/task","Research","scenario__research")]
  for dim,v,fold in labels:
   for method,kind in (("ModernBERT","true held-out retraining"),):

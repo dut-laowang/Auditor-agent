@@ -28,9 +28,12 @@ run_method() {
       --expected-train-sha256 "$train_sha" --expected-validation-sha256 "$val_sha"
   fi
   if [[ ! -f "$out/smoke_test/metrics.json" ]]; then
+    rm -rf -- "$out/smoke_test.incomplete"
     CUDA_VISIBLE_DEVICES="$GPU" python "$SCRIPT" final-test --checkpoint-dir "$out/smoke_model" --official-dir "$official" \
-      --test-file "$DATA/validation.jsonl" --cache-dir "$cache" --output-dir "$out/smoke_test" \
+      --test-file "$DATA/validation.jsonl" --cache-dir "$cache" --output-dir "$out/smoke_test.incomplete" \
       --sealed-test-ack FINAL_ONCE --expected-test-sha256 "$val_sha" --limit 100
+    rm -rf -- "$out/smoke_test"
+    mv "$out/smoke_test.incomplete" "$out/smoke_test"
   fi
   python - "$out/smoke_test/metrics.json" <<'PY'
 import json,sys
@@ -44,10 +47,21 @@ PY
       --expected-train-sha256 "$train_sha" --expected-validation-sha256 "$val_sha"
   fi
   if [[ ! -f "$out/test/metrics.json" ]]; then
+    rm -rf -- "$out/test.incomplete"
     CUDA_VISIBLE_DEVICES="$GPU" python "$SCRIPT" final-test --checkpoint-dir "$out/model" --official-dir "$official" \
-      --test-file "$TEST" --cache-dir "$cache" --output-dir "$out/test" \
+      --test-file "$TEST" --cache-dir "$cache" --output-dir "$out/test.incomplete" \
       --sealed-test-ack FINAL_ONCE --expected-test-sha256 "$test_sha"
+    rm -rf -- "$out/test"
+    mv "$out/test.incomplete" "$out/test"
   fi
+  python - "$out/model/TRAIN_CONTRACT.json" "$out/test/metrics.json" "$kind" "$test_sha" <<'PY'
+import json,sys
+c=json.load(open(sys.argv[1]));m=json.load(open(sys.argv[2]));kind=sys.argv[3];test_sha=sys.argv[4]
+assert c['model_kind']==kind and c['test_accessed'] is False
+assert m['model_kind']==kind and m['dataset_role']=='test' and m['data_sha256']==test_sha and m['n']==6207
+assert all(k in m for k in ('three_class_accuracy','three_class_report','binary_accuracy','localization'))
+print({'status':'PASS','model_kind':kind,'test_rows':m['n']})
+PY
   echo "DONE: $out/test/metrics.json"
 }
 methods=",${GNN_METHODS:-gat,tam},"

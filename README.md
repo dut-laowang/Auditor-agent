@@ -3,13 +3,15 @@
 ## V23 one-command H100 run
 
 The final 43,844-row V23 dataset is included as a verified compressed asset.
-On a Linux server with one 96GB H100, CUDA driver, Git, and Python 3.10+:
+On a Linux server with two 96GB H100s, CUDA driver, Git, and Python 3.10+:
 
 ```bash
 git clone https://github.com/dut-laowang/Auditor-agent.git
 cd Auditor-agent
 bash run_v23_h100.sh
 ```
+
+The default is `V23_GPUS=0,1`. Set `V23_GPUS=0` only for a one-card fallback.
 
 The entry point creates an isolated environment, verifies and extracts the
 dataset, runs the dependency/memory-aware parallel experiment DAG, renders the
