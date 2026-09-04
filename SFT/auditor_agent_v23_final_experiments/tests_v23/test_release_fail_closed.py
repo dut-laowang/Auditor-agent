@@ -75,6 +75,18 @@ class ReleaseFailClosed(unittest.TestCase):
         self.assertEqual((first,second),("0","1"))
         self.assertIsNone(module.choose_gpu(ids,reserved,capacity,12,False,{"0":True,"1":True}))
 
+    def test_internlm_runtime_dependency_is_pinned(self):
+        requirements=(ROOT.parent/"requirements-v23-h100.txt").read_text(encoding="utf-8")
+        bootstrap=(ROOT.parent/"run_v23_h100.sh").read_text(encoding="utf-8")
+        self.assertIn("sentencepiece==0.2.0",requirements)
+        self.assertIn("import accelerate,datasets,numpy,peft,safetensors,scipy,sentence_transformers,sentencepiece",bootstrap)
+        self.assertIn("'sentencepiece':'0.2.0'",bootstrap)
+
+    def test_code_update_resume_requires_explicit_opt_in(self):
+        source=(PKG/"scripts/run_v23_experiment_suite.py").read_text(encoding="utf-8")
+        self.assertIn("V23_ALLOW_CODE_UPDATE_RESUME",source)
+        self.assertIn("RUN_CONTRACT_MIGRATIONS.jsonl",source)
+
 
 if __name__ == "__main__":
     unittest.main()

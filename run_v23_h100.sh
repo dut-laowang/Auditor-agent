@@ -53,10 +53,10 @@ if [[ ! -f "$requirements_marker" ]]; then
   touch "$requirements_marker"
 fi
 python - <<'PY'
-import accelerate,datasets,numpy,peft,safetensors,scipy,sentence_transformers,sklearn,torch,torch_geometric,tqdm,transformers
+import accelerate,datasets,numpy,peft,safetensors,scipy,sentence_transformers,sentencepiece,sklearn,torch,torch_geometric,tqdm,transformers
 import pyg_lib,torch_scatter,torch_sparse
-expected={'torch':'2.7.0','transformers':'4.53.3','datasets':'3.6.0','peft':'0.16.0','accelerate':'1.8.1','sentence_transformers':'5.0.0','torch_geometric':'2.6.1','sklearn':'1.7.0','numpy':'1.26.4','scipy':'1.15.3','tqdm':'4.67.1','safetensors':'0.5.3'}
-actual={'torch':torch.__version__.split('+')[0],'transformers':transformers.__version__,'datasets':datasets.__version__,'peft':peft.__version__,'accelerate':accelerate.__version__,'sentence_transformers':sentence_transformers.__version__,'torch_geometric':torch_geometric.__version__,'sklearn':sklearn.__version__,'numpy':numpy.__version__,'scipy':scipy.__version__,'tqdm':tqdm.__version__,'safetensors':safetensors.__version__}
+expected={'torch':'2.7.0','transformers':'4.53.3','datasets':'3.6.0','peft':'0.16.0','accelerate':'1.8.1','sentence_transformers':'5.0.0','sentencepiece':'0.2.0','torch_geometric':'2.6.1','sklearn':'1.7.0','numpy':'1.26.4','scipy':'1.15.3','tqdm':'4.67.1','safetensors':'0.5.3'}
+actual={'torch':torch.__version__.split('+')[0],'transformers':transformers.__version__,'datasets':datasets.__version__,'peft':peft.__version__,'accelerate':accelerate.__version__,'sentence_transformers':sentence_transformers.__version__,'sentencepiece':sentencepiece.__version__,'torch_geometric':torch_geometric.__version__,'sklearn':sklearn.__version__,'numpy':numpy.__version__,'scipy':scipy.__version__,'tqdm':tqdm.__version__,'safetensors':safetensors.__version__}
 assert actual==expected,(actual,expected)
 assert torch.version.cuda=='12.8',torch.version.cuda
 assert torch.cuda.is_available(),'PyTorch cannot see CUDA'

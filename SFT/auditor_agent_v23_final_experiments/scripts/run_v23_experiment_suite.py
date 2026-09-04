@@ -58,7 +58,13 @@ def main():
  contract_keys=('QWEN_EPOCHS','QWEN_LR','QWEN_TRAIN_BATCH','QWEN_GRAD_ACCUM','QWEN_EVAL_BATCH','INTERNLM_REVISION','INTERNLM_EPOCHS','INTERNLM_LR','INTERNLM_TRAIN_BATCH','INTERNLM_GRAD_ACCUM','INTERNLM_EVAL_BATCH','MODERN_EPOCHS','MODERN_LR','MODERN_TRAIN_BATCH','MODERN_GRAD_ACCUM','MODERN_EVAL_BATCH','GNN_OFFICIAL_EPOCHS','GNN_GRAD_ACCUM','BLINDGUARD_EPOCHS','XGGUARD_OFFICIAL_EPOCHS','XGGUARD_OFFICIAL_BATCH','XGGUARD_OFFICIAL_LR','XGGUARD_OFFICIAL_WEIGHT_DECAY','XGGUARD_OFFICIAL_ALPHA','AGENT_MAX_VERIFY_RATE','RULE_VERIFY_RATE')
  run_contract={'version':'V23-suite-run-contract-v1','git_commit':git_commit,'data_sha256':data_sha,'configuration':{k:env.get(k) for k in contract_keys}}
  contract_path=a.experiments/'RUN_CONTRACT.json';existing=load_json(contract_path)
- if existing is not None and existing!=run_contract:raise SystemExit(f'Existing result directory has a different code/data/configuration contract: {contract_path}')
+ if existing is not None and existing!=run_contract:
+  comparable_old={k:v for k,v in existing.items() if k!='git_commit'};comparable_new={k:v for k,v in run_contract.items() if k!='git_commit'}
+  if env.get('V23_ALLOW_CODE_UPDATE_RESUME')=='1' and comparable_old==comparable_new and not (a.experiments/'V23_EXPERIMENTS_COMPLETE.json').exists():
+   migration=a.experiments/'RUN_CONTRACT_MIGRATIONS.jsonl'
+   with migration.open('a',encoding='utf-8') as f:f.write(json.dumps({'from':existing.get('git_commit'),'to':git_commit,'reason':'explicit V23_ALLOW_CODE_UPDATE_RESUME=1'})+'\n')
+   contract_path.write_text(json.dumps(run_contract,indent=2),encoding='utf-8');existing=run_contract
+  else:raise SystemExit(f'Existing result directory has a different code/data/configuration contract: {contract_path}')
  if existing is None:contract_path.write_text(json.dumps(run_contract,indent=2),encoding='utf-8')
  def task(key,name,cmd,marker,deps=(),gpu_gb=0,extra=None,always=False,validate=None,exclusive=False):return {'key':key,'name':name,'cmd':cmd,'marker':marker,'deps':set(deps),'gpu_gb':gpu_gb,'extra':extra or {},'always':always,'validate':validate,'exclusive':exclusive}
  tasks=[

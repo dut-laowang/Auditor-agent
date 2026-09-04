@@ -10,3 +10,4 @@ numpy==1.26.4
 scipy==1.15.3
 tqdm==4.67.1
 safetensors==0.5.3
+sentencepiece==0.2.0
