@@ -19,9 +19,10 @@ def main():
   task('gsafe','G-Safeguard V23',['bash',str(pkg/'server_scripts/run_v22_official_gsafe_tam_once.sh')],a.experiments/'baselines/gsafeguard_official_v23_v1/test/metrics.json',['preflight'],10,{'GNN_METHODS':'gat'}),
   task('tam','TAM V23',['bash',str(pkg/'server_scripts/run_v22_official_gsafe_tam_once.sh')],a.experiments/'baselines/tam_official_v23_v1/test/metrics.json',['gsafe'],10,{'GNN_METHODS':'tam'}),
   task('xg','XG-Guard V23',['bash',str(pkg/'server_scripts/run_v22_official_xgguard_once.sh')],a.experiments/'baselines/xgguard_official_v23_v1/full/metrics.json',['preflight'],10),
+  task('blind','BlindGuard SCL V23',['bash',str(pkg/'server_scripts/run_v23_official_blindguard_once.sh')],a.experiments/'baselines/blindguard_official_v23_v1/test/metrics.json',['preflight'],12),
   task('components','Fixed and rule component policies',['bash',str(pkg/'server_scripts/run_v23_component_policies_once.sh')],a.experiments/'components/COMPONENT_POLICIES_COMPLETE.json',['qwen','modern']),
   task('agent','Learned-router bounded agent',['bash',str(core/'server_scripts/run_v23_bounded_agent_once.sh')],a.run/'bounded_agent_common6167/V23_AGENT_COMPLETE.json',['qwen','modern'],24),
-  task('render','Render four publication tables',['python',str(pkg/'scripts/render_experiment_tables.py'),'--run-dir',str(a.run),'--supplement-dir',str(a.experiments),'--output-dir',str(a.experiments/'tables')],a.experiments/'tables/TABLE_STATUS.json',['qwen','intern','modern','heldout','gsafe','tam','xg','components','agent'],always=True)]
+  task('render','Render four publication tables',['python',str(pkg/'scripts/render_experiment_tables.py'),'--run-dir',str(a.run),'--supplement-dir',str(a.experiments),'--output-dir',str(a.experiments/'tables')],a.experiments/'tables/TABLE_STATUS.json',['qwen','intern','modern','heldout','gsafe','tam','xg','blind','components','agent'],always=True)]
  gpu_ids=[x.strip() for x in env.get('V23_GPUS',env.get('GPU','0')).split(',') if x.strip()]
  if not gpu_ids:raise SystemExit('V23_GPUS/GPU resolved to an empty GPU list')
  def detected_gb(gpu):

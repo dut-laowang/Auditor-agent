@@ -11,7 +11,7 @@ def main():
   d=a.data/f'{s}.jsonl';i=a.data/f'{s}_track_index.jsonl';e=m['splits'][s]
   ok=count(d)==n==e['rows'] and count(i)==n and sha(d)==e['sha256'] and sha(i)==e['index_sha256'];checks.append({'split':s,'rows':n,'hash_and_index':ok})
   if not ok:raise RuntimeError(f'{s} contract failed')
- pkg=a.repo/'SFT/auditor_agent_v23_final_experiments';required=[pkg/'scripts/run_v23_experiment_suite.py',pkg/'scripts/evaluate_component_policies.py',pkg/'scripts/render_experiment_tables.py']
+ pkg=a.repo/'SFT/auditor_agent_v23_final_experiments';required=[pkg/'scripts/run_v23_experiment_suite.py',pkg/'scripts/evaluate_component_policies.py',pkg/'scripts/render_experiment_tables.py',a.repo/'SFT/auditor_agent_gnn_baselines_package/server_scripts/v19_unsupervised_graph_baselines.py']
  for f in required:py_compile.compile(str(f),doraise=True)
  out={'status':'PASS','version':'V23-preflight-v1','data':str(a.data.resolve()),'checks':checks,'python_files_compiled':len(required)};a.output.parent.mkdir(parents=True,exist_ok=True);a.output.write_text(json.dumps(out,indent=2),encoding='utf-8');print(json.dumps(out,indent=2))
 if __name__=='__main__':main()

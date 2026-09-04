@@ -71,6 +71,7 @@ def main():
  defs=[
  ("Graph MAS defense","G-Safeguard",get("baselines/gsafeguard_official_v23_v1/test/metrics.json"),"official MyGAT encoder; V23 supervised heads"),
  ("Graph MAS defense","TAM Encoder",get("baselines/tam_official_v23_v1/test/metrics.json"),"official TAM encoder; V23 supervised heads"),
+ ("Graph MAS defense","BlindGuard",get("baselines/blindguard_official_v23_v1/test/metrics.json"),"official GATSCL; normal-only SCL; no LLM SFT"),
  ("Graph MAS defense","XG-Guard (ACL'26)",get("baselines/xgguard_official_v23_v1/full/metrics.json"),"official OursMethod; V23 adapter; normal-only"),
  ("Discriminative auditor","ModernBERT",b,"V23 supervised; zero-truncation subset"),
  ("Generative auditor","Plain Qwen3-8B SFT",q,"V23 audit SFT"),
@@ -106,7 +107,7 @@ def main():
  md=intro+"\n\n".join(mdtable(*t) for t in tables)+"\n"
  tex="% Requires \\usepackage{booktabs}\n\n"+"\n\n".join(latex_table(*t) for t in tables)+"\n"
  (a.output_dir/"FINAL_FOUR_TABLES.md").write_text(md,encoding="utf-8");(a.output_dir/"FINAL_FOUR_TABLES.tex").write_text(tex,encoding="utf-8")
- required_rows=[x for x in rows if x[1] in {"ModernBERT","Plain Qwen3-8B SFT","InternLM3-8B SFT","Qwen SFT + BERT Bounded Agent"}]+agent_rows+held
+ required_rows=[x for x in rows if x[1] in {"G-Safeguard","TAM Encoder","BlindGuard","XG-Guard (ACL'26)","ModernBERT","Plain Qwen3-8B SFT","InternLM3-8B SFT","Qwen SFT + BERT Bounded Agent"}]+agent_rows+held
  required_tbd=sum(str(v)=="TBD" for row in required_rows for v in row)
  status={"status":"PASS" if required_tbd==0 else "INCOMPLETE","tbd_cells":md.count("TBD"),"required_tbd_cells":required_tbd,"tables":4,"no_imputation":True,"protocol":"V23 final; V18 transfer and AFTraj-2K reference explicitly frozen"}
  (a.output_dir/"TABLE_STATUS.json").write_text(json.dumps(status,indent=2),encoding="utf-8");print(json.dumps(status,indent=2));print(a.output_dir/"FINAL_FOUR_TABLES.md")

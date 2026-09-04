@@ -37,7 +37,7 @@ sidecar. Checkpoints are excluded.
 - ModernBERT zero-truncation training/evaluation
 - fixed cascade, deterministic 15% rule router, and learned router
 - held-out retraining for tree, message, and research folds
-- official-source G-Safeguard, TAM, and XG-Guard adapters
+- official-source G-Safeguard, TAM, BlindGuard SCL, and XG-Guard adapters
 - exactly four Markdown/LaTeX tables, with no imputed values
 
 Files retaining `v22` in their names are frozen adapters or legacy references.

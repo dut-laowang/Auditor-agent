@@ -40,8 +40,9 @@ fi
 source "$VENV/bin/activate"
 python -m pip install --upgrade pip wheel setuptools
 if [[ ! -f "$VENV/.v23_requirements_complete" ]]; then
-  python -m pip install torch==2.7.1 --index-url https://download.pytorch.org/whl/cu128
+  python -m pip install torch==2.7.0 --index-url https://download.pytorch.org/whl/cu128
   python -m pip install -r "$REPO/requirements-v23-h100.txt"
+  python -m pip install pyg_lib torch_scatter torch_sparse -f https://data.pyg.org/whl/torch-2.7.0+cu128.html
   python - <<'PY'
 import torch, transformers, datasets, peft, torch_geometric
 assert torch.cuda.is_available(), 'PyTorch cannot see CUDA'

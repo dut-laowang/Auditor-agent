@@ -166,7 +166,8 @@ class BlindGuardModel(nn.Module):
         mask = torch.zeros(n, device=device)
         mask[torch.randperm(n, generator=generator, device=device)[:count]] = 1
         noise = F.normalize(torch.randn(x.shape, generator=generator, device=device), p=2, dim=1)
-        corrupted = x + noise * (5.0 * torch.norm(x, dim=1, keepdim=True)) * mask[:, None]
+        # Exact official BlindGuard SCL corruption magnitude (train_un1.py).
+        corrupted = x + noise * (0.8 * torch.norm(x, dim=1, keepdim=True)) * mask[:, None]
         return self.core.neg_all(self.core.encode(corrupted, edge), mask)
 
     def scores(self, row: dict, device: torch.device) -> tuple[torch.Tensor, list[torch.Tensor]]:
@@ -425,8 +426,8 @@ def train(args) -> None:
         "data_sha256": hashes["validation"], "dataset_role": "validation",
         "training_rows": len(normal), "training_filter": "train verdict == clean_safe; labels excluded from optimization",
         "calibration": calibration, "selected_epoch": best_epoch,
-        "adaptation_disclosure": "Native anomaly scores; normal-training-distribution two-threshold projection to V19 3-way labels and threshold projection to G/N/E/T candidates.",
-        "input_policy": "V19 user message only; zero-truncation candidate graph projection",
+        "adaptation_disclosure": "Official native anomaly scores; normal-training-distribution two-threshold projection to MOSAIC 3-way labels and threshold projection to G/N/E/T candidates.",
+        "input_policy": "MOSAIC user message only; zero-truncation candidate graph projection",
     })
     json_dump(output / "metrics.json", result); save_predictions(output / "predictions.jsonl", records)
     checkpoint_hash = sha256_file(output / "best_model.pt")
