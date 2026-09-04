@@ -87,6 +87,14 @@ class ReleaseFailClosed(unittest.TestCase):
         self.assertIn("V23_ALLOW_CODE_UPDATE_RESUME",source)
         self.assertIn("RUN_CONTRACT_MIGRATIONS.jsonl",source)
 
+    def test_any_task_failure_terminates_all_process_groups(self):
+        source=(PKG/"scripts/run_v23_experiment_suite.py").read_text(encoding="utf-8")
+        self.assertIn("terminate_process_groups(active)",source)
+        self.assertIn("signal.SIGTERM",source)
+        self.assertIn("signal.SIGKILL",source)
+        self.assertIn("FAILURE.json",source)
+        self.assertIn("resume_supported':True",source)
+
 
 if __name__ == "__main__":
     unittest.main()

@@ -49,6 +49,19 @@ def choose_gpu(gpu_ids,reserved,capacities,need,exclusive=False,exclusive_runnin
  candidates=[g for g in gpu_ids if not exclusive_running[g] and reserved[g]+need<=capacities[g] and (not exclusive or reserved[g]==0)]
  return min(candidates,key=lambda g:(reserved[g],gpu_ids.index(g))) if candidates else None
 
+def terminate_process_groups(processes,grace_seconds=10.0):
+ active=list(processes)
+ for process in active:
+  try:os.killpg(process.pid,signal.SIGTERM)
+  except (ProcessLookupError,PermissionError):pass
+ deadline=time.time()+grace_seconds
+ while time.time()<deadline and any(process.poll() is None for process in active):time.sleep(.1)
+ # Kill the original process groups even if their shell leader exited: a CUDA
+ # child may otherwise survive and keep memory allocated after its parent dies.
+ for process in active:
+  try:os.killpg(process.pid,signal.SIGKILL)
+  except (ProcessLookupError,PermissionError):pass
+
 def main():
  p=argparse.ArgumentParser();p.add_argument('--repo',type=Path,required=True);p.add_argument('--data',type=Path,required=True);p.add_argument('--run',type=Path,required=True);p.add_argument('--experiments',type=Path,required=True);a=p.parse_args()
  env=os.environ.copy();env.update(REPO=str(a.repo),V23_DATA_DIR=str(a.data),V23_RUN=str(a.run),V23_EXPERIMENT_RUN=str(a.experiments));a.experiments.mkdir(parents=True,exist_ok=True);(a.experiments/'logs').mkdir(exist_ok=True)
@@ -125,7 +138,15 @@ def main():
    if not running:raise SystemExit(f"scheduler dependency deadlock: {sorted(pending)}")
    finished,_=wait(running,return_when=FIRST_COMPLETED)
    for f in finished:
-    key=running.pop(f);r=f.result();t=task_by_key[key]
+    key=running.pop(f);t=task_by_key[key]
+    try:r=f.result()
+    except BaseException as exc:
+     stop.set()
+     with lock:active=list(processes.values())
+     failure={'status':'FAIL','failed_task':{'key':key,'task':t['name'],'runner_exception':repr(exc)},'concurrent_process_groups':len(active),'termination_policy':'SIGTERM then SIGKILL after 10 seconds','resume_supported':True,'time':time.time()}
+     (a.experiments/'FAILURE.json').write_text(json.dumps(failure,indent=2),encoding='utf-8')
+     terminate_process_groups(active)
+     raise SystemExit(f"{t['name']} raised inside the scheduler; concurrent jobs terminated") from exc
     if t['gpu_gb']:
      reserved[r['gpu']]-=t['gpu_gb']
      if t['exclusive']:exclusive_running[r['gpu']]=False
@@ -133,9 +154,9 @@ def main():
     if r['status']=='FAIL':
      stop.set()
      with lock:active=list(processes.values())
-     for process in active:
-      try:os.killpg(process.pid,signal.SIGTERM)
-      except (ProcessLookupError,PermissionError):pass
+     failure={'status':'FAIL','failed_task':r,'concurrent_process_groups':len(active),'termination_policy':'SIGTERM then SIGKILL after 10 seconds','resume_supported':True,'time':time.time()}
+     (a.experiments/'FAILURE.json').write_text(json.dumps(failure,indent=2),encoding='utf-8')
+     terminate_process_groups(active)
      raise SystemExit(f"{r['task']} failed; concurrent jobs terminated; see {r['log']}")
     complete.add(key)
  status=json.loads((a.experiments/'tables/TABLE_STATUS.json').read_text());out={'version':'V23-final-four-table-suite-v3','pipeline_status':'PASS','scheduler':'dependency-and-memory-aware','gpus':gpu_ids,'usable_gpu_gb':capacities,'table_status':status['status'],'required_tbd_cells':status['required_tbd_cells'],'seconds':time.time()-start,'tasks':results}
