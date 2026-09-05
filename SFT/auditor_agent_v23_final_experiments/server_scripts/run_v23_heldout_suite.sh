@@ -7,6 +7,9 @@ LEGACY_RUN="${V23_RUN:-$BASE/v23_final_run}"
 OUT="${V23_EXPERIMENT_RUN:-$BASE/v23_final_experiment_run}"
 GPU="${GPU:-0}"
 METHODS="${METHODS:-modernbert}"
+HELDOUT_SPECS="${HELDOUT_SPECS:-topology__tree surface__message scenario__research}"
+HELDOUT_SKIP_BUILD="${HELDOUT_SKIP_BUILD:-0}"
+HELDOUT_SKIP_FINALIZE="${HELDOUT_SKIP_FINALIZE:-0}"
 PKG="$REPO/SFT/auditor_agent_v23_final_experiments"
 V19="$REPO/SFT/auditor_agent_sft_v19_qualityfix_package"
 DATA="${V23_DATA_DIR:?Set V23_DATA_DIR to v23_final_aligned_combined}"
@@ -21,9 +24,15 @@ cd "$REPO"
 
 [[ "$(wc -l < "$DATA/train.jsonl" | tr -d ' ')" -eq 30619 ]]
 [[ "$(wc -l < "$DATA/validation.jsonl" | tr -d ' ')" -eq 7018 ]]
-python "$PKG/scripts/build_heldout_splits.py" --data-dir "$DATA" --output-dir "$FOLDS" --modernbert-zero-truncation
+if [[ "$HELDOUT_SKIP_BUILD" != 1 ]]; then
+  python "$PKG/scripts/build_heldout_splits.py" --data-dir "$DATA" --output-dir "$FOLDS" --modernbert-zero-truncation
+fi
 
-for spec in topology__tree surface__message scenario__research; do
+for spec in $HELDOUT_SPECS; do
+  case "$spec" in
+    topology__tree|surface__message|scenario__research) ;;
+    *) echo "unsupported held-out spec: $spec" >&2; exit 2 ;;
+  esac
   fold="$FOLDS/$spec"
   train_sha="$(python -c "import hashlib;print(hashlib.sha256(open('$fold/train.jsonl','rb').read()).hexdigest())")"
   val_sha="$(python -c "import hashlib;print(hashlib.sha256(open('$fold/validation.jsonl','rb').read()).hexdigest())")"
@@ -69,10 +78,17 @@ for spec in topology__tree surface__message scenario__research; do
   fi
 done
 
+if [[ "$HELDOUT_SKIP_FINALIZE" == 1 ]]; then
+  exit 0
+fi
+
 python "$PKG/scripts/render_experiment_tables.py" --run-dir "$LEGACY_RUN" --supplement-dir "$OUT" --output-dir "$OUT/tables"
 python - "$OUT" <<'PY'
 import hashlib,json,pathlib,sys
 root=pathlib.Path(sys.argv[1]); manifest=root/'heldout_data/HELDOUT_MANIFEST.json'
+required=[root/f'heldout/{fold}/modernbert_ztr_v2/metrics.json' for fold in ('topology__tree','surface__message','scenario__research')]
+missing=[str(p) for p in required if not p.is_file()]
+if missing: raise SystemExit(f'held-out finalization missing required ModernBERT folds: {missing}')
 done={"version":"V23-final-heldout-suite-v1","status":"PASS","heldout_manifest_sha256":hashlib.sha256(manifest.read_bytes()).hexdigest()}
 (root/'SUPPLEMENT_SUITE_COMPLETE.json').write_text(json.dumps(done,indent=2),encoding='utf8')
 print(json.dumps(done,indent=2))

@@ -35,11 +35,18 @@ LOGS="$V23_EXPERIMENT_RUN/logs"
 mkdir -p "$LOGS"
 
 case "${1:-}" in
+  --qwen-heldout)
+    export GPU="${2:?GPU id required}"
+    exec > >(tee -a "$LOGS/aux_qwen_surface_heldout.log") 2>&1
+    METHODS=qwen HELDOUT_SPECS=surface__message HELDOUT_SKIP_BUILD=1 HELDOUT_SKIP_FINALIZE=1 \
+      bash "$EXP/server_scripts/run_v23_heldout_suite.sh"
+    exit 0
+    ;;
   --modern-heldout)
     export GPU="${2:?GPU id required}"
     exec > >(tee -a "$LOGS/aux_modern_heldout.log") 2>&1
     bash "$CORE/server_scripts/run_v23_modernbert_once.sh"
-    bash "$EXP/server_scripts/run_v23_heldout_suite.sh"
+    METHODS=modernbert HELDOUT_SKIP_BUILD=1 bash "$EXP/server_scripts/run_v23_heldout_suite.sh"
     exit 0
     ;;
   --graph-baselines)
@@ -63,20 +70,24 @@ done
 
 python "$EXP/scripts/preflight_v23_experiments.py" \
   --repo "$REPO" --data "$V23_DATA_DIR" --output "$V23_EXPERIMENT_RUN/AUX_PREFLIGHT.json"
+python "$EXP/scripts/build_heldout_splits.py" --data-dir "$V23_DATA_DIR" \
+  --output-dir "$V23_EXPERIMENT_RUN/heldout_data" --modernbert-zero-truncation
 
-setsid bash "$0" --modern-heldout "${gpu_ids[0]}" &
+setsid bash "$0" --qwen-heldout "${gpu_ids[0]}" &
+qwen_pid=$!
+setsid bash "$0" --modern-heldout "${gpu_ids[1]}" &
 modern_pid=$!
 setsid bash "$0" --graph-baselines "${gpu_ids[1]}" &
 graph_pid=$!
 
 terminate_both() {
   trap - INT TERM EXIT
-  kill -TERM -- "-$modern_pid" "-$graph_pid" 2>/dev/null || true
-  wait "$modern_pid" "$graph_pid" 2>/dev/null || true
+  kill -TERM -- "-$qwen_pid" "-$modern_pid" "-$graph_pid" 2>/dev/null || true
+  wait "$qwen_pid" "$modern_pid" "$graph_pid" 2>/dev/null || true
 }
 trap 'terminate_both; exit 130' INT TERM
 
-declare -A running=( ["$modern_pid"]=1 ["$graph_pid"]=1 )
+declare -A running=( ["$qwen_pid"]=1 ["$modern_pid"]=1 ["$graph_pid"]=1 )
 while ((${#running[@]})); do
   finished=''
   set +e
@@ -98,10 +109,12 @@ required=[
  exp/'baselines/tam_official_v23_v1/test/metrics.json',
  exp/'baselines/xgguard_official_v23_v2/test/metrics.json',
  exp/'baselines/blindguard_official_v23_v1/test/metrics.json',
+ exp/'heldout/surface__message/qwen/metrics.json',
 ]
 missing=[str(p) for p in required if not p.is_file()]
 if missing: raise SystemExit(f'auxiliary completion contract failed; missing: {missing}')
-out={'status':'PASS','version':'V23-aux-independent-v1','artifacts':[str(p) for p in required]}
+out={'status':'PASS','version':'V23-aux-independent-v2','artifacts':[str(p) for p in required],
+     'generative_heldout':'surface=message / Qwen3-8B SFT'}
 (exp/'V23_AUX_INDEPENDENT_COMPLETE.json').write_text(json.dumps(out,indent=2),encoding='utf-8')
 print(json.dumps(out,indent=2))
 PY

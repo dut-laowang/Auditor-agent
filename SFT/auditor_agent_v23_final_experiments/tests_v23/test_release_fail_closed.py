@@ -14,7 +14,10 @@ class ReleaseFailClosed(unittest.TestCase):
     def test_auxiliary_runner_is_disjoint_and_fail_fast(self):
         source = (ROOT.parent / "run_v23_aux_h100.sh").read_text(encoding="utf-8")
         self.assertIn('--modern-heldout', source)
+        self.assertIn('--qwen-heldout', source)
         self.assertIn('--graph-baselines', source)
+        self.assertIn('METHODS=qwen HELDOUT_SPECS=surface__message', source)
+        self.assertIn("exp/'heldout/surface__message/qwen/metrics.json'", source)
         self.assertIn('wait -n -p finished', source)
         self.assertIn('terminate_both', source)
         self.assertNotIn('run_v23_plain_qwen_sft_once.sh', source)
