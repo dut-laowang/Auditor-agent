@@ -19,6 +19,7 @@ class ReleaseFailClosed(unittest.TestCase):
         self.assertIn('METHODS=qwen HELDOUT_SPECS=surface__message', source)
         self.assertIn("exp/'heldout/surface__message/qwen/metrics.json'", source)
         self.assertIn('export REPO', source)
+        self.assertIn('REUSED_VALIDATED_HELDOUT_SPLITS', source)
         self.assertIn('wait -n -p finished', source)
         self.assertIn('terminate_both', source)
         self.assertNotIn('run_v23_plain_qwen_sft_once.sh', source)

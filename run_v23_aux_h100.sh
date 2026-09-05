@@ -71,8 +71,27 @@ done
 
 python "$EXP/scripts/preflight_v23_experiments.py" \
   --repo "$REPO" --data "$V23_DATA_DIR" --output "$V23_EXPERIMENT_RUN/AUX_PREFLIGHT.json"
-python "$EXP/scripts/build_heldout_splits.py" --data-dir "$V23_DATA_DIR" \
-  --output-dir "$V23_EXPERIMENT_RUN/heldout_data" --modernbert-zero-truncation
+heldout_manifest="$V23_EXPERIMENT_RUN/heldout_data/HELDOUT_MANIFEST.json"
+if [[ -f "$heldout_manifest" ]]; then
+  python - "$heldout_manifest" <<'PY'
+import hashlib,json,sys
+from pathlib import Path
+p=Path(sys.argv[1]); m=json.loads(p.read_text(encoding='utf-8'))
+expected={'topology=tree','surface=message','scenario=research'}
+if m.get('version')!='V23-final-heldout-v1' or set(m.get('folds',{}))!=expected or not m.get('modernbert_zero_truncation'):
+    raise SystemExit('existing held-out manifest contract mismatch')
+for key,entry in m['folds'].items():
+    fold=p.parent/key.replace('=','__')
+    for role in ('train','validation'):
+        f=fold/f'{role}.jsonl'
+        digest=hashlib.sha256(f.read_bytes()).hexdigest()
+        if digest!=entry[f'{role}_sha256']: raise SystemExit(f'held-out hash mismatch: {f}')
+print('REUSED_VALIDATED_HELDOUT_SPLITS')
+PY
+else
+  python "$EXP/scripts/build_heldout_splits.py" --data-dir "$V23_DATA_DIR" \
+    --output-dir "$V23_EXPERIMENT_RUN/heldout_data" --modernbert-zero-truncation
+fi
 
 setsid bash "$0" --qwen-heldout "${gpu_ids[0]}" &
 qwen_pid=$!
