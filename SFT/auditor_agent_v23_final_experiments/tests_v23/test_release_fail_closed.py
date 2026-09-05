@@ -11,6 +11,15 @@ PKG = ROOT / "auditor_agent_v23_final_experiments"
 
 
 class ReleaseFailClosed(unittest.TestCase):
+    def test_auxiliary_runner_is_disjoint_and_fail_fast(self):
+        source = (ROOT.parent / "run_v23_aux_h100.sh").read_text(encoding="utf-8")
+        self.assertIn('--modern-heldout', source)
+        self.assertIn('--graph-baselines', source)
+        self.assertIn('wait -n -p finished', source)
+        self.assertIn('terminate_both', source)
+        self.assertNotIn('run_v23_plain_qwen_sft_once.sh', source)
+        self.assertNotIn('run_v23_internlm3_sft_once.sh', source)
+
     def test_archive_release_accepts_only_full_source_commit(self):
         runner = (PKG / "scripts/run_v23_experiment_suite.py").read_text(encoding="utf-8")
         self.assertIn("env.get('V23_SOURCE_COMMIT','').strip()", runner)
