@@ -11,6 +11,11 @@ PKG = ROOT / "auditor_agent_v23_final_experiments"
 
 
 class ReleaseFailClosed(unittest.TestCase):
+    def test_sentence_transformer_dimension_api_matches_pinned_v5(self):
+        source = (ROOT / "auditor_agent_gnn_baselines_package/server_scripts/v19_component_gnn_multitask.py").read_text(encoding="utf-8")
+        self.assertIn('get_sentence_embedding_dimension()', source)
+        self.assertNotIn('get_embedding_dimension()', source)
+
     def test_auxiliary_runner_is_disjoint_and_fail_fast(self):
         source = (ROOT.parent / "run_v23_aux_h100.sh").read_text(encoding="utf-8")
         self.assertIn('--modern-heldout', source)

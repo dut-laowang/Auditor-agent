@@ -282,7 +282,7 @@ def encode_graphs(raw_graphs: list[dict], cache_path: Path, cache_contract: dict
             chunk_owners.append(owner)
             chunk_weights.append(max(len(chunk), 1))
     tokenizer.model_max_length = tokenizer_limit
-    embedding_dim = int(encoder.get_embedding_dimension())
+    embedding_dim = int(encoder.get_sentence_embedding_dimension())
     weighted_sums = np.zeros((len(unique_pieces), embedding_dim), dtype=np.float64)
     weight_sums = np.zeros(len(unique_pieces), dtype=np.float64)
     encoder.eval()
