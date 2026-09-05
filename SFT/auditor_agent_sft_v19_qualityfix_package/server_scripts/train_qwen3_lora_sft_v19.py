@@ -111,7 +111,7 @@ def main():
     parser.add_argument("--max-len", type=int, default=8192)
     parser.add_argument(
         "--context-contract",
-        choices=["v19-8192", "v22-all-12288", "v23-all-12288", "v23-internlm-12800"],
+        choices=["v19-8192", "v22-all-12288", "v23-all-12288", "v23-internlm-16384"],
         default="v19-8192",
         help="Explicit experiment context contract; V19 remains fixed at 8192 by default.",
     )
@@ -145,7 +145,7 @@ def main():
         "v19-8192": 8192,
         "v22-all-12288": 12288,
         "v23-all-12288": 12288,
-        "v23-internlm-12800": 12800,
+        "v23-internlm-16384": 16384,
     }[args.context_contract]
     if args.max_len != required_max_len:
         raise ValueError(
@@ -269,8 +269,10 @@ def main():
         tf32=use_tf32,
         gradient_checkpointing=True,
         logging_steps=10,
-        eval_strategy="steps",
-        eval_steps=100,
+        # Full-schema generative validation is run exactly once by the V23
+        # wrapper after SFT. Re-running all 7,018 validation examples every
+        # 100 optimizer steps does not select a checkpoint or affect weights.
+        eval_strategy="no",
         save_strategy="steps",
         save_steps=100,
         save_total_limit=2,
@@ -314,7 +316,7 @@ def main():
             "v19-8192": "V19-qualityfix",
             "v22-all-12288": "V22-ALL-audit-grade-sft-v1",
             "v23-all-12288": "V23-ALL-audit-grade-sft-v1",
-            "v23-internlm-12800": "V23-ALL-audit-grade-sft-v1",
+            "v23-internlm-16384": "V23-ALL-audit-grade-sft-v1",
         }[args.context_contract],
         "model": args.model,
         "model_revision": args.revision,

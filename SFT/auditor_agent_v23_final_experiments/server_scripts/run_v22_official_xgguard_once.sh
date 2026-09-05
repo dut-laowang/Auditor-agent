@@ -18,7 +18,7 @@ export TOKENIZERS_PARALLELISM=false
 mkdir -p "$REFS" "$(dirname "$OUT")" "$OUT/cache"
 for f in "$TRAIN" "$VAL" "$TEST" "$SCRIPT"; do [[ -f "$f" ]] || { echo "MISSING: $f" >&2; exit 2; }; done
 if [[ ! -d "$OFFICIAL/.git" ]]; then git clone https://github.com/CampanulaBells/XG-Guard.git "$OFFICIAL"; fi
-git -C "$OFFICIAL" fetch origin
+git -C "$OFFICIAL" cat-file -e '86e1121512f76800f80d4687e492c7f99f049929^{commit}' 2>/dev/null || git -C "$OFFICIAL" fetch origin
 git -C "$OFFICIAL" checkout --detach 86e1121512f76800f80d4687e492c7f99f049929
 
 sha(){ sha256sum "$1" | awk '{print $1}'; }

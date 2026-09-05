@@ -53,7 +53,9 @@ def main() -> None:
     }
     for split in args.splits:
         data_path = args.data_dir / f"{split}.jsonl"
-        index_path = args.index_dir / ("track_index.jsonl" if split == "test" else f"{split}.jsonl")
+        v23_index = args.index_dir / f"{split}_track_index.jsonl"
+        legacy_index = args.index_dir / ("track_index.jsonl" if split == "test" else f"{split}.jsonl")
+        index_path = v23_index if v23_index.is_file() else legacy_index
         rows, index = read(data_path), read(index_path)
         if [row["metadata"]["run_id"] for row in rows] != [row["run_id"] for row in index]:
             raise RuntimeError(f"{split}: data/index run_id order mismatch")

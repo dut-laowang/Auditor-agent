@@ -14,7 +14,8 @@ V23="$REPO/SFT/auditor_agent_sft_v23_final_package"
 MODEL="$RUN/models/internlm3_8b_sft"
 VAL="$RUN/internlm3_8b_sft_validation"
 TEST="$RUN/internlm3_8b_sft_test"
-AUDIT="$RUN/data_contract/internlm3_context_audit.json"
+TRAINVAL_AUDIT="$RUN/data_contract/internlm3_trainval_context_audit.json"
+TEST_AUDIT="$RUN/data_contract/internlm3_test_context_audit.json"
 LOGS="$RUN/logs"
 
 export HF_HOME="${HF_HOME:-$BASE/sft_models/hf_cache}"
@@ -24,12 +25,11 @@ export OMP_NUM_THREADS="${OMP_NUM_THREADS:-1}"
 export MKL_NUM_THREADS="${MKL_NUM_THREADS:-1}"
 cd "$REPO"; mkdir -p "$RUN/data_contract" "$RUN/models" "$LOGS"
 
-# InternLM has a different tokenizer. Its longest V23 sequence is 12,520
-# tokens, so use an architecture-specific 12,800-token no-truncation contract.
-# A stale or failed audit is never accepted merely because the file exists.
+# InternLM uses an architecture-level 16K contract, chosen without consulting
+# sealed-test content. Before training, audit train and validation only.
 AUDIT_VALID=0
-if [[ -f "$AUDIT" ]]; then
-  if python - "$AUDIT" "$MODEL_ID" "$MODEL_REVISION" <<'PY'
+if [[ -f "$TRAINVAL_AUDIT" ]]; then
+  if python - "$TRAINVAL_AUDIT" "$MODEL_ID" "$MODEL_REVISION" <<'PY'
 import json, pathlib, sys
 p, model, revision = pathlib.Path(sys.argv[1]), sys.argv[2], sys.argv[3]
 try:
@@ -39,8 +39,9 @@ try:
         and r.get("total_issues") == 0
         and r.get("model") == model
         and r.get("revision") == revision
-        and r.get("max_len") == 12800
-        and sum(x.get("rows", 0) for x in r.get("splits", {}).values()) == 43844
+        and r.get("max_len") == 16384
+        and set(r.get("splits", {})) == {"train", "validation"}
+        and sum(x.get("rows", 0) for x in r.get("splits", {}).values()) == 37637
     )
 except (OSError, ValueError, TypeError):
     ok = False
@@ -52,40 +53,97 @@ PY
 fi
 if [[ "$AUDIT_VALID" != 1 ]]; then
   python "$V23/scripts/audit_v23_qwen_sft_contract.py" \
-    --data-dir "$DATA" --output "$AUDIT" --model "$MODEL_ID" \
-    --revision "$MODEL_REVISION" --max-len 12800 --batch-size 64
+    --data-dir "$DATA" --output "$TRAINVAL_AUDIT" --model "$MODEL_ID" \
+    --revision "$MODEL_REVISION" --max-len 16384 --batch-size 64 \
+    --splits train validation
 fi
-python - "$AUDIT" <<'PY'
+python - "$TRAINVAL_AUDIT" <<'PY'
 import json, pathlib, sys
 r=json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
 if r.get("status") != "PASS" or r.get("total_issues") != 0:
     raise RuntimeError("InternLM context/SFT contract did not pass")
-if sum(x["rows"] for x in r["splits"].values()) != 43844:
-    raise RuntimeError("InternLM context audit did not cover all V23 rows")
+if set(r["splits"]) != {"train", "validation"} or sum(x["rows"] for x in r["splits"].values()) != 37637:
+    raise RuntimeError("InternLM pre-training audit did not cover exact train/validation rows")
 PY
 
 if [[ ! -f "$MODEL/run_manifest.json" ]]; then
   CUDA_VISIBLE_DEVICES="$GPU" python "$V19/server_scripts/train_qwen3_lora_sft_v19.py" \
     --model "$MODEL_ID" --revision "$MODEL_REVISION" --data-dir "$DATA" --output-dir "$MODEL" \
-    --max-len 12800 --context-contract v23-internlm-12800 --prompt-overflow error \
+    --max-len 16384 --context-contract v23-internlm-16384 --prompt-overflow error \
     --epochs "${INTERNLM_EPOCHS:-2}" --lr "${INTERNLM_LR:-2e-4}" \
     --batch "${INTERNLM_TRAIN_BATCH:-1}" --grad-accum "${INTERNLM_GRAD_ACCUM:-16}" \
     --seed 42 --resume auto --disable-cudnn-sdp \
     2>&1 | tee -a "$LOGS/internlm3_8b_sft_training.log"
 fi
 
+# Reject a stale/incompatible completion marker before spending time on either
+# validation or the sealed test.
+python - "$MODEL/run_manifest.json" "$DATA" "$MODEL_ID" "$MODEL_REVISION" <<'PY'
+import hashlib, json, pathlib, sys
+manifest_path, data_dir = pathlib.Path(sys.argv[1]), pathlib.Path(sys.argv[2])
+model_id, revision = sys.argv[3], sys.argv[4]
+manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+sha = lambda path: hashlib.sha256(path.read_bytes()).hexdigest()
+required = {
+    "version": "V23-ALL-audit-grade-sft-v1",
+    "model": model_id,
+    "model_revision": revision,
+    "seed": 42,
+    "max_length": 16384,
+    "context_contract": "v23-internlm-16384",
+    "prompt_overflow": "error",
+    "cudnn_sdp_enabled": False,
+    "train_sha256": sha(data_dir / "train.jsonl"),
+    "validation_sha256": sha(data_dir / "validation.jsonl"),
+    "test_accessed": False,
+    "init_adapter": None,
+}
+for key, expected in required.items():
+    if manifest.get(key) != expected:
+        raise RuntimeError(f"InternLM SFT contract mismatch before evaluation: {key}")
+PY
+
 CUDA_VISIBLE_DEVICES="$GPU" python "$V19/server_scripts/eval_qwen3_fullschema_v19.py" \
   --mode sft --model "$MODEL_ID" --revision "$MODEL_REVISION" --adapter "$MODEL" \
   --test-file "$DATA/validation.jsonl" --dataset-role validation --output-dir "$VAL" \
-  --max-input-len 12800 --max-new-tokens 1400 --batch-size "${INTERNLM_EVAL_BATCH:-4}" \
+  --max-input-len 16384 --max-new-tokens 1400 --batch-size "${INTERNLM_EVAL_BATCH:-4}" \
   --resume --disable-cudnn-sdp 2>&1 | tee -a "$LOGS/internlm3_validation.log"
 python "$V22/scripts/score_predictions_by_track.py" --predictions "$VAL/predictions.jsonl" \
   --track-index "$DATA/validation_track_index.jsonl" --output-dir "$VAL/by_track"
 
+# The sealed test is first opened only after training and validation finish.
+TEST_AUDIT_VALID=0
+if [[ -f "$TEST_AUDIT" ]]; then
+  if python - "$TEST_AUDIT" "$MODEL_ID" "$MODEL_REVISION" <<'PY'
+import json, pathlib, sys
+p, model, revision = pathlib.Path(sys.argv[1]), sys.argv[2], sys.argv[3]
+try:
+    r=json.loads(p.read_text(encoding="utf-8"))
+    ok=(r.get("status")=="PASS" and r.get("total_issues")==0 and r.get("model")==model and r.get("revision")==revision and r.get("max_len")==16384 and set(r.get("splits",{}))=={"test"} and r["splits"]["test"].get("rows")==6207)
+except (OSError, ValueError, TypeError, KeyError):
+    ok=False
+raise SystemExit(0 if ok else 1)
+PY
+  then
+    TEST_AUDIT_VALID=1
+  fi
+fi
+if [[ "$TEST_AUDIT_VALID" != 1 ]]; then
+  python "$V23/scripts/audit_v23_qwen_sft_contract.py" \
+    --data-dir "$DATA" --output "$TEST_AUDIT" --model "$MODEL_ID" \
+    --revision "$MODEL_REVISION" --max-len 16384 --batch-size 64 --splits test
+fi
+python - "$TEST_AUDIT" <<'PY'
+import json, pathlib, sys
+r=json.loads(pathlib.Path(sys.argv[1]).read_text(encoding="utf-8"))
+if r.get("status") != "PASS" or r.get("total_issues") != 0 or set(r.get("splits", {})) != {"test"} or r["splits"]["test"].get("rows") != 6207:
+    raise RuntimeError("InternLM sealed-test context contract did not pass")
+PY
+
 CUDA_VISIBLE_DEVICES="$GPU" python "$V19/server_scripts/eval_qwen3_fullschema_v19.py" \
   --mode sft --model "$MODEL_ID" --revision "$MODEL_REVISION" --adapter "$MODEL" \
   --test-file "$DATA/test.jsonl" --dataset-role test --sealed-test-ack FINAL_ONCE --output-dir "$TEST" \
-  --max-input-len 12800 --max-new-tokens 1400 --batch-size "${INTERNLM_EVAL_BATCH:-4}" \
+  --max-input-len 16384 --max-new-tokens 1400 --batch-size "${INTERNLM_EVAL_BATCH:-4}" \
   --resume --disable-cudnn-sdp 2>&1 | tee -a "$LOGS/internlm3_test.log"
 python "$V22/scripts/score_predictions_by_track.py" --predictions "$TEST/predictions.jsonl" \
   --track-index "$DATA/test_track_index.jsonl" --output-dir "$TEST/by_track"
@@ -93,7 +151,7 @@ python "$V22/scripts/score_predictions_by_track.py" --predictions "$TEST/predict
 python - "$MODEL/run_manifest.json" "$VAL/by_track/metrics_by_track.json" "$TEST/by_track/metrics_by_track.json" "$RUN" <<'PY'
 import hashlib,json,pathlib,sys
 model,valp,testp,run=map(pathlib.Path,sys.argv[1:]); m=json.loads(model.read_text());v=json.loads(valp.read_text());t=json.loads(testp.read_text())
-if m.get("version")!="V23-ALL-audit-grade-sft-v1" or m.get("context_contract")!="v23-internlm-12800" or m.get("max_length")!=12800:raise RuntimeError("InternLM model contract mismatch")
+if m.get("version")!="V23-ALL-audit-grade-sft-v1" or m.get("context_contract")!="v23-internlm-16384" or m.get("max_length")!=16384:raise RuntimeError("InternLM model contract mismatch")
 if v["all"]["n"]!=7018 or t["all"]["n"]!=6207:raise RuntimeError("InternLM evaluation incomplete")
 sha=lambda p:hashlib.sha256(p.read_bytes()).hexdigest()
 out={"version":"V23-InternLM3-8B-SFT-v1","status":"PASS","model_revision":m["model_revision"],"validation_rows":7018,"test_rows":6207,"model_manifest_sha256":sha(model),"validation_metrics_sha256":sha(valp),"test_metrics_sha256":sha(testp)}

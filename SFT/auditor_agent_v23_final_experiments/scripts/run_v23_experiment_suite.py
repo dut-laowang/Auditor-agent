@@ -66,10 +66,12 @@ def main():
  p=argparse.ArgumentParser();p.add_argument('--repo',type=Path,required=True);p.add_argument('--data',type=Path,required=True);p.add_argument('--run',type=Path,required=True);p.add_argument('--experiments',type=Path,required=True);a=p.parse_args()
  env=os.environ.copy();env.update(REPO=str(a.repo),V23_DATA_DIR=str(a.data),V23_RUN=str(a.run),V23_EXPERIMENT_RUN=str(a.experiments));a.experiments.mkdir(parents=True,exist_ok=True);(a.experiments/'logs').mkdir(exist_ok=True)
  failure_path=a.experiments/'FAILURE.json'
- if failure_path.exists():
-  archived=a.experiments/'logs'/f'FAILURE.previous.{time.time_ns()}.json'
-  failure_path.replace(archived)
-  print(f'ARCHIVED previous failure marker: {archived}',flush=True)
+ for marker_name in ('FAILURE.json','INTERRUPTED.json'):
+  marker=a.experiments/marker_name
+  if marker.exists():
+   archived=a.experiments/'logs'/f'{marker.stem}.previous.{time.time_ns()}.json'
+   marker.replace(archived)
+   print(f'ARCHIVED previous run marker: {archived}',flush=True)
  core=a.repo/'SFT/auditor_agent_sft_v23_final_package';pkg=a.repo/'SFT/auditor_agent_v23_final_experiments'
  data_sha={s:sha256(a.data/f'{s}.jsonl') for s in EXPECTED_ROWS}
  git_commit=subprocess.check_output(['git','-C',str(a.repo),'rev-parse','HEAD'],text=True).strip()
@@ -109,7 +111,16 @@ def main():
   except Exception:return 24.0
  utilization=float(env.get('V23_GPU_MEMORY_UTILIZATION','0.85'));capacities={g:detected_gb(g)*utilization for g in gpu_ids};reserved={g:0.0 for g in gpu_ids};exclusive_running={g:False for g in gpu_ids}
  print(f"SCHEDULER: usable_gpu_gb={capacities}; same-GPU jobs run concurrently only inside the reservation budget",flush=True)
- lock=threading.Lock();start=time.time();results=[];processes={};stop=threading.Event()
+ lock=threading.RLock();start=time.time();results=[];processes={};stop=threading.Event()
+ def handle_interrupt(signum,frame):
+  stop.set()
+  with lock:active=list(processes.values())
+  interrupted={'status':'INTERRUPTED','signal':signal.Signals(signum).name,'concurrent_process_groups':len(active),'termination_policy':'SIGTERM then SIGKILL after 10 seconds','resume_supported':True,'time':time.time()}
+  (a.experiments/'INTERRUPTED.json').write_text(json.dumps(interrupted,indent=2),encoding='utf-8')
+  terminate_process_groups(active)
+  raise KeyboardInterrupt
+ signal.signal(signal.SIGINT,handle_interrupt)
+ signal.signal(signal.SIGTERM,handle_interrupt)
  def run(t,gpu):
   if t['marker'].is_file() and not t['always'] and (t['validate'] is None or t['validate']()):return {'task':t['name'],'key':t['key'],'status':'SKIPPED_VALIDATED','gpu':gpu,'seconds':0}
   e=env.copy();e.update(t['extra']);

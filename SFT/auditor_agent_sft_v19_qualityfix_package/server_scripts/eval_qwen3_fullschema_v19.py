@@ -352,20 +352,27 @@ def main():
         if set(row_ids) != set(structured_controls) or len(row_ids) != len(set(row_ids)):
             raise ValueError("Structured controls must exactly cover evaluated run_ids")
     max_prompt_tokens = 0
-    for index, row in enumerate(tqdm(rows, desc="zero_truncation_preflight")):
-        prompt_tokens = len(
-            tokenizer(
-                apply_template(tokenizer, row["messages"]),
-                add_special_tokens=False,
-                truncation=False,
-            )["input_ids"]
-        )
-        if prompt_tokens > args.max_input_len:
-            raise ValueError(
-                f"Zero-truncation evaluation gate failed at row {index}: "
-                f"{prompt_tokens} > {args.max_input_len}"
-            )
-        max_prompt_tokens = max(max_prompt_tokens, prompt_tokens)
+    preflight_batch_size = 64
+    preflight = tqdm(total=len(rows), desc="zero_truncation_preflight")
+    for start in range(0, len(rows), preflight_batch_size):
+        batch_rows = rows[start : start + preflight_batch_size]
+        prompts = [apply_template(tokenizer, row["messages"]) for row in batch_rows]
+        lengths = tokenizer(
+            prompts,
+            add_special_tokens=False,
+            truncation=False,
+            return_length=True,
+        )["length"]
+        for offset, prompt_tokens in enumerate(lengths):
+            prompt_tokens = int(prompt_tokens)
+            if prompt_tokens > args.max_input_len:
+                raise ValueError(
+                    f"Zero-truncation evaluation gate failed at row {start + offset}: "
+                    f"{prompt_tokens} > {args.max_input_len}"
+                )
+            max_prompt_tokens = max(max_prompt_tokens, prompt_tokens)
+        preflight.update(len(batch_rows))
+    preflight.close()
     print(json.dumps({
         "zero_truncation_preflight": "PASS",
         "rows": len(rows),

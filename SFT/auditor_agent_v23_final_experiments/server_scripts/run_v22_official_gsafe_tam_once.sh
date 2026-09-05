@@ -12,8 +12,10 @@ export HF_HOME="${HF_HOME:-$BASE/sft_models/hf_cache}" TOKENIZERS_PARALLELISM=fa
 mkdir -p "$REFS" "$SUP/baselines"
 if [[ ! -d "$GSAFE/.git" ]]; then git clone https://github.com/wslong20/G-safeguard.git "$GSAFE"; fi
 if [[ ! -d "$BLIND/.git" ]]; then git clone https://github.com/MR9812/BlindGuard.git "$BLIND"; fi
-git -C "$GSAFE" fetch origin; git -C "$GSAFE" checkout --detach 890c99f1cbc864e9ff0c85859619a14f42bc9cab
-git -C "$BLIND" fetch origin; git -C "$BLIND" checkout --detach 1889c20a326ba9ba9a6982744d473626e74f9986
+git -C "$GSAFE" cat-file -e '890c99f1cbc864e9ff0c85859619a14f42bc9cab^{commit}' 2>/dev/null || git -C "$GSAFE" fetch origin
+git -C "$GSAFE" checkout --detach 890c99f1cbc864e9ff0c85859619a14f42bc9cab
+git -C "$BLIND" cat-file -e '1889c20a326ba9ba9a6982744d473626e74f9986^{commit}' 2>/dev/null || git -C "$BLIND" fetch origin
+git -C "$BLIND" checkout --detach 1889c20a326ba9ba9a6982744d473626e74f9986
 train_sha="$(python -c "import hashlib;print(hashlib.sha256(open('$DATA/train.jsonl','rb').read()).hexdigest())")"
 val_sha="$(python -c "import hashlib;print(hashlib.sha256(open('$DATA/validation.jsonl','rb').read()).hexdigest())")"
 test_sha="$(python -c "import hashlib;print(hashlib.sha256(open('$TEST','rb').read()).hexdigest())")"

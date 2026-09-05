@@ -1,6 +1,6 @@
 #!/usr/bin/env python3
 from __future__ import annotations
-import argparse,hashlib,json,py_compile
+import argparse,hashlib,json,py_compile,subprocess
 from pathlib import Path
 def count(p):return sum(1 for x in p.open(encoding="utf-8") if x.strip())
 def sha(p):return hashlib.sha256(p.read_bytes()).hexdigest()
@@ -17,5 +17,6 @@ def main():
  missing=[str(f) for f in required+shells if not f.is_file()]
  if missing:raise RuntimeError(f'missing runtime files: {missing}')
  for f in required:py_compile.compile(str(f),doraise=True)
- out={'status':'PASS','version':'V23-preflight-v2','data':str(a.data.resolve()),'checks':checks,'python_files_compiled':len(required),'shell_entrypoints_present':len(shells)};a.output.parent.mkdir(parents=True,exist_ok=True);a.output.write_text(json.dumps(out,indent=2),encoding='utf-8');print(json.dumps(out,indent=2))
+ for f in shells:subprocess.run(['bash','-n',str(f)],check=True)
+ out={'status':'PASS','version':'V23-preflight-v3','data':str(a.data.resolve()),'checks':checks,'python_files_compiled':len(required),'shell_entrypoints_checked':len(shells)};a.output.parent.mkdir(parents=True,exist_ok=True);a.output.write_text(json.dumps(out,indent=2),encoding='utf-8');print(json.dumps(out,indent=2))
 if __name__=='__main__':main()

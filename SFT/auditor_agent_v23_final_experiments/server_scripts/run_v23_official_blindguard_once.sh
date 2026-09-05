@@ -9,7 +9,7 @@ export HF_HOME="${HF_HOME:-$BASE/sft_models/hf_cache}" TOKENIZERS_PARALLELISM=fa
 mkdir -p "$REFS" "$(dirname "$OUT")" "$CACHE"
 [[ -f "$SCRIPT" ]] || { echo "MISSING: $SCRIPT" >&2; exit 2; }
 if [[ ! -d "$OFFICIAL/.git" ]]; then git clone https://github.com/MR9812/BlindGuard.git "$OFFICIAL"; fi
-git -C "$OFFICIAL" fetch origin
+git -C "$OFFICIAL" cat-file -e '1889c20a326ba9ba9a6982744d473626e74f9986^{commit}' 2>/dev/null || git -C "$OFFICIAL" fetch origin
 git -C "$OFFICIAL" checkout --detach 1889c20a326ba9ba9a6982744d473626e74f9986
 sha(){ sha256sum "$1" | awk '{print $1}'; }
 TRAIN_SHA="$(sha "$DATA/train.jsonl")"; VAL_SHA="$(sha "$DATA/validation.jsonl")"; TEST_SHA="$(sha "$DATA/test.jsonl")"

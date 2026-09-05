@@ -16,11 +16,11 @@ def render(tok, messages, generation):
 
 
 def main():
-    ap=argparse.ArgumentParser();ap.add_argument('--data-dir',type=Path,required=True);ap.add_argument('--output',type=Path,required=True);ap.add_argument('--model',default='Qwen/Qwen3-8B');ap.add_argument('--revision',required=True);ap.add_argument('--max-len',type=int,default=12288);ap.add_argument('--batch-size',type=int,default=64);a=ap.parse_args()
+    ap=argparse.ArgumentParser();ap.add_argument('--data-dir',type=Path,required=True);ap.add_argument('--output',type=Path,required=True);ap.add_argument('--model',default='Qwen/Qwen3-8B');ap.add_argument('--revision',required=True);ap.add_argument('--max-len',type=int,default=12288);ap.add_argument('--batch-size',type=int,default=64);ap.add_argument('--splits',nargs='+',choices=('train','validation','test'),default=('train','validation','test'));a=ap.parse_args()
     tok=AutoTokenizer.from_pretrained(a.model,revision=a.revision,trust_remote_code=True)
     report={'version':'V23-Qwen-SFT-contract-audit-v1','model':a.model,'revision':a.revision,'max_len':a.max_len,'splits':{}}
     total_errors=0
-    for split in ('train','validation','test'):
+    for split in a.splits:
         rows=[json.loads(x) for x in (a.data_dir/f'{split}.jsonl').open(encoding='utf-8') if x.strip()]
         issues=Counter();examples=[];max_full=max_prompt=max_target=0
         batches=range(0,len(rows),a.batch_size)

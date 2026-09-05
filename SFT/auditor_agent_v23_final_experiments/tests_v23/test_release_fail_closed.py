@@ -82,6 +82,35 @@ class ReleaseFailClosed(unittest.TestCase):
         self.assertIn("import accelerate,datasets,numpy,peft,safetensors,scipy,sentence_transformers,sentencepiece",bootstrap)
         self.assertIn("'sentencepiece':'0.2.0'",bootstrap)
 
+    def test_sft_does_not_repeat_full_validation_during_training(self):
+        trainer=(ROOT/"auditor_agent_sft_v19_qualityfix_package/server_scripts/train_qwen3_lora_sft_v19.py").read_text(encoding="utf-8")
+        self.assertIn('eval_strategy="no"',trainer)
+        self.assertNotIn('eval_strategy="steps"',trainer)
+        self.assertNotIn('eval_steps=100',trainer)
+        self.assertIn('save_steps=100',trainer)
+
+    def test_runtime_efficiency_and_resume_guards(self):
+        eval_source=(ROOT/"auditor_agent_sft_v19_qualityfix_package/server_scripts/eval_qwen3_fullschema_v19.py").read_text(encoding="utf-8")
+        intern=(ROOT/"auditor_agent_sft_v23_final_package/server_scripts/run_v23_internlm3_sft_once.sh").read_text(encoding="utf-8")
+        bootstrap=(ROOT.parent/"run_v23_h100.sh").read_text(encoding="utf-8")
+        scheduler=(PKG/"scripts/run_v23_experiment_suite.py").read_text(encoding="utf-8")
+        self.assertIn("preflight_batch_size = 64",eval_source)
+        self.assertIn("return_length=True",eval_source)
+        self.assertIn("InternLM SFT contract mismatch before evaluation",intern)
+        self.assertLess(bootstrap.index('if [[ ! -f "$requirements_marker" ]]'),bootstrap.index("pip install --upgrade pip wheel setuptools"))
+        self.assertIn("signal.signal(signal.SIGINT,handle_interrupt)",scheduler)
+        self.assertIn("INTERRUPTED.json",scheduler)
+
+    def test_sealed_test_is_not_opened_during_context_preflight(self):
+        intern=(ROOT/"auditor_agent_sft_v23_final_package/server_scripts/run_v23_internlm3_sft_once.sh").read_text(encoding="utf-8")
+        modern=(ROOT/"auditor_agent_sft_v23_final_package/server_scripts/run_v23_modernbert_once.sh").read_text(encoding="utf-8")
+        self.assertIn("--splits train validation",intern)
+        self.assertIn("--splits test",intern)
+        self.assertLess(intern.index("--dataset-role validation"),intern.index("--splits test"))
+        self.assertNotIn("--splits train validation test",modern)
+        self.assertLess(modern.index("--dataset-role validation"),modern.index("--splits test"))
+        self.assertIn("SEALED_UNOPENED",modern)
+
     def test_code_update_resume_requires_explicit_opt_in(self):
         source=(PKG/"scripts/run_v23_experiment_suite.py").read_text(encoding="utf-8")
         self.assertIn("V23_ALLOW_CODE_UPDATE_RESUME",source)
