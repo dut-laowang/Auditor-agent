@@ -83,7 +83,10 @@ case "${1:-}" in
 esac
 
 IFS=',' read -r -a gpu_ids <<< "${V23_AUX_GPUS:-0,1}"
-[[ "${#gpu_ids[@]}" == 2 ]] || { echo 'V23_AUX_GPUS must contain exactly two GPU ids' >&2; exit 2; }
+[[ "${#gpu_ids[@]}" -ge 1 && "${#gpu_ids[@]}" -le 2 ]] || {
+  echo 'V23_AUX_GPUS must contain one or two GPU ids' >&2
+  exit 2
+}
 for gpu in "${gpu_ids[@]}"; do
   gpu="${gpu//[[:space:]]/}"
   mib=$(nvidia-smi --id="$gpu" --query-gpu=memory.total --format=csv,noheader,nounits | head -n1 | tr -d ' ')
@@ -114,33 +117,41 @@ else
     --output-dir "$V23_EXPERIMENT_RUN/heldout_data" --modernbert-zero-truncation
 fi
 
-setsid bash "$0" --qwen-heldout "${gpu_ids[0]}" &
-qwen_pid=$!
-setsid bash "$0" --modern-heldout "${gpu_ids[1]}" &
-modern_pid=$!
-# ModernBERT owns GPU 1.  The graph baselines share GPU 0 with the much
-# smaller LoRA allocation; this avoids racing two independent CUDA runtimes
-# during ModernBERT initialization on GPU 1.
-setsid bash "$0" --graph-baselines "${gpu_ids[0]}" &
-graph_pid=$!
+if [[ "${#gpu_ids[@]}" == 1 ]]; then
+  gpu="${gpu_ids[0]}"
+  echo "SINGLE_GPU_MODE: GPU $gpu; tasks run sequentially with validated resume"
+  bash "$0" --graph-baselines "$gpu"
+  bash "$0" --modern-heldout "$gpu"
+  bash "$0" --qwen-heldout "$gpu"
+else
+  setsid bash "$0" --qwen-heldout "${gpu_ids[0]}" &
+  qwen_pid=$!
+  setsid bash "$0" --modern-heldout "${gpu_ids[1]}" &
+  modern_pid=$!
+  # ModernBERT owns GPU 1.  The graph baselines share GPU 0 with the much
+  # smaller LoRA allocation; this avoids racing two independent CUDA runtimes
+  # during ModernBERT initialization on GPU 1.
+  setsid bash "$0" --graph-baselines "${gpu_ids[0]}" &
+  graph_pid=$!
 
-terminate_both() {
-  trap - INT TERM EXIT
-  kill -TERM -- "-$qwen_pid" "-$modern_pid" "-$graph_pid" 2>/dev/null || true
-  wait "$qwen_pid" "$modern_pid" "$graph_pid" 2>/dev/null || true
-}
-trap 'terminate_both; exit 130' INT TERM
+  terminate_both() {
+    trap - INT TERM EXIT
+    kill -TERM -- "-$qwen_pid" "-$modern_pid" "-$graph_pid" 2>/dev/null || true
+    wait "$qwen_pid" "$modern_pid" "$graph_pid" 2>/dev/null || true
+  }
+  trap 'terminate_both; exit 130' INT TERM
 
-declare -A running=( ["$qwen_pid"]=1 ["$modern_pid"]=1 ["$graph_pid"]=1 )
-while ((${#running[@]})); do
-  finished=''
-  set +e
-  wait -n -p finished "${!running[@]}"
-  status=$?
-  set -e
-  [[ -n "$finished" ]] && unset 'running[$finished]'
-  if [[ "$status" -ne 0 ]]; then terminate_both; exit "$status"; fi
-done
+  declare -A running=( ["$qwen_pid"]=1 ["$modern_pid"]=1 ["$graph_pid"]=1 )
+  while ((${#running[@]})); do
+    finished=''
+    set +e
+    wait -n -p finished "${!running[@]}"
+    status=$?
+    set -e
+    [[ -n "$finished" ]] && unset 'running[$finished]'
+    if [[ "$status" -ne 0 ]]; then terminate_both; exit "$status"; fi
+  done
+fi
 
 python - "$V23_RUN" "$V23_EXPERIMENT_RUN" <<'PY'
 import json,sys
