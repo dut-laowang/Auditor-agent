@@ -7,6 +7,7 @@ REPO="${V23_REPO:-$MAIN_RELEASE/repo}"
 RUNTIME="${V23_RUNTIME:-$ROOT/runtime/v23_3f65adb}"
 WORK="$RUNTIME/work"
 VENV="$WORK/venv"
+export REPO
 
 [[ "$(realpath -e -- "$ROOT")" == "$ROOT" ]]
 [[ "$(realpath -e -- "$REPO")" == "$REPO" ]]
