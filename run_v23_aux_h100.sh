@@ -35,10 +35,29 @@ EXP="$REPO/SFT/auditor_agent_v23_final_experiments"
 LOGS="$V23_EXPERIMENT_RUN/logs"
 mkdir -p "$LOGS"
 
+require_cuda() {
+  local gpu="$1" task="$2"
+  CUDA_VISIBLE_DEVICES="$gpu" python - "$gpu" "$task" <<'PY'
+import json, sys, torch
+gpu, task = sys.argv[1:]
+status = {
+    "task": task,
+    "requested_gpu": gpu,
+    "cuda_visible_devices": __import__("os").environ.get("CUDA_VISIBLE_DEVICES"),
+    "cuda_available": torch.cuda.is_available(),
+    "device_count": torch.cuda.device_count(),
+}
+print("CUDA_PREFLIGHT " + json.dumps(status), flush=True)
+if not status["cuda_available"] or status["device_count"] != 1:
+    raise SystemExit(f"CUDA preflight failed for {task} on GPU {gpu}: {status}")
+PY
+}
+
 case "${1:-}" in
   --qwen-heldout)
     export GPU="${2:?GPU id required}"
     exec > >(tee -a "$LOGS/aux_qwen_surface_heldout.log") 2>&1
+    require_cuda "$GPU" qwen-heldout
     METHODS=qwen HELDOUT_SPECS=surface__message HELDOUT_SKIP_BUILD=1 HELDOUT_SKIP_FINALIZE=1 \
       bash "$EXP/server_scripts/run_v23_heldout_suite.sh"
     exit 0
@@ -46,6 +65,7 @@ case "${1:-}" in
   --modern-heldout)
     export GPU="${2:?GPU id required}"
     exec > >(tee -a "$LOGS/aux_modern_heldout.log") 2>&1
+    require_cuda "$GPU" modern-heldout
     bash "$CORE/server_scripts/run_v23_modernbert_once.sh"
     METHODS=modernbert HELDOUT_SKIP_BUILD=1 bash "$EXP/server_scripts/run_v23_heldout_suite.sh"
     exit 0
@@ -53,6 +73,7 @@ case "${1:-}" in
   --graph-baselines)
     export GPU="${2:?GPU id required}"
     exec > >(tee -a "$LOGS/aux_graph_baselines.log") 2>&1
+    require_cuda "$GPU" graph-baselines
     GNN_METHODS=gat bash "$EXP/server_scripts/run_v22_official_gsafe_tam_once.sh"
     GNN_METHODS=tam bash "$EXP/server_scripts/run_v22_official_gsafe_tam_once.sh"
     bash "$EXP/server_scripts/run_v22_official_xgguard_once.sh"
@@ -97,7 +118,10 @@ setsid bash "$0" --qwen-heldout "${gpu_ids[0]}" &
 qwen_pid=$!
 setsid bash "$0" --modern-heldout "${gpu_ids[1]}" &
 modern_pid=$!
-setsid bash "$0" --graph-baselines "${gpu_ids[1]}" &
+# ModernBERT owns GPU 1.  The graph baselines share GPU 0 with the much
+# smaller LoRA allocation; this avoids racing two independent CUDA runtimes
+# during ModernBERT initialization on GPU 1.
+setsid bash "$0" --graph-baselines "${gpu_ids[0]}" &
 graph_pid=$!
 
 terminate_both() {
