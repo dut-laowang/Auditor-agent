@@ -11,6 +11,11 @@ PKG = ROOT / "auditor_agent_v23_final_experiments"
 
 
 class ReleaseFailClosed(unittest.TestCase):
+    def test_archive_release_accepts_only_full_source_commit(self):
+        runner = (PKG / "scripts/run_v23_experiment_suite.py").read_text(encoding="utf-8")
+        self.assertIn("env.get('V23_SOURCE_COMMIT','').strip()", runner)
+        self.assertIn("full 40-character hexadecimal revision", runner)
+
     @staticmethod
     def metric(n):
         return {"n": n, "three_class_accuracy": .5, "binary_accuracy": .6,

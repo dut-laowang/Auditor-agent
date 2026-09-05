@@ -74,7 +74,11 @@ def main():
    print(f'ARCHIVED previous run marker: {archived}',flush=True)
  core=a.repo/'SFT/auditor_agent_sft_v23_final_package';pkg=a.repo/'SFT/auditor_agent_v23_final_experiments'
  data_sha={s:sha256(a.data/f'{s}.jsonl') for s in EXPECTED_ROWS}
- git_commit=subprocess.check_output(['git','-C',str(a.repo),'rev-parse','HEAD'],text=True).strip()
+ git_commit=env.get('V23_SOURCE_COMMIT','').strip()
+ if not git_commit:
+  git_commit=subprocess.check_output(['git','-C',str(a.repo),'rev-parse','HEAD'],text=True).strip()
+ if len(git_commit)!=40 or any(c not in '0123456789abcdef' for c in git_commit.lower()):
+  raise SystemExit('V23_SOURCE_COMMIT/git commit must be a full 40-character hexadecimal revision')
  contract_keys=('QWEN_EPOCHS','QWEN_LR','QWEN_TRAIN_BATCH','QWEN_GRAD_ACCUM','QWEN_EVAL_BATCH','INTERNLM_REVISION','INTERNLM_EPOCHS','INTERNLM_LR','INTERNLM_TRAIN_BATCH','INTERNLM_GRAD_ACCUM','INTERNLM_EVAL_BATCH','MODERN_EPOCHS','MODERN_LR','MODERN_TRAIN_BATCH','MODERN_GRAD_ACCUM','MODERN_EVAL_BATCH','GNN_OFFICIAL_EPOCHS','GNN_GRAD_ACCUM','BLINDGUARD_EPOCHS','XGGUARD_OFFICIAL_EPOCHS','XGGUARD_OFFICIAL_BATCH','XGGUARD_OFFICIAL_LR','XGGUARD_OFFICIAL_WEIGHT_DECAY','XGGUARD_OFFICIAL_ALPHA','AGENT_MAX_VERIFY_RATE','RULE_VERIFY_RATE')
  run_contract={'version':'V23-suite-run-contract-v1','git_commit':git_commit,'data_sha256':data_sha,'configuration':{k:env.get(k) for k in contract_keys}}
  contract_path=a.experiments/'RUN_CONTRACT.json';existing=load_json(contract_path)
