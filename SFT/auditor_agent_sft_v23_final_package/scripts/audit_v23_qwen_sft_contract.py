@@ -5,6 +5,7 @@ import json
 from collections import Counter
 from pathlib import Path
 from transformers import AutoTokenizer
+from tqdm.auto import tqdm
 
 LEAK = __import__('re').compile(r"ACI_[A-Z0-9_]+|\baci_[a-z0-9_]+\b|\bEND_NEGOTIATION\b|success_marker|success_markers|attack_metadata|attack_id|marker_check|\[Injected[^\]]*\]|offline verifier|attack-success index|labeled as attack-success", __import__('re').I)
 
@@ -22,7 +23,15 @@ def main():
     for split in ('train','validation','test'):
         rows=[json.loads(x) for x in (a.data_dir/f'{split}.jsonl').open(encoding='utf-8') if x.strip()]
         issues=Counter();examples=[];max_full=max_prompt=max_target=0
-        for start in range(0,len(rows),a.batch_size):
+        batches=range(0,len(rows),a.batch_size)
+        progress=tqdm(
+            batches,
+            total=(len(rows)+a.batch_size-1)//a.batch_size,
+            desc=f'{a.model} audit {split}',
+            unit='batch',
+            dynamic_ncols=True,
+        )
+        for start in progress:
             batch=rows[start:start+a.batch_size]
             full_text=[render(tok,r['messages'],False) for r in batch]
             prompt_text=[render(tok,r['messages'][:2],True) for r in batch]
